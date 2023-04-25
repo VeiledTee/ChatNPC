@@ -1,0 +1,114 @@
+{
+    "name": "",
+    "profession": "",
+    "persona": "",
+    "age": "",
+    "gender": "",
+    "race/ethnicity": "",
+    "social status": "",
+    "family background/history": "",
+        "physical appearance": {
+        "height": "",
+        "weight": "",
+        "hair color": "",
+        "eye color": []
+    },
+    "skills": [],
+    "personality traits": [],
+    "allegiances": [],
+    "quests/missions": [],
+    "dialogue options": [],
+    "inventory": [],
+    "relationships": []
+    "home": "",
+}
+
+{
+    "name": "John Pebble",
+    "profession": "thief",
+    "persona": "I am a thief that lives near the village. I pickpocket villagers and loot their homes when while they are away. I hate to fight and I am very fast to flee from danger.",
+    "age": 28,
+    "gender": "male",
+    "race/ethnicity": "Caucasian",
+    "social status": "lower class",
+    "family background/history": "John Pebble's family has been living in the same village for generations. His father was a blacksmith, but John never took an interest in the trade.",
+    "physical appearance": {
+        "height": "5'9\"",
+        "weight": "160 lbs",
+        "hair color": "brown",
+        "eye color": ["blue"]
+    },
+    "skills": ["pickpocketing", "lockpicking"],
+    "personality traits": ["sneaky", "cautious", "greedy"],
+    "allegiances": ["the thieves' guild"],
+    "quests/missions": ["Steal the mayor's prized possession", "Assassinate a rival thief"],
+    "dialogue options": ["I need your help with something", "Can you teach me how to pickpocket?"],
+    "inventory": ["lockpick set", "stolen gold"],
+    "relationships": {
+        "friends": ["Sara the barmaid", "Jack the fence"],
+        "enemies": ["The village watch", "A rival thief"],
+        "romantic interests": ["None"]
+    },
+    "home": "A small shack on the outskirts of Ashbourne"
+}
+
+{
+    "name": "Evelyn Stone-Brown",
+    "profession": "blacksmith",
+    "persona": "I am a blacksmith from Ashbourne, known for crafting some of the finest weapons and armor in the land. I take pride in my work and will go to great lengths to ensure my customers are satisfied.",
+    "age": 38,
+    "gender": "female",
+    "race/ethnicity": "Anglo-Saxon",
+    "social status": "middle class",
+    "family background/history": "Her father was also a blacksmith, and she learned the trade from him.",
+    "physical appearance": {
+        "height": "6'2"",
+        "weight": "175 lbs",
+        "hair color": "black",
+        "eye color": ["brown", "green"]
+    },
+    "skills": ["metalworking", "swordsmithing", "armorsmithing"],
+    "personality traits": ["proud", "determined", "honest", "loyal"],
+    "allegiances": ["Ashbourne Blacksmiths Guild", "Kingdom of Albion"],
+    "quests/missions": ["Craft a suit of armor for the king's army", "Forge a magical weapon for a powerful wizard"],
+    "dialogue options": ["Can you repair my sword?", "What's the best metal for a blade?", "Can you teach me how to blacksmith?"],
+    "inventory": ["blacksmith hammer", "tongs", "anvil", "metal scraps", "finished weapons and armor"],
+    "relationships": {
+    "friends": ["local barkeep"],
+    "enemies": ["rival Ashbourne blacksmith"],
+    "romantic interests": ["Caleb Brown"]
+    },
+    "home": "Ashbourne"
+}
+
+{
+    "name": "Gareth Redwood",
+    "profession": "knight",
+    "persona": "",
+    "age": 34,
+    "gender": "male",
+    "race/ethnicity": "European",
+    "social status": "nobility",
+    "family background/history": "Gareth Redwood comes from a long line of knights, and he was trained from a young age in the ways of chivalry and combat. His family has always been loyal to the king, and Gareth takes his duty to serve the kingdom very seriously.",
+    "physical appearance": {
+        "height": "6'2"",
+        "weight": "200 lbs",
+        "hair color": "blonde",
+        "eye color": ["green"]
+    },
+    "skills": ["sword fighting", "horsemanship"],
+    "personality traits": ["honor-bound", "courageous", "chivalrous"],
+    "allegiances": ["the kingdom of Ashbourne"],
+    "quests/missions": ["Protect the king on his journey through dangerous territory", "Investigate reports of bandit activity near the border"],
+    "dialogue options": ["Greetings, traveler. How may I assist you?", "Do you have any news from the front lines of the war?"],
+    "inventory": ["chain mail armor", "longsword"],
+    "relationships": {
+        "friends": ["Sir Richard, a fellow knight", "Captain James, a high-ranking member of the king's army"],
+        "enemies": ["The rebel faction seeking to overthrow the king"],
+        "romantic interests": ["Lady Catherine, a noblewoman from a neighboring kingdom"]
+    },
+    "home": "Redwood Manor, a castle near the heart of Ashbourne"
+}
+
+
+
