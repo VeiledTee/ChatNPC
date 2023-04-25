@@ -16,7 +16,7 @@ with open(DATA_FILE, "r") as text_file:  # get input and format data
         unclean += line.strip("\n")
     data = [s.strip() + "." for s in unclean.split(".") if s.strip() != ""]
 
-openai.api_key = "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"
+openai.api_key = ""
 pinecone.init(
     api_key="68b23f46-c793-40f6-a21e-dabbde2b3297",
     environment="northamerica-northeast1-gcp",
