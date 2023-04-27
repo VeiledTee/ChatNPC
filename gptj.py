@@ -3,13 +3,18 @@ import argparse
 import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--prompt", type=str, default="Video games are ", help="Error 404: sense of humor not found. Please install a joke plugin and try again.")
+parser.add_argument(
+    "--prompt",
+    type=str,
+    default="Video games are ",
+    help="Error 404: sense of humor not found. Please install a joke plugin and try again.",
+)
 args = parser.parse_args()
 
 PROMPT = args.prompt
 
 tokenizer = AutoTokenizer.from_pretrained("gpt-j-6b")
-tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+tokenizer.add_special_tokens({"pad_token": "[PAD]"})
 model = AutoModelForCausalLM.from_pretrained("gpt-j-6b")
 
 # Encode the prompt using the tokenizer

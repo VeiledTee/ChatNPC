@@ -1,19 +1,19 @@
 import pickle
 import json
 
-with open('Data/light_data.pkl', 'rb') as f:
+with open("Data/light_data.pkl", "rb") as f:
     data = pickle.load(f)
 print(data[1])
 print(type(data))
 
-with open('Data/light_environment.pkl', 'rb') as f:
+with open("Data/light_environment.pkl", "rb") as f:
     data = pickle.load(f)
 # print(data)
 with open("Data/light_environment.json", "w") as outfile:
     json.dump(data, outfile)
 print(type(data))
 
-with open('Data/light_unseen_data.pkl', 'rb') as f:
+with open("Data/light_unseen_data.pkl", "rb") as f:
     data = pickle.load(f)
 print(data[1])
 print(type(data))

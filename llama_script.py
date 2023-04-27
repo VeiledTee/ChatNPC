@@ -61,19 +61,19 @@ def load(
 
 
 def main(
-        ckpt_dir: str,
-        tokenizer_path: str,
-        temperature: float = 0.8,
-        top_p: float = 0.95,
-        max_seq_len: int = 128,
-        max_batch_size: int = 10,
+    ckpt_dir: str,
+    tokenizer_path: str,
+    temperature: float = 0.8,
+    top_p: float = 0.95,
+    max_seq_len: int = 128,
+    max_batch_size: int = 10,
 ):
     local_rank, world_size = setup_model_parallel()
     if local_rank > 0:
         sys.stdout = open(os.devnull, "w")
 
-    prompt_path = os.path.join('/', 'prompt.txt')
-    with open(prompt_path, 'r') as f:
+    prompt_path = os.path.join("/", "prompt.txt")
+    with open(prompt_path, "r") as f:
         prompt = f.read().strip()
 
     prompts = [
@@ -96,10 +96,12 @@ def main(
 
     for result in results:
         # Write the output to the next available output file
-        with open(f"Output/LLaMA/llama_output_{output_file_num}.txt", "w") as output_file:
+        with open(
+            f"Output/LLaMA/llama_output_{output_file_num}.txt", "w"
+        ) as output_file:
             output_file.write(f"Prompt: {prompt}\n")
             output_file.write(result)
-            output_file.write('\n')
+            output_file.write("\n")
 
 
 if __name__ == "__main__":

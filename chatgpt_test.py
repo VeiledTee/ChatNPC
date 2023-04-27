@@ -10,12 +10,14 @@ PROMPT = "Imagine you are a fisherman"
 # )
 
 response = openai.ChatCompletion.create(
-  model="gpt-3.5-turbo",
-  temperature=0.6,
-  messages=[{"role": "user", "content": PROMPT}],
+    model="gpt-3.5-turbo",
+    temperature=0.6,
+    messages=[{"role": "user", "content": PROMPT}],
 )
 
 with open("prompt_response.txt", "a") as file:
-    file.write(f"Prompt: {PROMPT}\nResponse: {response['choices'][0]['message']['content']}========================================================================================================================")
+    file.write(
+        f"Prompt: {PROMPT}\nResponse: {response['choices'][0]['message']['content']}========================================================================================================================"
+    )
 
 print(response)
