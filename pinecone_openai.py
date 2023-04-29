@@ -17,8 +17,8 @@ def extract_name(file_name: str) -> str:
     # split the filename into a list of parts, using "_" as the delimiter
     name_parts = filename.split("_")
     # join the name parts together with a dash ("-"), and remove the ".txt" extension
-    name = "-".join(name_parts[:-1])
-    return name
+    name = "-".join(name_parts)
+    return name[:-4]
 
 
 def get_profession(character_name):
@@ -29,10 +29,16 @@ def get_profession(character_name):
         if character['name'].strip() == character_name.strip():
             return character['profession']
 
-    return None # character not found
+    return None  # character not found
 
 
 def prompt_engineer(prompt: str, receiver: str, job: str, context: List[str]) -> str:
+    prompt_start = (
+            f"Answer as {receiver}, a {job}, based on context. "
+            "Suggest a person you know who may have an answer, but only if you don't. "
+            "Exaggerate.\n\n"
+            + "Context: "
+    )
     """
     Given a base query and context, format it to be used as prompt
     :param job:
@@ -41,12 +47,6 @@ def prompt_engineer(prompt: str, receiver: str, job: str, context: List[str]) ->
     :param context: The context to be used in the prompt
     :return: The formatted prompt
     """
-    prompt_start = (
-        f"Answer the question as a {job}, based on the context below. "
-        "Suggest a friend who may have an answer but only if you don't."
-        "Be over the top.\n\n"
-        + "Context: "
-    )
     prompt_end = f"\n\nQuestion: {prompt}\nAnswer: "
     prompt_middle = ""
     # append contexts until hitting limit
@@ -88,59 +88,76 @@ def load(load_file: str) -> List[str]:
             for s in line.strip().split(".")
             if s.strip()
         ]
-    print("Data collected")
+    # print("Data collected")
     return clean_string
 
 
-def upload_generate(
-    data: List[str], query: str, config: dict, index_name: str
-) -> List[int]:
+def embed(query: str) -> str:
+    """
+    Take a sentence of text and return the 384-dimension embedding
+    :param query: The sentence to be embedded
+    :return: Embedding representation of the sentence
+    """
+    # create SentenceTransformer model and embed query
+    model = SentenceTransformer("all-MiniLM-L6-v2")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = model.to(device)
+    return model.encode(query).tolist()
+
+
+def upload(
+        namespace: str, data: List[str], text_type: str = 'background', index_name: str = 'thesis-index'
+) -> None:
+    """
+    Upserts text embedding vectors into pinecone DB at the specific index
+    :param data: Data to be embedded and stored
+    :param text_type: The type of text we are embedding. Choose "background", "answer", or "question". Default value: "background"
+    :param index_name: the name of the pinecone index to save the data to
+    """
     if not pinecone.list_indexes():  # check if there are any indexes
         # create index if it doesn't exist
-        pinecone.create_index(index_name, dimension=384, metadata_config=config)
+        pinecone.create_index(index_name, dimension=384)
         print(f"Index created: {index_name}")
     else:
         # print info about existing index
         index_info = pinecone.describe_index(INDEX_NAME)
         print(f"Index description: {index_info}")
 
-    # connect ot pinecone and retrieve index
+    # connect to pinecone and retrieve index
     index = pinecone.Index(INDEX_NAME)
 
     # wait for 30 seconds
     time.sleep(30)
 
-    # create SentenceTransformer model and get query embedding
+    # create SentenceTransformer model and embed query
     model = SentenceTransformer("all-MiniLM-L6-v2")
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = model.to(device)
-    embedded_query = model.encode(query).tolist()
 
     # upload data to pinecone index
-    for i in tqdm(range(0, len(data), STRIDE)):
-        i_end = min(i + WINDOW, len(data))  # get end of batch
-        ids = [str(x) for x in range(i, i_end)]  # generate ID
-        metadata = [{"text": text} for text in data[i:i_end]]  # generate metadata
-        embeddings = model.encode(data[i:i_end]).tolist()  # get embeddings
+    for j in tqdm(range(0, len(data), STRIDE)):
+        j_end = min(j + WINDOW, len(data))  # get end of batch
+        ids = [str(x) for x in range(j, j_end)]  # generate ID
+        metadata = [{"text": text, "type": text_type} for text in data[j:j_end]]  # generate metadata
+        embeddings = model.encode(data[j:j_end]).tolist()  # get embeddings
         curr_record = zip(ids, embeddings, metadata)  # compile into single vector
-        index.upsert(vectors=curr_record, namespace=NAMESPACE)
-    print("Data Uploaded\nQuery Embedding Created")
-    return embedded_query
+        index.upsert(vectors=curr_record, namespace=namespace)
 
 
 def run_query_and_generate_answer(
-    data: List[str],
-    query: str,
-    receiver: str,
-    job: str,
-    config: dict,
-    index_name: str,
-    save: bool = True,
+        namespace: str,
+        data: List[str],
+        query: str,
+        receiver: str,
+        job: str,
+        index_name: str,
+        save: bool = True,
 ) -> str:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
-    :param job:
-    :param save:
+    :param namespace: The index namespace to operate in
+    :param job: The profession of the receiver
+    :param save: A bool to save to a file is Ture and print out if False. Default: True
     :param receiver: The character being prompted
     :param data: The data to be used for the query.
     :param query: The query to be run on the index.
@@ -152,19 +169,31 @@ def run_query_and_generate_answer(
     index = pinecone.Index(INDEX_NAME)
 
     # upload data and generate query embedding.
-    embedded_query = upload_generate(
-        data=data, query=query, config=config, index_name=index_name
+    embedded_query = embed(
+        query=query
     )
+
+    upload(namespace, data, 'background', index_name)
 
     # query Pinecone index and get context for model prompting.
     responses = index.query(
-        embedded_query, top_k=5, include_metadata=True, namespace=NAMESPACE
+        embedded_query, top_k=3, include_metadata=True, namespace=namespace, filter={
+            "$or": [
+                {"type": {"$eq": "background"}},
+                {"type": {"$eq": "answer"}}
+            ]
+        }
     )
-    context = [x["metadata"]["text"] for x in responses["matches"]]
+    print(responses)
+
+    # Filter out responses containing the string "Player:"
+    context = [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
+    print(context)
 
     # generate clean prompt and answer.
     clean_prompt = prompt_engineer(query, receiver, job, context)
-    generated_answer = answer(clean_prompt)
+    # generated_answer = answer(clean_prompt)
+    update_history(namespace=namespace, info_file=DATA_FILE, prompt=query, response=generated_answer.split(": ")[-1])
 
     if save:
         # save results to file and return generated answer.
@@ -178,13 +207,23 @@ def run_query_and_generate_answer(
     else:
         print(generated_answer)
 
-    # pinecone.delete_index(index_name)
-
     return generated_answer
 
-for i in range(7):
-    WINDOW: int = 4  # how many sentences are combined
-    STRIDE: int = 1  # used to create overlap, no. sentences we 'stride' over
+
+def update_history(namespace: str, info_file: str, prompt: str, response: str, index_name: str = 'thesis_index', character: str = "Player") -> None:
+    print(f"Question: {prompt}")
+    print(f"Answer: {response}")
+    upload(namespace, [prompt], "question", index_name)
+    upload(namespace, [response], "answer", index_name)
+
+    with open(info_file, 'a') as history_file:
+        history_file.write(f"\n{character}: {prompt}\nYou: {response}")
+
+
+for _ in range(1):
+    i = 0
+    WINDOW: int = 3  # how many sentences are combined
+    STRIDE: int = 2  # used to create overlap, num sentences we 'stride' over
     # Open the file and load its contents into a dictionary
     with open("Text Summaries/characters.json", "r") as f:
         names = json.load(f)
@@ -200,20 +239,24 @@ for i in range(7):
     INDEX_NAME: str = "thesis-index"
     NAMESPACE: str = extract_name(DATA_FILE)
 
-    QUERY: str = "What dangers can be found around the village?"
+    QUERY: str = "Can chromafluke fish be found near Ashbourne?"
 
     file_data = load(DATA_FILE)
-    metadata_config = {"text": "query"}
+    metadata_config = {"text": "", "type": ""}
 
     openai.api_key = ""  # windows 11
     pinecone.init(
     )
 
-    run_query_and_generate_answer(
+    final_answer = run_query_and_generate_answer(
+        namespace=NAMESPACE,
         data=file_data,
         receiver=CHARACTER,
         job=PROFESSION,
         query=QUERY,
-        config=metadata_config,
         index_name=INDEX_NAME,
     )
+
+    print(final_answer)
+
+# pinecone.delete_index(INDEX_NAME)
