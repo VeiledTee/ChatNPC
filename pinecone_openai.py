@@ -34,21 +34,23 @@ def namespace_exist(namespace: str) -> bool:
     return responses['matches'] != []
 
 
-def get_profession(character_name):
+def get_information(character_name):
+    """
+    Return information from the character's
+    :param character_name:
+    :return:
+    """
     with open('Text Summaries/character_objects.json', 'r') as f:
         data = json.load(f)
 
     for character in data['characters']:
         if character['name'].strip() == character_name.strip():
-            return character['profession']
+            return character['profession'], character['social status']
 
     return None  # character not found
 
 
-def prompt_engineer(prompt: str, receiver: str, job: str, context: List[str]) -> str:
-    prompt_start = (
-            f"Reply as {receiver}, a {job}, based on the following context. Only reference those explicitly mentioned in the following context. One sentence. \nContext:"
-    )
+def prompt_engineer(prompt: str, receiver: str, job: str, status: str, context: List[str]) -> str:
     """
     Given a base query and context, format it to be used as prompt
     :param job:
@@ -57,6 +59,11 @@ def prompt_engineer(prompt: str, receiver: str, job: str, context: List[str]) ->
     :param context: The context to be used in the prompt
     :return: The formatted prompt
     """
+    prompt_start = (
+            f"Reply as {receiver}, a {job}, based on the following context. "
+            f"Only reference those explicitly mentioned in the following context. "
+            f"One sentence. Use {GRAMMAR[status.split()[0]]} grammar.\nContext:"
+    )
     prompt_end = f"\n\nQuestion: {prompt}\nAnswer: "
     prompt_middle = ""
     # append contexts until hitting limit
@@ -65,23 +72,32 @@ def prompt_engineer(prompt: str, receiver: str, job: str, context: List[str]) ->
     return prompt_start + prompt_middle + prompt_end
 
 
-def answer(prompt: str) -> str:
+def answer(prompt: str, character: str) -> str:
     """
     Using openAI API, respond ot the provide prompt
     :param prompt: An engineered prompt to get the language model to respond to
     :return: The completed prompt
     """
-    res: str = openai.Completion.create(
-        engine="text-davinci-003",
-        prompt=prompt,
+    # res: str = openai.Completion.create(
+    #     engine="text-davinci-003",
+    #     prompt=prompt,
+    #     temperature=0,
+    #     max_tokens=400,
+    #     top_p=1,
+    #     frequency_penalty=0,
+    #     presence_penalty=0,
+    #     stop=None,
+    # )
+    # return res["choices"][0]["text"].strip()
+    res: str = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {'role': f"user", 'content': prompt}
+        ],
         temperature=0,
-        max_tokens=400,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0,
-        stop=None,
     )
-    return res["choices"][0]["text"].strip()
+    print(res)
+    return res["choices"][0]["message"]["content"].strip()
 
 
 def load(load_file: str) -> List[str]:
@@ -165,19 +181,20 @@ def run_query_and_generate_answer(
         query: str,
         receiver: str,
         job: str,
+        status: str,
         index_name: str,
         save: bool = True,
 ) -> str:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
     :param namespace: The index namespace to operate in
-    :param job: The profession of the receiver
-    :param save: A bool to save to a file is Ture and print out if False. Default: True
-    :param receiver: The character being prompted
     :param data: The data to be used for the query.
     :param query: The query to be run on the index.
-    :param config: Configuration options for uploading the data to the index.
+    :param receiver: The character being prompted
+    :param job: The profession of the receiver
+    :param status: The social status of the character
     :param index_name: The name of the Pinecone index.
+    :param save: A bool to save to a file is Ture and print out if False. Default: True
     :return: The generated answer based on the response context.
     """
     # connect to index
@@ -206,9 +223,11 @@ def run_query_and_generate_answer(
     print(context)
 
     # generate clean prompt and answer.
-    clean_prompt = prompt_engineer(query, receiver, job, context)
+    clean_prompt = prompt_engineer(query, receiver, job, status, context)
+    save_prompt: str = clean_prompt.replace("\n", " ")
     # print(clean_prompt)
-    generated_answer = answer(clean_prompt)
+    # print(save_prompt)
+    generated_answer = answer(clean_prompt, receiver)
     # print(generated_answer)
     update_history(namespace=namespace, info_file=DATA_FILE, prompt=query, response=generated_answer.split(": ")[-1])
 
@@ -216,7 +235,7 @@ def run_query_and_generate_answer(
         # save results to file and return generated answer.
         with open("prompt_response.txt", "a") as save_file:
             save_file.write("\n" + "=" * 120 + "\n")
-            save_file.write(f"Prompt: {query}\n")
+            save_file.write(f"Prompt: {save_prompt}\n")
             save_file.write(f"To: {receiver}, a {job}\n")
             clean_prompt = clean_prompt.replace('\n', ' ')
             save_file.write(f"{clean_prompt}\n{generated_answer}")
@@ -238,10 +257,14 @@ def update_history(namespace: str, info_file: str, prompt: str, response: str, i
 
 
 if __name__ == '__main__':
-
+    GRAMMAR: dict = {
+        'lower': 'poor',
+        'middle': 'satisfactory',
+        'high': 'formal'
+    }
+    WINDOW: int = 3  # how many sentences are combined
+    STRIDE: int = 2  # used to create overlap, num sentences we 'stride' over
     for i in range(7):
-        WINDOW: int = 3  # how many sentences are combined
-        STRIDE: int = 2  # used to create overlap, num sentences we 'stride' over
         # Open the file and load its contents into a dictionary
         with open("Text Summaries/characters.json", "r") as f:
             names = json.load(f)
@@ -249,7 +272,7 @@ if __name__ == '__main__':
         CHARACTER: str = list(names.keys())[i]
         # CHARACTER: str = random.choice(list(names.keys()))
         # CHARACTER: str = "Caleb Brown"
-        PROFESSION: str = get_profession(CHARACTER)
+        PROFESSION, SOCIAL_CLASS = get_information(CHARACTER)
         print(CHARACTER, PROFESSION)
         # print(names)
         DATA_FILE: str = f"Text Summaries/{names[CHARACTER]}.txt"
@@ -260,7 +283,7 @@ if __name__ == '__main__':
         QUERY: str = "Can chromafluke fish be found near Ashbourne?"
 
         file_data = load(DATA_FILE)
-        metadata_config = {"text": "", "type": ""}
+        # metadata_config = {"text": "", "type": ""}
 
         openai.api_key = ""  # windows 11
         pinecone.init(
@@ -273,6 +296,7 @@ if __name__ == '__main__':
             data=file_data,
             receiver=CHARACTER,
             job=PROFESSION,
+            status=SOCIAL_CLASS,
             query=QUERY,
             index_name=INDEX_NAME,
         )

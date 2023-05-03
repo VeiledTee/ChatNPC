@@ -6,3 +6,5 @@ Answer as {receiver}, a {job}, based on context. Suggest a person you know who m
 Answer as {receiver}, a {job}, based on context. Suggest a person you know who may have an answer, but only if you don't. Don't mention anyone not mentioned in context. Exaggerate. One sentence only. Context:
 Reply as {receiver}, a {job}, based on the following context. Only reference those explicitly mentioned in the following information. Context:
 Reply as {receiver}, a {job}, based on the following context. Only reference those explicitly mentioned in the following information. Be succinct. Context:
+Reply as {receiver}, a {job}, based on the following context. Only reference those explicitly mentioned in the following context. One sentence. Context:
+Reply as {receiver}, a {job}, based on the following context. Only reference those explicitly mentioned in the following context. One sentence. Use {class} grammar. Context:
