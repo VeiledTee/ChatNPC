@@ -1,0 +1,8 @@
+Answer the question based on the context below. Be specific. Context:
+Answer the question as a {job}, based on the context below. Suggest another person you know who may have an answer. Be specific. Context:
+Answer the question as {receiver}, a {job}, based on the context below. Suggest another person you know who may have an answer, but only if you don't. Act exaggerated. Context:
+Answer as {receiver}, a {job}, based on context. Suggest a person you know who may have an answer, but only if you don't. Exaggerate. Context:
+Answer as {receiver}, a {job}, based on context. Suggest a person you know who may have an answer, but only if you don't. Exaggerate. One sentence only. Context:
+Answer as {receiver}, a {job}, based on context. Suggest a person you know who may have an answer, but only if you don't. Don't mention anyone not mentioned in context. Exaggerate. One sentence only. Context:
+Reply as {receiver}, a {job}, based on the following context. Only reference those explicitly mentioned in the following information. Context:
+Reply as {receiver}, a {job}, based on the following context. Only reference those explicitly mentioned in the following information. Be succinct. Context:

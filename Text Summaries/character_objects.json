@@ -82,7 +82,7 @@
             "age": 34,
             "gender": "male",
             "race/ethnicity": "European",
-            "social status": "nobility",
+            "social status": "high class",
             "family background/history": "Melinda Deek comes from a long line of knights, and she was trained from a young age in the ways of chivalry and combat. Her family has always been loyal to the townm, and Melinda takes her duty to serve the town very seriously. She is terrified of chickens",
             "physical appearance": {
                 "height": "6'2",
@@ -217,7 +217,7 @@
         },
         {
             "name": "Caleb Brown",
-            "profession": "Baker",
+            "profession": "baker",
             "persona": "Caleb Brown is a friendly and hardworking baker who has lived in Ashbourne for his entire life. He learned his trade from his father, who owned a bakery in the town. Caleb is known for his delicious pies and pastries, which are in high demand among the locals and travelers passing through Ashbourne.",
             "age": 38,
             "gender": "male",

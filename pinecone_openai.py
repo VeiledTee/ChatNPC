@@ -21,6 +21,19 @@ def extract_name(file_name: str) -> str:
     return name[:-4]
 
 
+def namespace_exist(namespace: str) -> bool:
+    index = pinecone.Index("thesis-index")
+    responses = index.query(
+        embed("he is"), top_k=3, include_metadata=True, namespace=namespace, filter={
+            "$or": [
+                {"type": {"$eq": "background"}},
+                {"type": {"$eq": "answer"}}
+            ]
+        }
+    )
+    return responses['matches'] != []
+
+
 def get_profession(character_name):
     with open('Text Summaries/character_objects.json', 'r') as f:
         data = json.load(f)
@@ -34,10 +47,7 @@ def get_profession(character_name):
 
 def prompt_engineer(prompt: str, receiver: str, job: str, context: List[str]) -> str:
     prompt_start = (
-            f"Answer as {receiver}, a {job}, based on context. "
-            "Suggest a person you know who may have an answer, but only if you don't. "
-            "Exaggerate.\n\n"
-            + "Context: "
+            f"Reply as {receiver}, a {job}, based on the following context. Only reference those explicitly mentioned in the following context. One sentence. \nContext:"
     )
     """
     Given a base query and context, format it to be used as prompt
@@ -123,6 +133,11 @@ def upload(
         index_info = pinecone.describe_index(INDEX_NAME)
         print(f"Index description: {index_info}")
 
+    # print(namespace, text_type)
+    # print(namespace_exist(namespace) and text_type == 'background')
+    if namespace_exist(namespace) and text_type == 'background':
+        return None
+
     # connect to pinecone and retrieve index
     index = pinecone.Index(INDEX_NAME)
 
@@ -184,7 +199,7 @@ def run_query_and_generate_answer(
             ]
         }
     )
-    print(responses)
+    # print(responses)
 
     # Filter out responses containing the string "Player:"
     context = [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
@@ -192,7 +207,9 @@ def run_query_and_generate_answer(
 
     # generate clean prompt and answer.
     clean_prompt = prompt_engineer(query, receiver, job, context)
-    # generated_answer = answer(clean_prompt)
+    # print(clean_prompt)
+    generated_answer = answer(clean_prompt)
+    # print(generated_answer)
     update_history(namespace=namespace, info_file=DATA_FILE, prompt=query, response=generated_answer.split(": ")[-1])
 
     if save:
@@ -211,8 +228,8 @@ def run_query_and_generate_answer(
 
 
 def update_history(namespace: str, info_file: str, prompt: str, response: str, index_name: str = 'thesis_index', character: str = "Player") -> None:
-    print(f"Question: {prompt}")
-    print(f"Answer: {response}")
+    # print(f"Question: {prompt}")
+    # print(f"Answer: {response}")
     upload(namespace, [prompt], "question", index_name)
     upload(namespace, [response], "answer", index_name)
 
@@ -220,43 +237,44 @@ def update_history(namespace: str, info_file: str, prompt: str, response: str, i
         history_file.write(f"\n{character}: {prompt}\nYou: {response}")
 
 
-for _ in range(1):
-    i = 0
-    WINDOW: int = 3  # how many sentences are combined
-    STRIDE: int = 2  # used to create overlap, num sentences we 'stride' over
-    # Open the file and load its contents into a dictionary
-    with open("Text Summaries/characters.json", "r") as f:
-        names = json.load(f)
+if __name__ == '__main__':
 
-    CHARACTER: str = list(names.keys())[i]
-    # CHARACTER: str = random.choice(list(names.keys()))
-    # CHARACTER: str = "Caleb Brown"
-    PROFESSION: str = get_profession(CHARACTER)
-    print(CHARACTER, PROFESSION)
-    # print(names)
-    DATA_FILE: str = f"Text Summaries/{names[CHARACTER]}.txt"
+    for i in range(7):
+        WINDOW: int = 3  # how many sentences are combined
+        STRIDE: int = 2  # used to create overlap, num sentences we 'stride' over
+        # Open the file and load its contents into a dictionary
+        with open("Text Summaries/characters.json", "r") as f:
+            names = json.load(f)
 
-    INDEX_NAME: str = "thesis-index"
-    NAMESPACE: str = extract_name(DATA_FILE)
+        CHARACTER: str = list(names.keys())[i]
+        # CHARACTER: str = random.choice(list(names.keys()))
+        # CHARACTER: str = "Caleb Brown"
+        PROFESSION: str = get_profession(CHARACTER)
+        print(CHARACTER, PROFESSION)
+        # print(names)
+        DATA_FILE: str = f"Text Summaries/{names[CHARACTER]}.txt"
 
-    QUERY: str = "Can chromafluke fish be found near Ashbourne?"
+        INDEX_NAME: str = "thesis-index"
+        NAMESPACE: str = extract_name(DATA_FILE).lower()
 
-    file_data = load(DATA_FILE)
-    metadata_config = {"text": "", "type": ""}
+        QUERY: str = "Can chromafluke fish be found near Ashbourne?"
 
-    openai.api_key = ""  # windows 11
-    pinecone.init(
-    )
+        file_data = load(DATA_FILE)
+        metadata_config = {"text": "", "type": ""}
 
-    final_answer = run_query_and_generate_answer(
-        namespace=NAMESPACE,
-        data=file_data,
-        receiver=CHARACTER,
-        job=PROFESSION,
-        query=QUERY,
-        index_name=INDEX_NAME,
-    )
+        openai.api_key = ""  # windows 11
+        pinecone.init(
 
-    print(final_answer)
+        )
+        # pinecone.delete_index(INDEX_NAME)
 
-# pinecone.delete_index(INDEX_NAME)
+        final_answer = run_query_and_generate_answer(
+            namespace=NAMESPACE,
+            data=file_data,
+            receiver=CHARACTER,
+            job=PROFESSION,
+            query=QUERY,
+            index_name=INDEX_NAME,
+        )
+
+        print(final_answer)
