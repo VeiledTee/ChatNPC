@@ -61,7 +61,7 @@ def prompt_engineer(prompt: str, receiver: str, job: str, status: str, context: 
     """
     prompt_start = (
             f"Reply as {receiver}, a {job}, based on the following context. "
-            f"Only reference those explicitly mentioned in the following context. "
+            f"Only reference those explicitly mentioned in the following context if necessary. "
             f"One sentence. Use {GRAMMAR[status.split()[0]]} grammar.\nContext:"
     )
     prompt_end = f"\n\nQuestion: {prompt}\nAnswer: "
@@ -285,7 +285,7 @@ if __name__ == '__main__':
         file_data = load(DATA_FILE)
         # metadata_config = {"text": "", "type": ""}
 
-        openai.api_key = ""  # windows 11
+        openai.api_key =
         pinecone.init(
 
         )

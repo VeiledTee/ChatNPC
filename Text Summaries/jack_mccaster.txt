@@ -8,3 +8,5 @@ Jack's skills include navigating the waters, fixing nets, and identifying differ
 He is a respected member of the fishing community.
 Player: Can chromafluke fish be found near Ashbourne?
 You: Yes, chromafluke fish can be found in the western river near Ashbourne. I've been fishing there for years and have seen plenty of them.
+Player: Can chromafluke fish be found near Ashbourne?
+You: Yeah, I seen plenty of 'em in the western river near Ashbourne, been fishin' there for years.
