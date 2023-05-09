@@ -1,0 +1,15 @@
+!!! Dupe is classified as identical naming of items with different descriptions !!!
+light_data.pkl done
+    Item dupes: 19669
+    Item total: 65971
+        Item unique: 46302
+    Character dupes: 9176
+    Character total: 20536
+        Character unique: 11360
+light_unseen_data.pkl done
+    Item dupes: 366
+    Item total: 5380
+        Item unique: 5014
+    Character dupes: 213
+    Character total: 1512
+        Character unique: 1299
