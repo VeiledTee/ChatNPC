@@ -3,9 +3,7 @@ import os
 import pickle
 import time
 
-import parlai.core.build_data as build_data
 from parlai.core.build_data import DownloadableFile
-from parlai.tasks.light_dialog.builder import build_from_db
 
 RESOURCES = [
     DownloadableFile(
@@ -26,17 +24,17 @@ RESOURCES = [
         '162389202f22063e1c32af7f9261aac13d20fc05598388d1e9748735996ec016',
         zipped=False,
     ),
-    DownloadableFile(
-        'http://parl.ai/downloads/light_project/wild_chats/contents.txt',
-        'current_chats.txt',
-        'c708fe62692f239a2b35025d71722c7607f863ffa110aa118f2e1d0fa7db4730',
-        zipped=False,
-    ),
-    DownloadableFile(
-        'http://parl.ai/downloads/genderation_bias/genderation_bias.tgz',
-        'genderation_bias.tgz',
-        '9a0252c6bb778757ac60dee9df23a169192f4a853ceb2b530af2343abeb1498a',
-    )
+    # DownloadableFile(
+    #     'http://parl.ai/downloads/light_project/wild_chats/contents.txt',
+    #     'current_chats.txt',
+    #     'c708fe62692f239a2b35025d71722c7607f863ffa110aa118f2e1d0fa7db4730',
+    #     zipped=False,
+    # ),
+    # DownloadableFile(
+    #     'http://parl.ai/downloads/genderation_bias/genderation_bias.tgz',
+    #     'genderation_bias.tgz',
+    #     '9a0252c6bb778757ac60dee9df23a169192f4a853ceb2b530af2343abeb1498a',
+    # )
 ]
 
 
@@ -130,6 +128,7 @@ Fisherman indexes:
 
 """
 if __name__ == '__main__':
+    download_LIGHT()
     directory = 'Data/LIGHT'
     for filename in os.listdir(directory):
         if filename.endswith('.pkl'):
@@ -147,7 +146,6 @@ if __name__ == '__main__':
                         try:
                             print(i)
                             print(data[k][i])
-                            # print(data[k][i])
                         except KeyError:
                             pass
             else:
