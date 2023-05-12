@@ -2,6 +2,7 @@ import json
 import os
 import pickle
 import time
+from typing import List
 
 from parlai.core.build_data import DownloadableFile
 
@@ -38,9 +39,64 @@ RESOURCES = [
 ]
 
 
-def download_LIGHT(dpath: str = 'Data/LIGHT'):
+def download_LIGHT(dpath: str = 'Data/LIGHT') -> None:
     for downloadable_file in RESOURCES:
         downloadable_file.download_file(dpath)
+
+
+def find_dupes(data_file: str) -> None:
+    descriptions: dict = {}
+    agents: dict = {}
+    dupe_items: int = 0
+    total_items: int = 0
+    dupe_characters: int = 0
+    total_characters: int = 0
+    for i in range(len(data)):
+        for item, desc in data[i]["all_descriptions"].items():
+            if item not in descriptions.keys():
+                descriptions[item] = desc
+            elif descriptions[item] != desc:
+                print(f"Item: {item}\n\tSaved: {descriptions[item]}\n\tNew: {desc}")
+                dupe_items += 1
+            total_items += 1
+        for agent in data[i]['agents']:
+            if agent['name'] not in agents.keys():
+                agents[agent['name']] = agent['persona']
+            elif agents[agent['name']] != agent['persona']:
+                print(f"Character: {agent['name']}\n\tSaved: {agents[agent['name']]}\n\tNew: {agent['persona']}")
+                dupe_characters += 1
+            total_characters += 1
+    print(f"{data_file} done")
+    print(f"Item dupes: {dupe_items}")
+    print(f"Item total: {total_items}")
+    print(f"Character dupes: {dupe_characters}")
+    print(f"Character total: {total_characters}")
+
+
+def format_speech(characters: tuple, dialogue: tuple, character_to_check=None) -> None:
+    if character_to_check is None:
+        for i in range(len(characters)):
+            print(f"<{characters[i]}>: {dialogue[i]}")
+        print()
+    elif character_to_check in characters:
+        for i in range(len(characters)):
+            if character_to_check == characters[i]:
+                print(f"{dialogue[i]}")
+
+
+BLACKSMITH: List[str] = [
+    "This steel needs more heat. It's not yielding the way I want it to.",
+    "I'm afraid that sword's blade is too thin. It won't hold up in a real fight.",
+    "The secret to a good sword is in the balance. Not too heavy, not too light.",
+    "I've been practicing the art of forging for 30 years. There's nothing I can't make.",
+    "It's hard work, but there's something so satisfying about shaping raw metal into something beautiful.",
+    "The key to a durable shield is in the metal. You need something strong and flexible.",
+    "This hammer is too heavy for your delicate hands. Here, try this one instead.",
+    "I don't just make weapons, you know. I can create intricate metalwork for your home or castle as well.",
+    "A blacksmith's work is never done. There's always another blade to be sharpened or piece of armor to repair.",
+    "I take pride in my craft, and I won't sell a weapon unless I'm confident it's of the highest quality.",
+]
+
 
 # with open("Data/light_data.pkl", "rb") as f:
 #     data = pickle.load(f)
@@ -128,59 +184,36 @@ Fisherman indexes:
 
 """
 if __name__ == '__main__':
-    download_LIGHT()
+    # download_LIGHT()
     directory = 'Data/LIGHT'
     for filename in os.listdir(directory):
         if filename.endswith('.pkl'):
             with open(f"{directory}/{filename}", "rb") as f:
                 data = pickle.load(f)
             if type(data) == dict:
-                print(filename, data.keys())
-                print(data['categories'].keys())
-                print(data['rooms'].keys())
-                print(data['neighbors'].keys())
-                print(data['characters'].keys())
-                print(data['objects'].keys())
-                for k in ['categories', 'rooms', 'neighbors', 'characters', 'objects']:
-                    for i in range(min(data[k].keys()), max(data[k].keys()) + 1):
-                        try:
-                            print(i)
-                            print(data[k][i])
-                        except KeyError:
-                            pass
-            else:
+                # # get all item descriptions
+                # print(filename, data.keys())
+                # print(data['categories'].keys())
+                # print(data['rooms'].keys())
+                # print(data['neighbors'].keys())
+                # print(data['characters'].keys())
+                # print(data['objects'].keys())
+                # for k in ['categories', 'rooms', 'neighbors', 'characters', 'objects']:
+                #     for i in range(min(data[k].keys()), max(data[k].keys()) + 1):
+                #         try:
+                #             print(i)
+                #             print(data[k][i])
+                #         except KeyError:
+                #             pass
                 pass
-                # descriptions: dict = {}
-                # agents: dict = {}
-                # dupe_items: int = 0
-                # total_items: int = 0
-                # dupe_characters: int = 0
-                # total_characters: int = 0
-                # print(filename)
-                # for i in range(len(data)):
-                #     # print(data[0].keys())
-                #     # print(data[0]["all_descriptions"])
-                #     # print(data[0]["all_descriptions"].keys())
-                #     for item, desc in data[i]["all_descriptions"].items():
-                #         # print(item, "|", desc)
-                #         if item not in descriptions.keys():
-                #             descriptions[item] = desc
-                #         elif descriptions[item] != desc:
-                #             print(f"Item: {item}\n\tSaved: {descriptions[item]}\n\tNew: {desc}")
-                #             dupe_items += 1
-                #         total_items += 1
-                #     for agent in data[i]['agents']:
-                #         # print(agent['name'], "|", agent['persona'])
-                #         if agent['name'] not in agents.keys():
-                #             agents[agent['name']] = agent['persona']
-                #         elif agents[agent['name']] != agent['persona']:
-                #             print(f"Character: {agent['name']}\n\tSaved: {agents[agent['name']]}\n\tNew: {agent['persona']}")
-                #             dupe_characters += 1
-                #         total_characters += 1
-                # # print(descriptions)
-                # # print(agents)
-                # print(f"{filename} done")
-                # print(f"Item dupes: {dupe_items}")
-                # print(f"Item total: {total_items}")
-                # print(f"Character dupes: {dupe_characters}")
-                # print(f"Character total: {total_characters}")
+            else:
+                # find_dupes(filename)
+                for i in range(len(data)):
+                    # print(data[i])
+                    # print(f"\tCharacter: {data[i]['character']}")
+                    # print(type(data[i]['character']))
+                    # print(f"\tCharacter: {len(data[i]['character'])}")
+                    # print(f"\tSpeech: {data[i]['speech']}")
+                    # print(type(data[i]['speech']))
+                    # print(f"\tSpeech: {len(data[i]['speech'])}")
+                    format_speech(characters=data[i]['character'], dialogue=data[i]['speech'], character_to_check='blacksmith')
