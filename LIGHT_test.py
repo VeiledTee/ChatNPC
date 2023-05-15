@@ -216,4 +216,4 @@ if __name__ == '__main__':
                     # print(f"\tSpeech: {data[i]['speech']}")
                     # print(type(data[i]['speech']))
                     # print(f"\tSpeech: {len(data[i]['speech'])}")
-                    format_speech(characters=data[i]['character'], dialogue=data[i]['speech'], character_to_check='blacksmith')
+                    format_speech(characters=data[i]['character'], dialogue=data[i]['speech'], character_to_check='fisherman')
