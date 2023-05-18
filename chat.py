@@ -62,7 +62,7 @@ def prompt_engineer(prompt: str, receiver: str, job: str, status: str, context: 
     prompt_start = (
             f"Reply as {receiver}, a {job}, based on the following context. "
             f"Only reference those explicitly mentioned in the following context if necessary. "
-            f"One sentence. Use {GRAMMAR[status.split()[0]]} grammar.\nContext:"
+            f"One sentence. Use {GRAMMAR[status.split()[0]]} grammar.\nContext: "
     )
     prompt_end = f"\n\nQuestion: {prompt}\nAnswer: "
     prompt_middle = ""
@@ -72,23 +72,28 @@ def prompt_engineer(prompt: str, receiver: str, job: str, status: str, context: 
     return prompt_start + prompt_middle + prompt_end
 
 
+def generate_conversation(character_file: str) -> List[dict]:
+    msgs: List[dict] = []
+
+    with open(character_file) as char_file:
+        background: str = ''
+        for line in char_file.readlines():
+            background += line.strip() + ' '
+
+    print(background)
+
+    system_dict: dict = {
+        'system': background
+    }
+
+
+
 def answer(prompt: str, character: str) -> str:
     """
     Using openAI API, respond ot the provide prompt
     :param prompt: An engineered prompt to get the language model to respond to
     :return: The completed prompt
     """
-    # res: str = openai.Completion.create(
-    #     engine="text-davinci-003",
-    #     prompt=prompt,
-    #     temperature=0,
-    #     max_tokens=400,
-    #     top_p=1,
-    #     frequency_penalty=0,
-    #     presence_penalty=0,
-    #     stop=None,
-    # )
-    # return res["choices"][0]["text"].strip()
     res: str = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
@@ -96,7 +101,7 @@ def answer(prompt: str, character: str) -> str:
         ],
         temperature=0,
     )
-    print(res)
+
     return res["choices"][0]["message"]["content"].strip()
 
 
@@ -143,11 +148,11 @@ def upload(
     if not pinecone.list_indexes():  # check if there are any indexes
         # create index if it doesn't exist
         pinecone.create_index(index_name, dimension=384)
-        print(f"Index created: {index_name}")
+        # print(f"Index created: {index_name}")
     else:
         # print info about existing index
         index_info = pinecone.describe_index(INDEX_NAME)
-        print(f"Index description: {index_info}")
+        # print(f"Index description: {index_info}")
 
     # print(namespace, text_type)
     # print(namespace_exist(namespace) and text_type == 'background')
@@ -157,8 +162,8 @@ def upload(
     # connect to pinecone and retrieve index
     index = pinecone.Index(INDEX_NAME)
 
-    # wait for 30 seconds
-    time.sleep(30)
+    # # wait for 10 seconds
+    # time.sleep(10)
 
     # create SentenceTransformer model and embed query
     model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -220,7 +225,7 @@ def run_query_and_generate_answer(
 
     # Filter out responses containing the string "Player:"
     context = [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
-    print(context)
+    # print(context)
 
     # generate clean prompt and answer.
     clean_prompt = prompt_engineer(query, receiver, job, status, context)
@@ -247,13 +252,44 @@ def run_query_and_generate_answer(
 
 
 def update_history(namespace: str, info_file: str, prompt: str, response: str, index_name: str = 'thesis_index', character: str = "Player") -> None:
-    # print(f"Question: {prompt}")
-    # print(f"Answer: {response}")
     upload(namespace, [prompt], "question", index_name)
     upload(namespace, [response], "answer", index_name)
 
     with open(info_file, 'a') as history_file:
         history_file.write(f"\n{character}: {prompt}\nYou: {response}")
+
+
+def chat(namespace: str,
+        data: List[str],
+        receiver: str,
+        job: str,
+        status: str,
+        index_name: str,
+        ) -> None:
+    """
+    Initiate a conversation with a character
+    :param namespace:
+    :param data:
+    :param receiver:
+    :param job:
+    :param status:
+    :param index_name:
+    :return:
+    """
+    while True:
+        QUERY: str = input("Player: ")
+
+        final_answer = run_query_and_generate_answer(
+            namespace=namespace,
+            data=data,
+            receiver=receiver,
+            job=job,
+            status=status,
+            query=QUERY,
+            index_name=index_name,
+        )
+
+        print(f"{receiver}: {final_answer}")
 
 
 if __name__ == '__main__':
@@ -264,7 +300,7 @@ if __name__ == '__main__':
     }
     WINDOW: int = 3  # how many sentences are combined
     STRIDE: int = 2  # used to create overlap, num sentences we 'stride' over
-    QUERY: str = input("Insert question: ")
+
     # CHARACTER: str = "John Pebble"  # thief
     # CHARACTER: str = "Evelyn Stone-Brown"  # blacksmith
     # CHARACTER: str = "Caleb Brown"  # baker
@@ -275,6 +311,7 @@ if __name__ == '__main__':
 
     with open("Text Summaries/characters.json", "r") as f:
         names = json.load(f)
+
     PROFESSION, SOCIAL_CLASS = get_information(CHARACTER)
     print(CHARACTER, PROFESSION)
     DATA_FILE: str = f"Text Summaries/{names[CHARACTER]}.txt"
@@ -283,22 +320,18 @@ if __name__ == '__main__':
     NAMESPACE: str = extract_name(DATA_FILE).lower()
 
     file_data = load(DATA_FILE)
+    generate_conversation('Text Summaries/jack_mccaster.txt')
+    # openai.api_key = ""  # windows 11
+    # pinecone.init(
+    #
+    # )
+    #
+    # chat(
+    #     namespace=NAMESPACE,
+    #     data=file_data,
+    #     receiver=CHARACTER,
+    #     job=PROFESSION,
+    #     status=SOCIAL_CLASS,
+    #     index_name=INDEX_NAME,
+    # )
 
-    openai.api_key = "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"  # windows 11
-    pinecone.init(
-        api_key="68b23f46-c793-40f6-a21e-dabbde2b3297",
-        environment="northamerica-northeast1-gcp",
-    )
-    # pinecone.delete_index(INDEX_NAME)
-
-    final_answer = run_query_and_generate_answer(
-        namespace=NAMESPACE,
-        data=file_data,
-        receiver=CHARACTER,
-        job=PROFESSION,
-        status=SOCIAL_CLASS,
-        query=QUERY,
-        index_name=INDEX_NAME,
-    )
-
-    print(final_answer)
