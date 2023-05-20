@@ -1,6 +1,6 @@
 import openai
 
-openai.api_key = "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"
+openai.api_key = 
 PROMPT = "Imagine you are a fisherman"
 
 # response = openai.Completion.create(
