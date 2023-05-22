@@ -142,8 +142,7 @@ if __name__ == "__main__":
     INDEX_NAME: str = "thesis-index"  # pinecone index name
     NAMESPACE = "melinda-deek"
     pinecone.init(
-        api_key="2f121499-0201-4f0a-8a3d-1e90b8ff1884",
-        environment="northamerica-northeast1-gcp",
+    
     )  # initialize pinecone env
 
     index = pinecone.Index('thesis-index')
