@@ -1,0 +1,4 @@
+Player: what fish live near ashbourne?
+You: Me not know what fish live near Ashbourne.
+Player: do you know someone who does know?
+You: Me not know someone who does know, but maybe Sarah the tavern owner or Jack the fisherman can help.

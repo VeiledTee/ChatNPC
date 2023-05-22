@@ -24,14 +24,18 @@ def extract_name(file_name: str) -> str:
 def namespace_exist(namespace: str) -> bool:
     index = pinecone.Index("thesis-index")
     responses = index.query(
-        embed("he is"), top_k=3, include_metadata=True, namespace=namespace, filter={
+        embed("he is"),
+        top_k=3,
+        include_metadata=True,
+        namespace=namespace,
+        filter={
             "$or": [
                 {"type": {"$eq": "background"}},
-                {"type": {"$eq": "answer"}}
+                {"type": {"$eq": "response"}},
             ]
-        }
+        },
     )
-    return responses['matches'] != []
+    return responses["matches"] != []
 
 
 def get_information(character_name):
@@ -40,17 +44,19 @@ def get_information(character_name):
     :param character_name:
     :return:
     """
-    with open('Text Summaries/character_objects.json', 'r') as f:
+    with open("Text Summaries/character_objects.json", "r") as f:
         data = json.load(f)
 
-    for character in data['characters']:
-        if character['name'].strip() == character_name.strip():
-            return character['profession'], character['social status']
+    for character in data["characters"]:
+        if character["name"].strip() == character_name.strip():
+            return character["profession"], character["social status"]
 
     return None  # character not found
 
 
-def prompt_engineer(prompt: str, receiver: str, job: str, status: str, context: List[str]) -> str:
+def prompt_engineer(
+    prompt: str, receiver: str, job: str, status: str, context: List[str]
+) -> str:
     """
     Given a base query and context, format it to be used as prompt
     :param job:
@@ -59,11 +65,14 @@ def prompt_engineer(prompt: str, receiver: str, job: str, status: str, context: 
     :param context: The context to be used in the prompt
     :return: The formatted prompt
     """
-    prompt_start = (
-            f"Reply as {receiver}, a {job}, based on the following context. "
-            f"Only reference those explicitly mentioned in the following context if necessary. "
-            f"One sentence. Use {GRAMMAR[status.split()[0]]} grammar.\nContext: "
-    )
+    prompt_start = f"Use {GRAMMAR[status.split()[0]]} grammar. Use first person. " \
+                   f"Reply in a single, clear sentence based on the context. When told " \
+                   f"new information, rephrase the information as a fact. " \
+                   f"Do not mention your background or the context unless asked, or that you are fictional. " \
+                   f"Do not provide facts you would deny. Context:"
+    with open('tried_prompts.txt', 'a') as prompt_file:
+        if prompt_start not in prompt_file.readlines():
+            prompt_file.write(prompt_start + '\n')
     prompt_end = f"\n\nQuestion: {prompt}\nAnswer: "
     prompt_middle = ""
     # append contexts until hitting limit
@@ -72,20 +81,25 @@ def prompt_engineer(prompt: str, receiver: str, job: str, status: str, context: 
     return prompt_start + prompt_middle + prompt_end
 
 
-def generate_conversation(character_file: str) -> List[dict]:
-    msgs: List[dict] = []
-
-    with open(character_file) as char_file:
-        background: str = ''
-        for line in char_file.readlines():
-            background += line.strip() + ' '
-
-    print(background)
-
-    system_dict: dict = {
-        'system': background
-    }
-
+def generate_conversation(
+    character_file: str, player: bool, next_phrase: str
+) -> None:
+    """
+    Generate a record of the conversation a user has had with the system for feeding into gpt 3.5 turbo
+    :param character_file: The file associated with a character's background, not required unless first execution of function to 'set the stage'
+    :return: A list of dictionaries
+    {"role": "user", "content": "Where was it played?"}
+    """
+    if not HISTORY:
+        with open(character_file) as char_file:
+            background: str = f"You are {CHARACTER}. Your background:"
+            for line in char_file.readlines():
+                background += " " + line.strip()
+        HISTORY.append({"role": "system", "content": background})
+    if player:
+        HISTORY.append({"role": "user", "content": next_phrase})
+    else:
+        HISTORY.append({"role": "assistant", "content": next_phrase})
 
 
 def answer(prompt: str, character: str) -> str:
@@ -94,18 +108,18 @@ def answer(prompt: str, character: str) -> str:
     :param prompt: An engineered prompt to get the language model to respond to
     :return: The completed prompt
     """
+    msgs: List[dict] = HISTORY
+    msgs.append({"role": "user", "content": prompt})
     res: str = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
-        messages=[
-            {'role': f"user", 'content': prompt}
-        ],
+        messages=msgs,
         temperature=0,
     )
 
     return res["choices"][0]["message"]["content"].strip()
 
 
-def load(load_file: str) -> List[str]:
+def load_file_information(load_file: str) -> List[str]:
     """
     Loads data from a file into a list of strings for embedding.
     :param load_file: Path to a file containing the data we want to encrypt.
@@ -119,7 +133,6 @@ def load(load_file: str) -> List[str]:
             for s in line.strip().split(".")
             if s.strip()
         ]
-    # print("Data collected")
     return clean_string
 
 
@@ -137,58 +150,57 @@ def embed(query: str) -> str:
 
 
 def upload(
-        namespace: str, data: List[str], text_type: str = 'background', index_name: str = 'thesis-index'
+    namespace: str,
+    data: List[str],
+    text_type: str = "background",
+    index_name: str = "thesis-index",
 ) -> None:
     """
     Upserts text embedding vectors into pinecone DB at the specific index
     :param data: Data to be embedded and stored
-    :param text_type: The type of text we are embedding. Choose "background", "answer", or "question". Default value: "background"
+    :param text_type: The type of text we are embedding. Choose "background", "response", or "question". Default value: "background"
     :param index_name: the name of the pinecone index to save the data to
     """
     if not pinecone.list_indexes():  # check if there are any indexes
         # create index if it doesn't exist
         pinecone.create_index(index_name, dimension=384)
-        # print(f"Index created: {index_name}")
-    else:
-        # print info about existing index
-        index_info = pinecone.describe_index(INDEX_NAME)
-        # print(f"Index description: {index_info}")
 
-    # print(namespace, text_type)
-    # print(namespace_exist(namespace) and text_type == 'background')
-    if namespace_exist(namespace) and text_type == 'background':
+    if namespace_exist(namespace) and text_type == "background":
         return None
 
     # connect to pinecone and retrieve index
     index = pinecone.Index(INDEX_NAME)
-
-    # # wait for 10 seconds
-    # time.sleep(10)
 
     # create SentenceTransformer model and embed query
     model = SentenceTransformer("all-MiniLM-L6-v2")
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = model.to(device)
 
+    results = index.query(embed(""), top_k=10000, namespace=namespace)
+
     # upload data to pinecone index
     for j in tqdm(range(0, len(data), STRIDE)):
         j_end = min(j + WINDOW, len(data))  # get end of batch
-        ids = [str(x) for x in range(j, j_end)]  # generate ID
-        metadata = [{"text": text, "type": text_type} for text in data[j:j_end]]  # generate metadata
+        ids = [str(len(results['matches'])) for _ in range(j, j_end)]  # generate ID
+        metadata = [
+            {"text": text, "type": text_type} for text in data[j:j_end]
+        ]  # generate metadata
         embeddings = model.encode(data[j:j_end]).tolist()  # get embeddings
-        curr_record = zip(ids, embeddings, metadata)  # compile into single vector
+        curr_record = zip(
+            ids, embeddings, metadata
+        )  # compile into single vector
         index.upsert(vectors=curr_record, namespace=namespace)
 
 
 def run_query_and_generate_answer(
-        namespace: str,
-        data: List[str],
-        query: str,
-        receiver: str,
-        job: str,
-        status: str,
-        index_name: str,
-        save: bool = True,
+    namespace: str,
+    data: List[str],
+    query: str,
+    receiver: str,
+    job: str,
+    status: str,
+    index_name: str,
+    save: bool = True,
 ) -> str:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
@@ -202,39 +214,48 @@ def run_query_and_generate_answer(
     :param save: A bool to save to a file is Ture and print out if False. Default: True
     :return: The generated answer based on the response context.
     """
+    generate_conversation(
+        f"Text Summaries/{namespace.replace('-', '_')}.txt", True, query
+    )
+
     # connect to index
     index = pinecone.Index(INDEX_NAME)
 
     # upload data and generate query embedding.
-    embedded_query = embed(
-        query=query
-    )
+    embedded_query = embed(query=query)
 
-    upload(namespace, data, 'background', index_name)
+    upload(namespace, data, "background", index_name)
 
     # query Pinecone index and get context for model prompting.
     responses = index.query(
-        embedded_query, top_k=3, include_metadata=True, namespace=namespace, filter={
+        embedded_query,
+        top_k=3,
+        include_metadata=True,
+        namespace=namespace,
+        filter={
             "$or": [
                 {"type": {"$eq": "background"}},
-                {"type": {"$eq": "answer"}}
+                {"type": {"$eq": "response"}},
+                # {"type": {"$eq": "query"}},
             ]
-        }
+        },
     )
-    # print(responses)
 
     # Filter out responses containing the string "Player:"
-    context = [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
+    context = [
+        x["metadata"]["text"]
+        for x in responses["matches"]
+        if query not in x["metadata"]["text"]
+    ]
+
+    # print(responses['matches'])
     # print(context)
 
     # generate clean prompt and answer.
     clean_prompt = prompt_engineer(query, receiver, job, status, context)
     save_prompt: str = clean_prompt.replace("\n", " ")
-    # print(clean_prompt)
-    # print(save_prompt)
+
     generated_answer = answer(clean_prompt, receiver)
-    # print(generated_answer)
-    update_history(namespace=namespace, info_file=DATA_FILE, prompt=query, response=generated_answer.split(": ")[-1])
 
     if save:
         # save results to file and return generated answer.
@@ -242,42 +263,71 @@ def run_query_and_generate_answer(
             save_file.write("\n" + "=" * 120 + "\n")
             save_file.write(f"Prompt: {save_prompt}\n")
             save_file.write(f"To: {receiver}, a {job}\n")
-            clean_prompt = clean_prompt.replace('\n', ' ')
+            clean_prompt = clean_prompt.replace("\n", " ")
             save_file.write(f"{clean_prompt}\n{generated_answer}")
         print("Results saved to file.")
     else:
         print(generated_answer)
 
+    generate_conversation(
+        f"Text Summaries/{namespace.replace('-', '_')}.txt",
+        False,
+        generated_answer,
+    )
+
+    update_history(
+        namespace=namespace,
+        info_file=DATA_FILE,
+        prompt=query,
+        response=generated_answer.split(": ")[-1],
+    )
+
     return generated_answer
 
 
-def update_history(namespace: str, info_file: str, prompt: str, response: str, index_name: str = 'thesis_index', character: str = "Player") -> None:
-    upload(namespace, [prompt], "question", index_name)
-    upload(namespace, [response], "answer", index_name)
+def update_history(
+    namespace: str,
+    info_file: str,
+    prompt: str,
+    response: str,
+    index_name: str = "thesis_index",
+    character: str = "Player",
+) -> None:
+    upload(namespace, [prompt], "query", index_name)
+    upload(namespace, [response], "response", index_name)
 
-    with open(info_file, 'a') as history_file:
-        history_file.write(f"\n{character}: {prompt}\nYou: {response}")
+    extension_index = info_file.index(".")
+    new_filename = (
+        info_file[:extension_index] + "_chat" + info_file[extension_index:]
+    )
+
+    with open(new_filename, "a") as history_file:
+        history_file.write(f"{character}: {prompt}\nYou: {response}\n")
 
 
-def chat(namespace: str,
-        data: List[str],
-        receiver: str,
-        job: str,
-        status: str,
-        index_name: str,
-        ) -> None:
+def chat(
+    namespace: str,
+    data: List[str],
+    receiver: str,
+    job: str,
+    status: str,
+    index_name: str,
+) -> None:
     """
-    Initiate a conversation with a character
-    :param namespace:
-    :param data:
-    :param receiver:
-    :param job:
-    :param status:
-    :param index_name:
-    :return:
+    Initiate a conversation with a character. Stops conversation when player says "bye".
+    :param namespace: Namespace of the character, reference to knowledge base
+    :param data: Text data
+    :param receiver: The character receiving query
+    :param job: The character's profession
+    :param status: Social status of character
+    :param index_name: The index name of the pinecone index
+    :return: None
     """
     while True:
         QUERY: str = input("Player: ")
+
+        if QUERY.lower() == "bye":
+            break
 
         final_answer = run_query_and_generate_answer(
             namespace=namespace,
@@ -292,21 +342,23 @@ def chat(namespace: str,
         print(f"{receiver}: {final_answer}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     GRAMMAR: dict = {
-        'lower': 'poor',
-        'middle': 'satisfactory',
-        'high': 'formal'
+        "lower": "poor",
+        "middle": "satisfactory",
+        "high": "formal",
     }
     WINDOW: int = 3  # how many sentences are combined
     STRIDE: int = 2  # used to create overlap, num sentences we 'stride' over
 
+    HISTORY: List[dict] = []
+
     # CHARACTER: str = "John Pebble"  # thief
     # CHARACTER: str = "Evelyn Stone-Brown"  # blacksmith
     # CHARACTER: str = "Caleb Brown"  # baker
-    CHARACTER: str = 'Jack McCaster'  # fisherman
+    # CHARACTER: str = 'Jack McCaster'  # fisherman
     # CHARACTER: str = "Peter Satoru"  # archer
-    # CHARACTER: str = "Melinda Deek"  # knight
+    CHARACTER: str = "Melinda Deek"  # knight
     # CHARACTER: str = "Sarah Ratengen"  # tavern owner
 
     with open("Text Summaries/characters.json", "r") as f:
@@ -319,19 +371,20 @@ if __name__ == '__main__':
     INDEX_NAME: str = "thesis-index"
     NAMESPACE: str = extract_name(DATA_FILE).lower()
 
-    file_data = load(DATA_FILE)
-    generate_conversation('Text Summaries/jack_mccaster.txt')
-    # openai.api_key = ""  # windows 11
-    # pinecone.init(
-    #
-    # )
-    #
-    # chat(
-    #     namespace=NAMESPACE,
-    #     data=file_data,
-    #     receiver=CHARACTER,
-    #     job=PROFESSION,
-    #     status=SOCIAL_CLASS,
-    #     index_name=INDEX_NAME,
-    # )
+    file_data = load_file_information(DATA_FILE)
 
+    openai.api_key = (
+
+    )
+    pinecone.init(
+
+    )
+
+    chat(
+        namespace=NAMESPACE,
+        data=file_data,
+        receiver=CHARACTER,
+        job=PROFESSION,
+        status=SOCIAL_CLASS,
+        index_name=INDEX_NAME,
+    )
