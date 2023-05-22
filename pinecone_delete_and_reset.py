@@ -44,14 +44,21 @@ def load_file_information(load_file: str) -> List[str]:
     """
     with open(load_file, "r") as text_file:
         # Use a list comprehension to clean and split the text file.
-        clean_string = [
+        char_string = [
             s.strip() + "."
             for line in text_file
             for s in line.strip().split(".")
             if s.strip()
         ]
-
-    return clean_string
+    with open('Text Summaries/ashbourne.txt', 'r') as town_file:
+        town_string = [
+            s.strip() + "."
+            for line in town_file
+            for s in line.strip().split(".")
+            if s.strip()
+        ]
+    char_string.extend(town_string)
+    return char_string
 
 
 def embed(query: str) -> List[float]:
@@ -100,8 +107,8 @@ def upload(
         # create index if it doesn't exist
         pinecone.create_index(index_name, dimension=384)
 
-    if namespace_exist(namespace) and text_type == "background":
-        return None
+    # if namespace_exist(namespace) and text_type == "background":
+    #     return None
 
     # connect to pinecone and retrieve index
     index = pinecone.Index(INDEX_NAME)
@@ -135,46 +142,46 @@ if __name__ == "__main__":
     INDEX_NAME: str = "thesis-index"  # pinecone index name
     NAMESPACE = "melinda-deek"
     pinecone.init(
-
+        api_key="2f121499-0201-4f0a-8a3d-1e90b8ff1884",
+        environment="northamerica-northeast1-gcp",
     )  # initialize pinecone env
 
+    index = pinecone.Index('thesis-index')
 
-    index = pinecone.Index(INDEX_NAME)
+    # upload data and generate query embedding.
+    embedded_query = embed("what flowers can be found near ashbourne")
 
-    # # upload data and generate query embedding.
-    # embedded_query = embed("do chromafluke live near ashbourne")
-    #
-    # # query Pinecone index and get context for model prompting.
-    # responses = index.query(
-    #     embedded_query,
-    #     top_k=30,
-    #     include_metadata=True,
-    #     namespace=NAMESPACE,
-    #     filter={
-    #         "$or": [
-    #             {"type": {"$eq": "background"}},
-    #             {"type": {"$eq": "response"}},
-    #             {"type": {"$eq": "query"}},
-    #         ]
-    #     },
-    # )
-    #
-    # print(len(responses['matches']))
-    # print(responses)
+    # query Pinecone index and get context for model prompting.
+    responses = index.query(
+        embedded_query,
+        top_k=30,
+        include_metadata=True,
+        namespace=NAMESPACE,
+        filter={
+            "$or": [
+                {"type": {"$eq": "background"}},
+                {"type": {"$eq": "response"}},
+            ]
+        },
+    )
 
+    print(len(responses['matches']))
+    print(responses)
+
+    time.sleep(100)
     index.delete(delete_all=True, namespace="melinda-deek")
 
     # pinecone.delete_index(INDEX_NAME)  # delete old index
-    # print(f"{INDEX_NAME} deleted")
-    #
+    print(f"{INDEX_NAME} deleted")
+
     # Open file of characters and load its contents into a dictionary
     with open("Text Summaries/characters.json", "r") as f:
         names = json.load(f)
 
     # loop through characters and store background in database
     for i in range(len(names)):
-        CHARACTER: str = 'Melinda Deek'
-        # CHARACTER: str = list(names.keys())[i]
+        # CHARACTER: str = 'Melinda Deek'
+        CHARACTER: str = list(names.keys())[i]
         PROFESSION, SOCIAL_CLASS = get_information(CHARACTER)
         print(CHARACTER, PROFESSION)
 
