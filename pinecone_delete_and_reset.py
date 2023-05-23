@@ -143,7 +143,7 @@ if __name__ == "__main__":
     NAMESPACE = "melinda-deek"
     pinecone.init(
 
-    )  # initialize pinecone env
+    )  # initialize pinecone
 
     # index = pinecone.Index('thesis-index')
     #
