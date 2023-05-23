@@ -142,36 +142,35 @@ if __name__ == "__main__":
     INDEX_NAME: str = "thesis-index"  # pinecone index name
     NAMESPACE = "melinda-deek"
     pinecone.init(
-        api_key="2f121499-0201-4f0a-8a3d-1e90b8ff1884",
-        environment="northamerica-northeast1-gcp",
+
     )  # initialize pinecone env
 
-    index = pinecone.Index('thesis-index')
+    # index = pinecone.Index('thesis-index')
+    #
+    # # upload data and generate query embedding.
+    # embedded_query = embed("what flowers can be found near ashbourne")
+    #
+    # # query Pinecone index and get context for model prompting.
+    # responses = index.query(
+    #     embedded_query,
+    #     top_k=30,
+    #     include_metadata=True,
+    #     namespace=NAMESPACE,
+    #     filter={
+    #         "$or": [
+    #             {"type": {"$eq": "background"}},
+    #             {"type": {"$eq": "response"}},
+    #         ]
+    #     },
+    # )
+    #
+    # print(len(responses['matches']))
+    # print(responses)
+    #
+    # time.sleep(100)
+    # index.delete(delete_all=True, namespace="melinda-deek")
 
-    # upload data and generate query embedding.
-    embedded_query = embed("what flowers can be found near ashbourne")
-
-    # query Pinecone index and get context for model prompting.
-    responses = index.query(
-        embedded_query,
-        top_k=30,
-        include_metadata=True,
-        namespace=NAMESPACE,
-        filter={
-            "$or": [
-                {"type": {"$eq": "background"}},
-                {"type": {"$eq": "response"}},
-            ]
-        },
-    )
-
-    print(len(responses['matches']))
-    print(responses)
-
-    time.sleep(100)
-    index.delete(delete_all=True, namespace="melinda-deek")
-
-    # pinecone.delete_index(INDEX_NAME)  # delete old index
+    pinecone.delete_index(INDEX_NAME)  # delete old index
     print(f"{INDEX_NAME} deleted")
 
     # Open file of characters and load its contents into a dictionary

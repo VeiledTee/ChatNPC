@@ -1,7 +1,8 @@
 Ashbourne is a quaint and picturesque town located in the heart of a verdant valley, with two rivers that run parallel to each other, one on the West and one on the Easten sides of town.
 The town's setting is stunning, with towering mountains in the background and rolling hills surrounding it.
 The lush forest to the north-east of the town provides the villagers with abundant resources, game, and firewood.
-The town's streets are lined with charming, half-timbered houses, and their manicured gardens are filled with vibrant, colorful Azure Aster, Emerald Lily, and Fire Poppy flowers.
+The town's streets are lined with charming, half-timbered houses.
+The manicured gardens of the townsfolk are filled with vibrant flowers, the Azure Asters, Emerald Lilies, and Fire Poppies.
 The town square is the heart of the town, a bustling hub of activity, and a meeting place for the locals.
 The weekly Ashbourne market, held every Saturday, is a popular event where farmers from the surrounding countryside bring their wares, including fresh fruits, vegetables, meat, dairy products, and baked goods.
 The fish market is a unique feature of Ashbourne, as the two rivers provide an abundance of fish.
