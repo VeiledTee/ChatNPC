@@ -1,36 +1,50 @@
-Based on your knowledge, choose the letter corresponding to the most appropriate answer.
+Based on your knowledge, choose the letter corresponding to the most appropriate answer. Select only one letter as the best response.
+Only output the sequence of letters after you answer each question. Follow the same sequence of questions when outputting your answers.
 
-Who should someone visit if they have questions you can't answer?
+1. Who should someone visit if they have questions you can't answer?
 a) Evelyn Stone-Brown
 b) John Pebble
 c) Jack McCaster
 d) Peter Satoru
 
-In what cardinal direction are the rivers surrounding Ashbourne located?
-a) N + S
-b) N + E
-c) N + W
-d) S + E
-e) S + W
-f) E + W
-g) None of the above
+2. In what cardinal direction can the Asher river near Ashbourne be located?
+a) North
+b) East
+c) West
+d) South
+c) None of the above
 
-What religious buildings are in Ashbourne?
+3. In what cardinal direction can the Zephyr river near Ashbourne be located?
+a) North
+b) East
+c) West
+d) South
+c) None of the above
+
+4. What religious buildings are in Ashbourne?
 a) Mosque
 b) Church
 c) Usambic
 d) None of the above
 
-Who works the smithy in Ashbourne?
+5. Who works the smithy in Ashbourne?
 a) John Pebble
 b) Sarah Ratengen
 c) Peter Satoru
 d) Evelyn Stone-Brown
 e) None of the above
 
-Which of the following flowers can't be found in Ashbourne?
+6. Which of the following flowers can't be found in Ashbourne?
 a) Azure Aster
 b) Emerald Lilies
 c) Magenta Daffodil
 d) Fire Poppies
 e) None of the above
+
+Answers:
+1.
+2.
+3.
+4.
+5.
+6.
