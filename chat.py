@@ -1,15 +1,18 @@
-import random
 from typing import List
 import openai
 from sentence_transformers import SentenceTransformer
 import torch
 import pinecone
 from tqdm.auto import tqdm
-import time
 import json
 
 
 def extract_name(file_name: str) -> str:
+    """
+    Extracts the name of a character from their descriptions file name
+    :param file_name: the file containing the character's description
+    :return: the character's name, separated by a hyphen
+    """
     # split the string into a list of parts, using "/" as the delimiter
     parts = file_name.split("/")
     # take the last part of the list (i.e. "john_pebble.txt")
@@ -22,10 +25,15 @@ def extract_name(file_name: str) -> str:
 
 
 def namespace_exist(namespace: str) -> bool:
-    index = pinecone.Index("thesis-index")
+    """
+    Check if a namespace exists in Pinecone index
+    :param namespace: the namespace in question
+    :return: boolean showing if the namespace exists or not
+    """
+    index = pinecone.Index("thesis-index")  # get index
     responses = index.query(
-        embed("he is"),
-        top_k=3,
+        embed(""),
+        top_k=1,
         include_metadata=True,
         namespace=namespace,
         filter={
@@ -34,15 +42,15 @@ def namespace_exist(namespace: str) -> bool:
                 {"type": {"$eq": "response"}},
             ]
         },
-    )
-    return responses["matches"] != []
+    )  # query index
+    return responses["matches"] != []  # if matches comes back empty namespace doesn't exist
 
 
-def get_information(character_name):
+def get_information(character_name) -> None | tuple:
     """
-    Return information from the character's
-    :param character_name:
-    :return:
+    Return information from the character's data file
+    :param character_name: name of character
+    :return: None if character doesn't exist | profession and social status if they do exist
     """
     with open("Text Summaries/character_objects.json", "r") as f:
         data = json.load(f)
@@ -55,7 +63,7 @@ def get_information(character_name):
 
 
 def prompt_engineer(
-    prompt: str, receiver: str, job: str, status: str, context: List[str]
+    prompt: str, status: str, context: List[str]
 ) -> str:
     """
     Given a base query and context, format it to be used as prompt
@@ -102,21 +110,22 @@ def generate_conversation(
         HISTORY.append({"role": "assistant", "content": next_phrase})
 
 
-def answer(prompt: str, character: str) -> str:
+def answer(prompt: str, chat_history: List[dict]) -> str:
     """
     Using openAI API, respond ot the provide prompt
     :param prompt: An engineered prompt to get the language model to respond to
+    :param chat_history:
     :return: The completed prompt
     """
-    msgs: List[dict] = HISTORY
-    msgs.append({"role": "user", "content": prompt})
+    msgs: List[dict] = chat_history
+    msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
     res: str = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=msgs,
         temperature=0,
     )
 
-    return res["choices"][0]["message"]["content"].strip()
+    return res["choices"][0]["message"]["content"].strip()  # get model response
 
 
 def load_file_information(load_file: str) -> List[str]:
@@ -126,7 +135,7 @@ def load_file_information(load_file: str) -> List[str]:
     :return: A list of all the sentences in the load_file.
     """
     with open(load_file, "r") as text_file:
-        # Use a list comprehension to clean and split the text file.
+        # list comprehension to clean and split the text file
         clean_string = [
             s.strip() + "."
             for line in text_file
@@ -143,8 +152,9 @@ def embed(query: str) -> str:
     :return: Embedding representation of the sentence
     """
     # create SentenceTransformer model and embed query
-    model = SentenceTransformer("all-MiniLM-L6-v2")
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model = SentenceTransformer("all-MiniLM-L6-v2")  # fast and good
+    # model = SentenceTransformer("")  # slow and great
+    device = "cuda" if torch.cuda.is_available() else "cpu"  # gpu check
     model = model.to(device)
     return model.encode(query).tolist()
 
@@ -248,14 +258,11 @@ def run_query_and_generate_answer(
         if query not in x["metadata"]["text"]
     ]
 
-    # print(responses['matches'])
-    # print(context)
-
     # generate clean prompt and answer.
-    clean_prompt = prompt_engineer(query, receiver, job, status, context)
+    clean_prompt = prompt_engineer(query, status, context)
     save_prompt: str = clean_prompt.replace("\n", " ")
 
-    generated_answer = answer(clean_prompt, receiver)
+    generated_answer = answer(clean_prompt, HISTORY)
 
     if save:
         # save results to file and return generated answer.
@@ -293,6 +300,15 @@ def update_history(
     index_name: str = "thesis_index",
     character: str = "Player",
 ) -> None:
+    """
+    Update the history of the current chat with new responses
+    :param namespace: namespace of character we are talking to
+    :param info_file: file where chat history is logged
+    :param prompt: prompt user input
+    :param response: response given by LLM
+    :param index_name: name of the index associated with the namespace
+    :param character: the character we are conversing with
+    """
     upload(namespace, [prompt], "query", index_name)
     upload(namespace, [response], "response", index_name)
 
