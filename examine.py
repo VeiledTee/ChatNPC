@@ -71,7 +71,7 @@ if __name__ == "__main__":
     with open("Text Summaries/characters.json", "r") as f:
         names = json.load(f)
 
-    DATA_FILE: str = f"Text Summaries/{names[CHARACTER]}.txt"
+    DATA_FILE: str = f"Text Summaries/Summaries/{names[CHARACTER]}.txt"
 
     background_info: str = get_background(DATA_FILE)
     town_info: str = get_town(TOWN)

@@ -25,7 +25,7 @@ if __name__ == "__main__":
         PROFESSION, SOCIAL_CLASS = get_information(CHARACTER)
         print(CHARACTER, PROFESSION)
         # print(names)
-        DATA_FILE: str = f"Text Summaries/{names[CHARACTER]}.txt"
+        DATA_FILE: str = f"Text Summaries/Summaries/{names[CHARACTER]}.txt"
 
         INDEX_NAME: str = "thesis-index"
         NAMESPACE: str = extract_name(DATA_FILE).lower()
@@ -33,7 +33,6 @@ if __name__ == "__main__":
         QUERY: str = "Can chromafluke fish be found near Ashbourne?"
 
         file_data = load_file_information(DATA_FILE)
-        # metadata_config = {"text": "", "type": ""}
 
         with open("keys.txt", "r") as key_file:
             openai.api_key = key_file.readlines()[0]
