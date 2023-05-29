@@ -1,8 +1,9 @@
 import json
 from typing import List
-from chat import answer
 
 import openai
+
+from chat import answer
 
 
 def extract_data_multi_string(lines: List[str]) -> str:
@@ -61,15 +62,21 @@ def name_conversion(to_snake: bool, to_convert: str) -> str:
 
 
 def write_exam(character: str, chat_history: List[dict]) -> str:
-    character = name_conversion(to_snake=True, to_convert=character)  # get character name formatted correctly
+    character = name_conversion(
+        to_snake=True, to_convert=character
+    )  # get character name formatted correctly
 
-    with open(f"Data/MC Tests/{character}_test.txt", "r") as exam_file:  # extract exam
+    with open(
+        f"Data/MC Tests/{character}_test.txt", "r"
+    ) as exam_file:  # extract exam
         exam: str = extract_data_multi_string(exam_file.readlines())
 
     submission: str = answer(exam, chat_history)  # generate response
 
-    with open(f"Data/MC Results/{character}_submissions.txt", 'a') as answer_file:  # save responses
-        answer_file.write(f'{submission}\n=====\n')
+    with open(
+        f"Data/MC Results/{character}_submissions.txt", "a"
+    ) as answer_file:  # save responses
+        answer_file.write(f"{submission}\n=====\n")
 
     return submission  # return responses
 
@@ -103,9 +110,8 @@ if __name__ == "__main__":
         }
     )
 
-    openai.api_key = (
-        "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"  # Linux
-    )
+    with open('keys.txt', 'r') as key_file:
+        openai.api_key = (key_file.readlines()[0])
 
     print(write_exam(CHARACTER, HISTORY))
 

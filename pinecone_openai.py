@@ -7,6 +7,7 @@ import pinecone
 from tqdm.auto import tqdm
 import time
 import json
+from chat import answer
 
 
 def extract_name(file_name: str) -> str:
@@ -72,32 +73,34 @@ def prompt_engineer(prompt: str, receiver: str, job: str, status: str, context: 
     return prompt_start + prompt_middle + prompt_end
 
 
-def answer(prompt: str, character: str) -> str:
+def answer(prompt: str, chat: bool = True) -> str:
     """
     Using openAI API, respond ot the provide prompt
     :param prompt: An engineered prompt to get the language model to respond to
+    :param chat:
     :return: The completed prompt
     """
-    # res: str = openai.Completion.create(
-    #     engine="text-davinci-003",
-    #     prompt=prompt,
-    #     temperature=0,
-    #     max_tokens=400,
-    #     top_p=1,
-    #     frequency_penalty=0,
-    #     presence_penalty=0,
-    #     stop=None,
-    # )
-    # return res["choices"][0]["text"].strip()
-    res: str = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {'role': f"user", 'content': prompt}
-        ],
-        temperature=0,
-    )
-    print(res)
-    return res["choices"][0]["message"]["content"].strip()
+    if chat:
+        res: str = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {'role': f"user", 'content': prompt}
+            ],
+            temperature=0,
+        )
+        return res["choices"][0]["message"]["content"].strip()
+    else:
+        res: str = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=prompt,
+            temperature=0,
+            max_tokens=400,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0,
+            stop=None,
+        )
+        return res["choices"][0]["text"].strip()
 
 
 def load(load_file: str) -> List[str]:
@@ -227,7 +230,7 @@ def run_query_and_generate_answer(
     save_prompt: str = clean_prompt.replace("\n", " ")
     # print(clean_prompt)
     # print(save_prompt)
-    generated_answer = answer(clean_prompt, receiver)
+    generated_answer = answer(clean_prompt)
     # print(generated_answer)
     update_history(namespace=namespace, info_file=DATA_FILE, prompt=query, response=generated_answer.split(": ")[-1])
 
@@ -285,11 +288,9 @@ if __name__ == '__main__':
         file_data = load(DATA_FILE)
         # metadata_config = {"text": "", "type": ""}
 
-        openai.api_key =
-        pinecone.init(
-
-        )
-        # pinecone.delete_index(INDEX_NAME)
+        with open('keys.txt', 'r') as key_file:
+            openai.api_key = (key_file.readlines()[0])
+            pinecone.init(api_key=key_file.readlines()[1], environment=key_file.readlines()[2])
 
         final_answer = run_query_and_generate_answer(
             namespace=NAMESPACE,

@@ -1,10 +1,11 @@
-from typing import List
-import openai
-from sentence_transformers import SentenceTransformer
-import torch
-import pinecone
-from tqdm.auto import tqdm
 import json
+from typing import List
+
+import openai
+import pinecone
+import torch
+from sentence_transformers import SentenceTransformer
+from tqdm.auto import tqdm
 
 
 def extract_name(file_name: str) -> str:
@@ -43,7 +44,9 @@ def namespace_exist(namespace: str) -> bool:
             ]
         },
     )  # query index
-    return responses["matches"] != []  # if matches comes back empty namespace doesn't exist
+    return (
+        responses["matches"] != []
+    )  # if matches comes back empty namespace doesn't exist
 
 
 def get_information(character_name) -> None | tuple:
@@ -62,9 +65,7 @@ def get_information(character_name) -> None | tuple:
     return None  # character not found
 
 
-def prompt_engineer(
-    prompt: str, status: str, context: List[str]
-) -> str:
+def prompt_engineer(prompt: str, status: str, context: List[str]) -> str:
     """
     Given a base query and context, format it to be used as prompt
     :param job:
@@ -73,14 +74,16 @@ def prompt_engineer(
     :param context: The context to be used in the prompt
     :return: The formatted prompt
     """
-    prompt_start = f"Use {GRAMMAR[status.split()[0]]} grammar. Use first person. " \
-                   f"Reply in a single, clear sentence based on the context. When told " \
-                   f"new information, rephrase the information as a fact. " \
-                   f"Do not mention your background or the context unless asked, or that you are fictional. " \
-                   f"Do not provide facts you would deny. Context:"
-    with open('tried_prompts.txt', 'a') as prompt_file:
+    prompt_start = (
+        f"Use {GRAMMAR[status.split()[0]]} grammar. Use first person. "
+        f"Reply in a single, clear sentence based on the context. When told "
+        f"new information, rephrase the information as a fact. "
+        f"Do not mention your background or the context unless asked, or that you are fictional. "
+        f"Do not provide facts you would deny. Context:"
+    )
+    with open("tried_prompts.txt", "a") as prompt_file:
         if prompt_start not in prompt_file.readlines():
-            prompt_file.write(prompt_start + '\n')
+            prompt_file.write(prompt_start + "\n")
     prompt_end = f"\n\nQuestion: {prompt}\nAnswer: "
     prompt_middle = ""
     # append contexts until hitting limit
@@ -110,22 +113,39 @@ def generate_conversation(
         HISTORY.append({"role": "assistant", "content": next_phrase})
 
 
-def answer(prompt: str, chat_history: List[dict]) -> str:
+def answer(prompt: str, chat_history: List[dict], chat: bool = True) -> str:
     """
     Using openAI API, respond ot the provide prompt
     :param prompt: An engineered prompt to get the language model to respond to
     :param chat_history:
     :return: The completed prompt
     """
-    msgs: List[dict] = chat_history
-    msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
-    res: str = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=msgs,
-        temperature=0,
-    )
+    if chat:
+        msgs: List[dict] = chat_history
+        msgs.append(
+            {"role": "user", "content": prompt}
+        )  # build current history of conversation for model
+        res: str = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=msgs,
+            temperature=0,
+        )
 
-    return res["choices"][0]["message"]["content"].strip()  # get model response
+        return res["choices"][0]["message"][
+            "content"
+        ].strip()  # get model response
+    else:
+        res: str = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=prompt,
+            temperature=0,
+            max_tokens=400,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0,
+            stop=None,
+        )
+        return res["choices"][0]["text"].strip()
 
 
 def load_file_information(load_file: str) -> List[str]:
@@ -191,7 +211,9 @@ def upload(
     # upload data to pinecone index
     for j in tqdm(range(0, len(data), STRIDE)):
         j_end = min(j + WINDOW, len(data))  # get end of batch
-        ids = [str(len(results['matches'])) for _ in range(j, j_end)]  # generate ID
+        ids = [
+            str(len(results["matches"])) for _ in range(j, j_end)
+        ]  # generate ID
         metadata = [
             {"text": text, "type": text_type} for text in data[j:j_end]
         ]  # generate metadata
@@ -389,12 +411,9 @@ if __name__ == "__main__":
 
     file_data = load_file_information(DATA_FILE)
 
-    openai.api_key = (
-
-    )
-    pinecone.init(
-
-    )
+    with open('keys.txt', 'r') as key_file:
+        openai.api_key = (key_file.readlines()[0])
+        pinecone.init(api_key=key_file.readlines()[1], environment=key_file.readlines()[2])
 
     chat(
         namespace=NAMESPACE,

@@ -1,6 +1,8 @@
 import openai
 
-openai.api_key = 
+with open('keys.txt', 'r') as key_file:
+    openai.api_key = (key_file.readlines()[0])
+
 PROMPT = "Imagine you are a fisherman"
 
 # response = openai.Completion.create(

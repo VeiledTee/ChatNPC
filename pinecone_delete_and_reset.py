@@ -141,9 +141,9 @@ if __name__ == "__main__":
 
     INDEX_NAME: str = "thesis-index"  # pinecone index name
     NAMESPACE = "melinda-deek"
-    pinecone.init(
 
-    )  # initialize pinecone
+    with open('keys.txt', 'r') as key_file:  # initialize
+        pinecone.init(api_key=key_file.readlines()[1], environment=key_file.readlines()[2])
 
     # index = pinecone.Index('thesis-index')
     #
