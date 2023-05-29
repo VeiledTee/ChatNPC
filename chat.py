@@ -8,6 +8,22 @@ from sentence_transformers import SentenceTransformer
 from tqdm.auto import tqdm
 
 
+def get_information(character_name) -> None | tuple:
+    """
+    Return information from the character's data file
+    :param character_name: name of character
+    :return: None if character doesn't exist | profession and social status if they do exist
+    """
+    with open("Text Summaries/character_objects.json", "r") as character_file:
+        data = json.load(character_file)
+
+    for character in data["characters"]:
+        if character["name"].strip() == character_name.strip():
+            return character["profession"], character["social status"]
+
+    return None  # character not found
+
+
 def extract_name(file_name: str) -> str:
     """
     Extracts the name of a character from their descriptions file name
@@ -25,144 +41,6 @@ def extract_name(file_name: str) -> str:
     return name[:-4]
 
 
-def name_conversion(to_snake: bool, to_convert: str) -> str:
-    if to_snake:
-        text = to_convert.lower().split(" ")
-        converted: str = text[0]
-        for i, t in enumerate(text):
-            if i == 0:
-                pass
-            else:
-                converted += f"_{t}"
-        return converted
-    else:
-        text = to_convert.split("_")
-        converted: str = text[0].capitalize()
-        for i, t in enumerate(text):
-            if i == 0:
-                pass
-            else:
-                converted += f" {t.capitalize()}"
-        return converted
-
-
-def namespace_exist(namespace: str) -> bool:
-    """
-    Check if a namespace exists in Pinecone index
-    :param namespace: the namespace in question
-    :return: boolean showing if the namespace exists or not
-    """
-    index = pinecone.Index("thesis-index")  # get index
-    responses = index.query(
-        embed(" "),
-        top_k=1,
-        include_metadata=True,
-        namespace=namespace,
-        filter={
-            "$or": [
-                {"type": {"$eq": "background"}},
-                {"type": {"$eq": "response"}},
-            ]
-        },
-    )  # query index
-    return responses["matches"] != []  # if matches comes back empty namespace doesn't exist
-
-
-def get_information(character_name) -> None | tuple:
-    """
-    Return information from the character's data file
-    :param character_name: name of character
-    :return: None if character doesn't exist | profession and social status if they do exist
-    """
-    with open("Text Summaries/character_objects.json", "r") as character_file:
-        data = json.load(character_file)
-
-    for character in data["characters"]:
-        if character["name"].strip() == character_name.strip():
-            return character["profession"], character["social status"]
-
-    return None  # character not found
-
-
-def prompt_engineer(prompt: str, status: str, context: List[str]) -> str:
-    """
-    Given a base query and context, format it to be used as prompt
-    :param prompt: The prompt query
-    :param status: social status of the character
-    :param context: The context to be used in the prompt
-    :return: The formatted prompt
-    """
-    prompt_start = (
-        f"Use {GRAMMAR[status.split()[0]]} grammar. Use first person. "
-        f"Reply in a single, clear sentence based on the context. When told "
-        f"new information, rephrase the information as a fact. "
-        f"Do not mention your background or the context unless asked, or that you are fictional. "
-        f"Do not provide facts you would deny. Context:"
-    )
-    with open("tried_prompts.txt", "a") as prompt_file:
-        if prompt_start not in prompt_file.readlines():
-            prompt_file.write(prompt_start + "\n")
-    prompt_end = f"\n\nQuestion: {prompt}\nAnswer: "
-    prompt_middle = ""
-    # append contexts until hitting limit
-    for c in context:
-        prompt_middle += f"\n{c}"
-    return prompt_start + prompt_middle + prompt_end
-
-
-def generate_conversation(character_file: str, player: bool, next_phrase: str) -> None:
-    """
-    Generate a record of the conversation a user has had with the system for feeding into gpt 3.5 turbo
-    :param character_file: The file associated with a character's background, not required unless
-        first execution of function to 'set the stage'
-    :param player: is the player the one delivering the phrase
-    :param next_phrase: the most recent phrase of the conversation
-    :return: A list of dictionaries
-    """
-    if not HISTORY:
-        with open(character_file) as char_file:
-            background: str = f"You are {CHARACTER}. Your background:"
-            for line in char_file.readlines():
-                background += " " + line.strip()
-        HISTORY.append({"role": "system", "content": background})
-    if player:
-        HISTORY.append({"role": "user", "content": next_phrase})
-    else:
-        HISTORY.append({"role": "assistant", "content": next_phrase})
-
-
-def answer(prompt: str, chat_history: List[dict], is_chat: bool = True) -> str:
-    """
-    Using openAI API, respond ot the provide prompt
-    :param prompt: An engineered prompt to get the language model to respond to
-    :param chat_history: the entire history of the conversation
-    :param is_chat: are you chatting or looking for the completion of a phrase
-    :return: The completed prompt
-    """
-    if is_chat:
-        msgs: List[dict] = chat_history
-        msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
-        res: str = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=msgs,
-            temperature=0,
-        )  # conversation with LLM
-
-        return res["choices"][0]["message"]["content"].strip()  # get model response
-    else:
-        res: str = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=prompt,
-            temperature=0,
-            max_tokens=400,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0,
-            stop=None,
-        )  # LLM for phrase completion
-        return res["choices"][0]["text"].strip()
-
-
 def load_file_information(load_file: str) -> List[str]:
     """
     Loads data from a file into a list of strings for embedding.
@@ -175,59 +53,41 @@ def load_file_information(load_file: str) -> List[str]:
     return clean_string
 
 
-def embed(query: str) -> List[float]:
-    """
-    Take a sentence of text and return the 384-dimension embedding
-    :param query: The sentence to be embedded
-    :return: Embedding representation of the sentence
-    """
-    # create SentenceTransformer model and embed query
-    model = SentenceTransformer("all-MiniLM-L6-v2")  # fast and good
-    # model = SentenceTransformer("")  # slow and great
-    device = "cuda" if torch.cuda.is_available() else "cpu"  # gpu check
-    model = model.to(device)
-    return model.encode(query).tolist()
-
-
-def upload(
+def chat(
     namespace: str,
     data: List[str],
-    text_type: str = "background",
-    index_name: str = "thesis-index",
+    receiver: str,
+    job: str,
+    status: str,
+    index_name: str,
 ) -> None:
     """
-    'Upserts' text embedding vectors into pinecone DB at the specific index
-    :param namespace: the pinecone namespace to upload data to
-    :param data: Data to be embedded and stored
-    :param text_type: The type of text we are embedding. Choose "background", "response", or "question".
-        Default value: "background"
-    :param index_name: the name of the pinecone index to save the data to
+    Initiate a conversation with a character. Stops conversation when player says "bye".
+    :param namespace: Namespace of the character, reference to knowledge base
+    :param data: Text data
+    :param receiver: The character receiving query
+    :param job: The character's profession
+    :param status: Social status of character
+    :param index_name: The index name of the pinecone index
+    :return: None
     """
-    if not pinecone.list_indexes():  # check if there are any indexes
-        # create index if it doesn't exist
-        pinecone.create_index(index_name, dimension=384)
+    while True:
+        QUERY: str = input("Player: ")
 
-    if namespace_exist(namespace) and text_type == "background":
-        return None
+        if QUERY.lower() == "bye":
+            break
 
-    # connect to pinecone and retrieve index
-    index = pinecone.Index(INDEX_NAME)
+        final_answer = run_query_and_generate_answer(
+            namespace=namespace,
+            data=data,
+            receiver=receiver,
+            job=job,
+            status=status,
+            query=QUERY,
+            index_name=index_name,
+        )
 
-    # create SentenceTransformer model and embed query
-    model = SentenceTransformer("all-MiniLM-L6-v2")
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    model = model.to(device)
-
-    results = index.query(embed(" "), top_k=10000, namespace=namespace)
-
-    # upload data to pinecone index
-    for j in tqdm(range(0, len(data), STRIDE)):
-        j_end = min(j + WINDOW, len(data))  # get end of batch
-        ids = [str(len(results["matches"])) for _ in range(j, j_end)]  # generate ID
-        metadata = [{"text": text, "type": text_type} for text in data[j:j_end]]  # generate metadata
-        embeddings = model.encode(data[j:j_end]).tolist()  # get embeddings
-        curr_record = zip(ids, embeddings, metadata)  # compile into single vector
-        index.upsert(vectors=curr_record, namespace=namespace)
+        print(f"{receiver}: {final_answer}")
 
 
 def run_query_and_generate_answer(
@@ -313,6 +173,157 @@ def run_query_and_generate_answer(
     return generated_answer
 
 
+def generate_conversation(character_file: str, player: bool, next_phrase: str) -> None:
+    """
+    Generate a record of the conversation a user has had with the system for feeding into gpt 3.5 turbo
+    :param character_file: The file associated with a character's background, not required unless
+        first execution of function to 'set the stage'
+    :param player: is the player the one delivering the phrase
+    :param next_phrase: the most recent phrase of the conversation
+    :return: A list of dictionaries
+    """
+    if not HISTORY:
+        with open(character_file) as char_file:
+            background: str = f"You are {CHARACTER}. Your background:"
+            for line in char_file.readlines():
+                background += " " + line.strip()
+        HISTORY.append({"role": "system", "content": background})
+    if player:
+        HISTORY.append({"role": "user", "content": next_phrase})
+    else:
+        HISTORY.append({"role": "assistant", "content": next_phrase})
+
+
+def embed(query: str) -> List[float]:
+    """
+    Take a sentence of text and return the 384-dimension embedding
+    :param query: The sentence to be embedded
+    :return: Embedding representation of the sentence
+    """
+    # create SentenceTransformer model and embed query
+    model = SentenceTransformer("all-MiniLM-L6-v2")  # fast and good
+    # model = SentenceTransformer("")  # slow and great
+    device = "cuda" if torch.cuda.is_available() else "cpu"  # gpu check
+    model = model.to(device)
+    return model.encode(query).tolist()
+
+
+def upload(
+    namespace: str,
+    data: List[str],
+    text_type: str = "background",
+    index_name: str = "thesis-index",
+) -> None:
+    """
+    'Upserts' text embedding vectors into pinecone DB at the specific index
+    :param namespace: the pinecone namespace to upload data to
+    :param data: Data to be embedded and stored
+    :param text_type: The type of text we are embedding. Choose "background", "response", or "question".
+        Default value: "background"
+    :param index_name: the name of the pinecone index to save the data to
+    """
+    if not pinecone.list_indexes():  # check if there are any indexes
+        # create index if it doesn't exist
+        pinecone.create_index(index_name, dimension=384)
+
+    if namespace_exist(namespace) and text_type == "background":
+        return None
+
+    # connect to pinecone and retrieve index
+    index = pinecone.Index(INDEX_NAME)
+
+    results = index.query(embed(" "), top_k=10000, namespace=namespace)
+
+    # upload data to pinecone index
+    for j in tqdm(range(0, len(data), STRIDE)):
+        j_end = min(j + WINDOW, len(data))  # get end of batch
+        ids = [str(len(results["matches"])) for _ in range(j, j_end)]  # generate ID
+        metadata = [{"text": text, "type": text_type} for text in data[j:j_end]]  # generate metadata
+        embeddings = [embed(i) for i in data[j:j_end]]  # get embeddings for each sentence
+        curr_record = zip(ids, embeddings, metadata)  # compile into single vector
+        index.upsert(vectors=curr_record, namespace=namespace)
+
+
+def namespace_exist(namespace: str) -> bool:
+    """
+    Check if a namespace exists in Pinecone index
+    :param namespace: the namespace in question
+    :return: boolean showing if the namespace exists or not
+    """
+    index = pinecone.Index("thesis-index")  # get index
+    responses = index.query(
+        embed(" "),
+        top_k=1,
+        include_metadata=True,
+        namespace=namespace,
+        filter={
+            "$or": [
+                {"type": {"$eq": "background"}},
+                {"type": {"$eq": "response"}},
+            ]
+        },
+    )  # query index
+    return responses["matches"] != []  # if matches comes back empty namespace doesn't exist
+
+
+def prompt_engineer(prompt: str, status: str, context: List[str]) -> str:
+    """
+    Given a base query and context, format it to be used as prompt
+    :param prompt: The prompt query
+    :param status: social status of the character
+    :param context: The context to be used in the prompt
+    :return: The formatted prompt
+    """
+    prompt_start = (
+        f"Use {GRAMMAR[status.split()[0]]} grammar. Use first person. "
+        f"Reply in a single, clear sentence based on the context. When told "
+        f"new information, rephrase the information as a fact. "
+        f"Do not mention your background or the context unless asked, or that you are fictional. "
+        f"Do not provide facts you would deny. Context:"
+    )
+    with open("tried_prompts.txt", "a") as prompt_file:
+        if prompt_start not in prompt_file.readlines():
+            prompt_file.write(prompt_start + "\n")
+    prompt_end = f"\n\nQuestion: {prompt}\nAnswer: "
+    prompt_middle = ""
+    # append contexts until hitting limit
+    for c in context:
+        prompt_middle += f"\n{c}"
+    return prompt_start + prompt_middle + prompt_end
+
+
+def answer(prompt: str, chat_history: List[dict], is_chat: bool = True) -> str:
+    """
+    Using openAI API, respond ot the provide prompt
+    :param prompt: An engineered prompt to get the language model to respond to
+    :param chat_history: the entire history of the conversation
+    :param is_chat: are you chatting or looking for the completion of a phrase
+    :return: The completed prompt
+    """
+    if is_chat:
+        msgs: List[dict] = chat_history
+        msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
+        res: str = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=msgs,
+            temperature=0,
+        )  # conversation with LLM
+
+        return res["choices"][0]["message"]["content"].strip()  # get model response
+    else:
+        res: str = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=prompt,
+            temperature=0,
+            max_tokens=400,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0,
+            stop=None,
+        )  # LLM for phrase completion
+        return res["choices"][0]["text"].strip()
+
+
 def update_history(
     namespace: str,
     info_file: str,
@@ -343,41 +354,25 @@ def update_history(
         )  # save chat logs
 
 
-def chat(
-    namespace: str,
-    data: List[str],
-    receiver: str,
-    job: str,
-    status: str,
-    index_name: str,
-) -> None:
-    """
-    Initiate a conversation with a character. Stops conversation when player says "bye".
-    :param namespace: Namespace of the character, reference to knowledge base
-    :param data: Text data
-    :param receiver: The character receiving query
-    :param job: The character's profession
-    :param status: Social status of character
-    :param index_name: The index name of the pinecone index
-    :return: None
-    """
-    while True:
-        QUERY: str = input("Player: ")
-
-        if QUERY.lower() == "bye":
-            break
-
-        final_answer = run_query_and_generate_answer(
-            namespace=namespace,
-            data=data,
-            receiver=receiver,
-            job=job,
-            status=status,
-            query=QUERY,
-            index_name=index_name,
-        )
-
-        print(f"{receiver}: {final_answer}")
+def name_conversion(to_snake: bool, to_convert: str) -> str:
+    if to_snake:
+        text = to_convert.lower().split(" ")
+        converted: str = text[0]
+        for i, t in enumerate(text):
+            if i == 0:
+                pass
+            else:
+                converted += f"_{t}"
+        return converted
+    else:
+        text = to_convert.split("_")
+        converted: str = text[0].capitalize()
+        for i, t in enumerate(text):
+            if i == 0:
+                pass
+            else:
+                converted += f" {t.capitalize()}"
+        return converted
 
 
 if __name__ == "__main__":
