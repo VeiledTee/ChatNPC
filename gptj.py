@@ -19,14 +19,10 @@ tokenizer.add_special_tokens({"pad_token": "[PAD]"})
 model = AutoModelForCausalLM.from_pretrained("gpt-j-6b")
 
 # Encode the prompt using the tokenizer
-input_ids = tokenizer.encode(
-    PROMPT, padding=True, truncation=True, return_tensors="pt"
-)
+input_ids = tokenizer.encode(PROMPT, padding=True, truncation=True, return_tensors="pt")
 
 # Generate output text using the model
-output = model.generate(
-    input_ids, max_length=300, do_sample=True, eos_token_id=50256
-)
+output = model.generate(input_ids, max_length=300, do_sample=True, eos_token_id=50256)
 
 # Decode the output text using the tokenizer
 gen_text = tokenizer.decode(output[0], skip_special_tokens=True)

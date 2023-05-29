@@ -3,7 +3,7 @@ from typing import List
 
 import openai
 
-from chat import answer
+from chat import answer, name_conversion
 
 
 def extract_data_multi_string(lines: List[str]) -> str:
@@ -40,42 +40,15 @@ def get_town(town_name: str) -> str:
         return extract_data_single_string(read_file.readlines())
 
 
-def name_conversion(to_snake: bool, to_convert: str) -> str:
-    if to_snake:
-        text = to_convert.lower().split(" ")
-        converted: str = text[0]
-        for i, t in enumerate(text):
-            if i == 0:
-                pass
-            else:
-                converted += f"_{t}"
-        return converted
-    else:
-        text = to_convert.split("_")
-        converted: str = text[0].capitalize()
-        for i, t in enumerate(text):
-            if i == 0:
-                pass
-            else:
-                converted += f" {t.capitalize()}"
-        return converted
-
-
 def write_exam(character: str, chat_history: List[dict]) -> str:
-    character = name_conversion(
-        to_snake=True, to_convert=character
-    )  # get character name formatted correctly
+    character = name_conversion(to_snake=True, to_convert=character)  # get character name formatted correctly
 
-    with open(
-        f"Data/MC Tests/{character}_test.txt", "r"
-    ) as exam_file:  # extract exam
+    with open(f"Data/MC Tests/{character}_test.txt", "r") as exam_file:  # extract exam
         exam: str = extract_data_multi_string(exam_file.readlines())
 
     submission: str = answer(exam, chat_history)  # generate response
 
-    with open(
-        f"Data/MC Results/{character}_submissions.txt", "a"
-    ) as answer_file:  # save responses
+    with open(f"Data/MC Results/{character}_submissions.txt", "a") as answer_file:  # save responses
         answer_file.write(f"{submission}\n=====\n")
 
     return submission  # return responses

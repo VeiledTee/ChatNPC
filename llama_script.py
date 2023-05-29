@@ -43,9 +43,7 @@ def load(
     with open(Path(ckpt_dir) / "params.json", "r") as f:
         params = json.loads(f.read())
 
-    model_args: ModelArgs = ModelArgs(
-        max_seq_len=max_seq_len, max_batch_size=max_batch_size, **params
-    )
+    model_args: ModelArgs = ModelArgs(max_seq_len=max_seq_len, max_batch_size=max_batch_size, **params)
     tokenizer = Tokenizer(model_path=tokenizer_path)
     model_args.vocab_size = tokenizer.n_words
     torch.set_default_tensor_type(torch.cuda.HalfTensor)
@@ -89,9 +87,7 @@ def main(
         max_batch_size,
     )
 
-    results = generator.generate(
-        prompts, max_gen_len=256, temperature=temperature, top_p=top_p
-    )
+    results = generator.generate(prompts, max_gen_len=256, temperature=temperature, top_p=top_p)
 
     output_file_num = 0
     while os.path.exists(f"Output/LLaMA/llama_output_{output_file_num}.txt"):
@@ -99,9 +95,7 @@ def main(
 
     for result in results:
         # Write the output to the next available output file
-        with open(
-            f"Output/LLaMA/llama_output_{output_file_num}.txt", "w"
-        ) as output_file:
+        with open(f"Output/LLaMA/llama_output_{output_file_num}.txt", "w") as output_file:
             output_file.write(f"Prompt: {prompt}\n")
             output_file.write(result)
             output_file.write("\n")

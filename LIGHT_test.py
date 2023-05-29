@@ -56,18 +56,14 @@ def find_dupes(data_file: str) -> None:
             if item not in descriptions.keys():
                 descriptions[item] = desc
             elif descriptions[item] != desc:
-                print(
-                    f"Item: {item}\n\tSaved: {descriptions[item]}\n\tNew: {desc}"
-                )
+                print(f"Item: {item}\n\tSaved: {descriptions[item]}\n\tNew: {desc}")
                 dupe_items += 1
             total_items += 1
         for agent in data[i]["agents"]:
             if agent["name"] not in agents.keys():
                 agents[agent["name"]] = agent["persona"]
             elif agents[agent["name"]] != agent["persona"]:
-                print(
-                    f"Character: {agent['name']}\n\tSaved: {agents[agent['name']]}\n\tNew: {agent['persona']}"
-                )
+                print(f"Character: {agent['name']}\n\tSaved: {agents[agent['name']]}\n\tNew: {agent['persona']}")
                 dupe_characters += 1
             total_characters += 1
     print(f"{data_file} done")
@@ -77,9 +73,7 @@ def find_dupes(data_file: str) -> None:
     print(f"Character total: {total_characters}")
 
 
-def format_speech(
-    characters: tuple, dialogue: tuple, character_to_check=None
-) -> None:
+def format_speech(characters: tuple, dialogue: tuple, character_to_check=None) -> None:
     if character_to_check is None:
         for i in range(len(characters)):
             print(f"<{characters[i]}>: {dialogue[i]}")

@@ -2,17 +2,13 @@ import numpy as np
 import pinecone
 
 with open("keys.txt", "r") as key_file:
-    pinecone.init(
-        api_key=key_file.readlines()[1], environment=key_file.readlines()[2]
-    )
+    pinecone.init(api_key=key_file.readlines()[1], environment=key_file.readlines()[2])
 
 metadata_config = {"indexed": ["color"]}
 
 if len(pinecone.list_indexes()) == 0:  # if no indices
     # create index
-    pinecone.create_index(
-        "thesis-index", dimension=1024, metadata_config=metadata_config
-    )
+    pinecone.create_index("thesis-index", dimension=1024, metadata_config=metadata_config)
 else:  # if indices already exist
     print(f"Index description: {pinecone.describe_index('thesis-index')}")
 # list of all indices
