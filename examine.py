@@ -36,7 +36,7 @@ def get_background(character_file: str) -> str:
 
 
 def get_town(town_name: str) -> str:
-    with open(f"Text Summaries/{town_name.lower()}.txt", "r") as read_file:
+    with open(f"Text Summaries/Summaries/{town_name.lower()}.txt", "r") as read_file:
         return extract_data_single_string(read_file.readlines())
 
 
@@ -84,7 +84,8 @@ if __name__ == "__main__":
     )
 
     with open("keys.txt", "r") as key_file:
-        openai.api_key = key_file.readlines()[0]
+        api_keys = [key.strip() for key in key_file.readlines()]
+        openai.api_key = api_keys[0]
 
     print(write_exam(CHARACTER, HISTORY))
 
