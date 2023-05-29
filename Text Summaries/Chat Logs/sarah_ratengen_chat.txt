@@ -52,3 +52,9 @@ Player: i'm thirsty
 Sarah ratengen: Of course, I can offer you a refreshing drink to quench your thirst. What would you like to order?
 Player: i'm thirsty
 Sarah ratengen: Of course, I can offer you a refreshing drink to quench your thirst. What would you like to order?
+Player: what fish live near here
+Sarah ratengen: The two rivers in Ashbourne provide an abundance of fish, which are caught by local fishermen and sold fresh at the market every day.
+Player: chromafluke live in the eastern river and blackfins live in the western one
+Sarah ratengen: It is a known fact that chromafluke live in the eastern river and blackfins live in the western one.
+Player: what fish live near here 
+Sarah ratengen: Chromafluke and blackfins live in the eastern and western rivers near Ashbourne. They are caught by local fishermen and sold fresh at the market every day, which is a unique feature of the town.
