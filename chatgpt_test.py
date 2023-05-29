@@ -1,15 +1,9 @@
 import openai
 
-with open('keys.txt', 'r') as key_file:
-    openai.api_key = (key_file.readlines()[0])
+with open("keys.txt", "r") as key_file:
+    openai.api_key = key_file.readlines()[0]
 
 PROMPT = "Imagine you are a fisherman"
-
-# response = openai.Completion.create(
-#   model="ada",
-#   prompt=PROMPT,
-#   temperature=0.6
-# )
 
 response = openai.ChatCompletion.create(
     model="gpt-3.5-turbo",

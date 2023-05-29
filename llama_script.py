@@ -1,16 +1,14 @@
-from typing import Tuple
-import sys
-import torch
-import fire
-import time
 import json
-
-from pathlib import Path
-
-from fairscale.nn.model_parallel.initialize import initialize_model_parallel
-
-from llama import ModelArgs, Transformer, Tokenizer, LLaMA
 import os
+import sys
+import time
+from pathlib import Path
+from typing import Tuple
+
+import fire
+import torch
+from fairscale.nn.model_parallel.initialize import initialize_model_parallel
+from llama import LLaMA, ModelArgs, Tokenizer, Transformer
 
 
 def setup_model_parallel() -> Tuple[int, int]:
@@ -83,7 +81,12 @@ def main(
     ]
     print(prompts)
     generator = load(
-        ckpt_dir, tokenizer_path, local_rank, world_size, max_seq_len, max_batch_size
+        ckpt_dir,
+        tokenizer_path,
+        local_rank,
+        world_size,
+        max_seq_len,
+        max_batch_size,
     )
 
     results = generator.generate(

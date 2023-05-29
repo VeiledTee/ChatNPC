@@ -1,8 +1,10 @@
-import pinecone
 import numpy as np
+import pinecone
 
-with open('keys.txt', 'r') as key_file:
-    pinecone.init(api_key=key_file.readlines()[1], environment=key_file.readlines()[2])
+with open("keys.txt", "r") as key_file:
+    pinecone.init(
+        api_key=key_file.readlines()[1], environment=key_file.readlines()[2]
+    )
 
 metadata_config = {"indexed": ["color"]}
 

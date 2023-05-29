@@ -110,8 +110,8 @@ if __name__ == "__main__":
         }
     )
 
-    with open('keys.txt', 'r') as key_file:
-        openai.api_key = (key_file.readlines()[0])
+    with open("keys.txt", "r") as key_file:
+        openai.api_key = key_file.readlines()[0]
 
     print(write_exam(CHARACTER, HISTORY))
 

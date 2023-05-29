@@ -68,8 +68,6 @@ def get_information(character_name) -> None | tuple:
 def prompt_engineer(prompt: str, status: str, context: List[str]) -> str:
     """
     Given a base query and context, format it to be used as prompt
-    :param job:
-    :param receiver: The character being prompted
     :param prompt: The prompt query
     :param context: The context to be used in the prompt
     :return: The formatted prompt
@@ -99,7 +97,6 @@ def generate_conversation(
     Generate a record of the conversation a user has had with the system for feeding into gpt 3.5 turbo
     :param character_file: The file associated with a character's background, not required unless first execution of function to 'set the stage'
     :return: A list of dictionaries
-    {"role": "user", "content": "Where was it played?"}
     """
     if not HISTORY:
         with open(character_file) as char_file:
@@ -165,7 +162,7 @@ def load_file_information(load_file: str) -> List[str]:
     return clean_string
 
 
-def embed(query: str) -> str:
+def embed(query: str) -> List[float]:
     """
     Take a sentence of text and return the 384-dimension embedding
     :param query: The sentence to be embedded
@@ -186,7 +183,7 @@ def upload(
     index_name: str = "thesis-index",
 ) -> None:
     """
-    Upserts text embedding vectors into pinecone DB at the specific index
+    'Upserts' text embedding vectors into pinecone DB at the specific index
     :param data: Data to be embedded and stored
     :param text_type: The type of text we are embedding. Choose "background", "response", or "question". Default value: "background"
     :param index_name: the name of the pinecone index to save the data to
@@ -411,9 +408,12 @@ if __name__ == "__main__":
 
     file_data = load_file_information(DATA_FILE)
 
-    with open('keys.txt', 'r') as key_file:
-        openai.api_key = (key_file.readlines()[0])
-        pinecone.init(api_key=key_file.readlines()[1], environment=key_file.readlines()[2])
+    with open("keys.txt", "r") as key_file:
+        openai.api_key = key_file.readlines()[0]
+        pinecone.init(
+            api_key=key_file.readlines()[1],
+            environment=key_file.readlines()[2],
+        )
 
     chat(
         namespace=NAMESPACE,

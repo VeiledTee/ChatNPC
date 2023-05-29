@@ -8,21 +8,21 @@ from parlai.core.build_data import DownloadableFile
 
 RESOURCES = [
     DownloadableFile(
-        'http://parl.ai/downloads/light/light-dialog-processed-small7.pkl',
-        'light_data.pkl',
-        '7c83cf49818586db9999ea67a4a6ad087afbd91c26ed629a9f00e21d0b84058f',
+        "http://parl.ai/downloads/light/light-dialog-processed-small7.pkl",
+        "light_data.pkl",
+        "7c83cf49818586db9999ea67a4a6ad087afbd91c26ed629a9f00e21d0b84058f",
         zipped=False,
     ),
     DownloadableFile(
-        'http://parl.ai/downloads/light/light-unseen-processed2.pkl',
-        'light_unseen_data.pkl',
-        '489b98d08dd94eaf1ba95439d04200ccc54623ade056839f87a5c4207bc5699c',
+        "http://parl.ai/downloads/light/light-unseen-processed2.pkl",
+        "light_unseen_data.pkl",
+        "489b98d08dd94eaf1ba95439d04200ccc54623ade056839f87a5c4207bc5699c",
         zipped=False,
     ),
     DownloadableFile(
-        'http://parl.ai/downloads/light/light-environment.pkl',
-        'light_environment.pkl',
-        '162389202f22063e1c32af7f9261aac13d20fc05598388d1e9748735996ec016',
+        "http://parl.ai/downloads/light/light-environment.pkl",
+        "light_environment.pkl",
+        "162389202f22063e1c32af7f9261aac13d20fc05598388d1e9748735996ec016",
         zipped=False,
     ),
     # DownloadableFile(
@@ -39,7 +39,7 @@ RESOURCES = [
 ]
 
 
-def download_LIGHT(dpath: str = 'Data/LIGHT') -> None:
+def download_LIGHT(dpath: str = "Data/LIGHT") -> None:
     for downloadable_file in RESOURCES:
         downloadable_file.download_file(dpath)
 
@@ -56,14 +56,18 @@ def find_dupes(data_file: str) -> None:
             if item not in descriptions.keys():
                 descriptions[item] = desc
             elif descriptions[item] != desc:
-                print(f"Item: {item}\n\tSaved: {descriptions[item]}\n\tNew: {desc}")
+                print(
+                    f"Item: {item}\n\tSaved: {descriptions[item]}\n\tNew: {desc}"
+                )
                 dupe_items += 1
             total_items += 1
-        for agent in data[i]['agents']:
-            if agent['name'] not in agents.keys():
-                agents[agent['name']] = agent['persona']
-            elif agents[agent['name']] != agent['persona']:
-                print(f"Character: {agent['name']}\n\tSaved: {agents[agent['name']]}\n\tNew: {agent['persona']}")
+        for agent in data[i]["agents"]:
+            if agent["name"] not in agents.keys():
+                agents[agent["name"]] = agent["persona"]
+            elif agents[agent["name"]] != agent["persona"]:
+                print(
+                    f"Character: {agent['name']}\n\tSaved: {agents[agent['name']]}\n\tNew: {agent['persona']}"
+                )
                 dupe_characters += 1
             total_characters += 1
     print(f"{data_file} done")
@@ -73,7 +77,9 @@ def find_dupes(data_file: str) -> None:
     print(f"Character total: {total_characters}")
 
 
-def format_speech(characters: tuple, dialogue: tuple, character_to_check=None) -> None:
+def format_speech(
+    characters: tuple, dialogue: tuple, character_to_check=None
+) -> None:
     if character_to_check is None:
         for i in range(len(characters)):
             print(f"<{characters[i]}>: {dialogue[i]}")
@@ -183,11 +189,11 @@ Fisherman indexes:
     print(f"\t{data['characters'][1508]['desc']}")
 
 """
-if __name__ == '__main__':
+if __name__ == "__main__":
     # download_LIGHT()
-    directory = 'Data/LIGHT'
+    directory = "Data/LIGHT"
     for filename in os.listdir(directory):
-        if filename.endswith('.pkl'):
+        if filename.endswith(".pkl"):
             with open(f"{directory}/{filename}", "rb") as f:
                 data = pickle.load(f)
             if type(data) == dict:
@@ -216,4 +222,8 @@ if __name__ == '__main__':
                     # print(f"\tSpeech: {data[i]['speech']}")
                     # print(type(data[i]['speech']))
                     # print(f"\tSpeech: {len(data[i]['speech'])}")
-                    format_speech(characters=data[i]['character'], dialogue=data[i]['speech'], character_to_check='fisherman')
+                    format_speech(
+                        characters=data[i]["character"],
+                        dialogue=data[i]["speech"],
+                        character_to_check="fisherman",
+                    )
