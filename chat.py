@@ -32,7 +32,7 @@ def namespace_exist(namespace: str) -> bool:
     """
     index = pinecone.Index("thesis-index")  # get index
     responses = index.query(
-        embed(""),
+        embed(" "),
         top_k=1,
         include_metadata=True,
         namespace=namespace,
@@ -186,7 +186,7 @@ def upload(
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model = model.to(device)
 
-    results = index.query(embed(""), top_k=10000, namespace=namespace)
+    results = index.query(embed(" "), top_k=10000, namespace=namespace)
 
     # upload data to pinecone index
     for j in tqdm(range(0, len(data), STRIDE)):
