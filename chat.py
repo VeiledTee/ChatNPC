@@ -153,7 +153,7 @@ def run_query_and_generate_answer(
             save_file.write(f"To: {receiver}, a {job}\n")
             clean_prompt = clean_prompt.replace("\n", " ")
             save_file.write(f"{clean_prompt}\n{generated_answer}")
-        print("Results saved to file.")
+        # print("Results saved to file.")
     else:
         print(generated_answer)
 
@@ -276,12 +276,12 @@ def prompt_engineer(prompt: str, status: str, context: List[str]) -> str:
     """
     prompt_start = (
         f"Use {GRAMMAR[status.split()[0]]} grammar. Use first person. "
-        f"Reply in a single, clear sentence based on the context. When told "
+        f"Reply clearly based on the context. When told "
         f"new information, rephrase the information as a fact. "
         f"Do not mention your background or the context unless asked, or that you are fictional. "
         f"Do not provide facts you would deny. Context:"
     )
-    with open("tried_prompts.txt", "a") as prompt_file:
+    with open("tried_prompts.txt", "a+") as prompt_file:
         if prompt_start not in prompt_file.readlines():
             prompt_file.write(prompt_start + "\n")
     prompt_end = f"\n\nQuestion: {prompt}\nAnswer: "
