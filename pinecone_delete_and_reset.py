@@ -51,10 +51,6 @@ if __name__ == "__main__":
     # print(responses)
     #
     # time.sleep(100)
-    # index.delete(delete_all=True, namespace="melinda-deek")
-
-    # pinecone.delete_index(INDEX_NAME)  # delete old index
-    # print(f"{INDEX_NAME} deleted")
 
     # Open file of characters and load its contents into a dictionary
     with open("Text Summaries/characters.json", "r") as f:
@@ -62,7 +58,6 @@ if __name__ == "__main__":
 
     delete_all_vectors(names)
     print('deleted')
-    # time.sleep(100)
 
     # loop through characters and store background in database
     for i in range(len(names)):
@@ -75,15 +70,11 @@ if __name__ == "__main__":
 
         NAMESPACE: str = extract_name(DATA_FILE).lower()
         char_info: List[str] = load_file_information(DATA_FILE)
-        # for c in char_info:
-        #     upload(
-        #         NAMESPACE,
-        #         [c],
-        #         "background",
-        #     )
+
         upload(
             NAMESPACE,
             load_file_information(DATA_FILE),
+            index,
             "background",
         )
 

@@ -117,7 +117,7 @@ def run_query_and_generate_answer(
     # upload data and generate query embedding.
     embedded_query = embed(query=query)
 
-    upload(namespace, data, "background", index_name)
+    upload(namespace, data, index, "background", index_name)
 
     # query Pinecone index and get context for model prompting.
     responses = index.query(
@@ -132,6 +132,8 @@ def run_query_and_generate_answer(
             ]
         },
     )
+
+    print(responses)
 
     # Filter out responses containing the string "Player:"
     context = [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
@@ -165,6 +167,7 @@ def run_query_and_generate_answer(
         info_file=DATA_FILE,
         prompt=query,
         response=generated_answer.split(": ")[-1],
+        index=index
     )
 
     return generated_answer
@@ -208,6 +211,7 @@ def embed(query: str) -> List[float]:
 def upload(
     namespace: str,
     data: List[str],
+    index: pinecone.Index,
     text_type: str = "background",
     index_name: str = "thesis-index",
     window: int = 3,
@@ -230,15 +234,14 @@ def upload(
     if namespace_exist(namespace) and text_type == "background":
         return None
 
-    # connect to pinecone and retrieve index
-    index = pinecone.Index(index_name)
-
-    results = index.query(embed(" "), top_k=10000, namespace=namespace)
-
     # upload data to pinecone index
     for j in tqdm(range(0, len(data), stride)):
         j_end = min(j + window, len(data))  # get end of batch
-        ids = [str(len(results["matches"]) + i) for i in range(j, j_end)]  # generate ID
+        stats = index.describe_index_stats()
+        try:
+            ids = [str(stats['namespaces'][namespace]['vector_count'] + i) for i in range(j, j_end)]  # generate ID
+        except KeyError:
+            ids = [str(0 + i) for i in range(j, j_end)]  # generate ID
         metadata = [{"text": text, "type": text_type} for text in data[j:j_end]]  # generate metadata
         embeddings = [embed(i) for i in data[j:j_end]]  # get embeddings for each sentence
         curr_record = zip(ids, embeddings, metadata)  # compile into single vector
@@ -276,14 +279,13 @@ def prompt_engineer(prompt: str, status: str, context: List[str]) -> str:
     :return: The formatted prompt
     """
     prompt_start = (
-        f"Use {GRAMMAR[status.split()[0]]} grammar. Use first person. "
-        f"Reply clearly based only on the context and your background. When told "
+        f"Using {GRAMMAR[status.split()[0]]} grammar and first person, "
+        f"reply in a single sentence based on the context. When told "
         f"new information, summarize and repeat it back to the user. "
-        f"Do not mention your background or the context unless asked, or that you are fictional. "
-        f"Do not make up facts. Context:"
+        f"Do not make up information. Context:"
     )
     with open("tried_prompts.txt", "a+") as prompt_file:
-        if prompt_start not in prompt_file.readlines():
+        if prompt_start + "\n" not in prompt_file.readlines():
             prompt_file.write(prompt_start + "\n")
     prompt_end = f"\n\nQuestion: {prompt}\nAnswer: "
     prompt_middle = ""
@@ -330,6 +332,7 @@ def update_history(
     info_file: str,
     prompt: str,
     response: str,
+    index: pinecone.Index,
     index_name: str = "thesis_index",
     character: str = "Player",
 ) -> None:
@@ -339,11 +342,12 @@ def update_history(
     :param info_file: file where chat history is logged
     :param prompt: prompt user input
     :param response: response given by LLM
+    :param index:
     :param index_name: name of the index associated with the namespace
     :param character: the character we are conversing with
     """
-    upload(namespace, [prompt], "query", index_name)  # upload prompt to pinecone
-    upload(namespace, [response], "response", index_name)  # upload response to pinecone
+    upload(namespace, [prompt], index, "query", index_name)  # upload prompt to pinecone
+    upload(namespace, [response], index, "response", index_name)  # upload response to pinecone
 
     info_file = f"{info_file.split('/')[0]}/Chat Logs/{info_file.split('/')[-1]}"  # swap directory
     extension_index = info_file.index(".")
@@ -419,5 +423,4 @@ if __name__ == "__main__":
         receiver=CHARACTER,
         job=PROFESSION,
         status=SOCIAL_CLASS,
-        index_name=INDEX_NAME,
     )

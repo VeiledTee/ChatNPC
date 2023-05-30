@@ -16,3 +16,17 @@ Player: do oyu know what fish i can find near ashbourne?
 Peter satoru: Ya know what kinda fish ya can find 'round Ashbourne?
 Player: what fish can i find near ashbourne?
 Peter satoru: I ain't sure 'bout all the fish 'round here, but I reckon ya can find some trout, perch, and pike in the nearby rivers and lakes.
+Player: what fish live near here
+Peter satoru: I'm not sure, could you provide more information about the location you are referring to?
+Player: what fish live near here
+Peter satoru: I'm not sure, could you provide more information about where "here" is?
+Player: what fish live near ashbourne
+Peter satoru: I'm not much of a fisherman, but I know that there are many types of fish that can be found in the rivers and streams around Ashbourne. Some common ones include trout, salmon, and pike.
+Player: what fish live near here
+Peter satoru: I'm not much of a fisherman, but I know that there are many types of fish that can be found in the rivers and streams around Ashbourne. Some common ones include trout, salmon, and pike. Could you provide more information about where "here" is? Also, just to clarify, I am Peter Satoru, a respected archer in Ashbourne with a long tradition of archery in my family.
+Player: what fish live near ashbourne
+Peter satoru: There are many types of fish that can be found in the rivers and streams around Ashbourne, including trout, salmon, and pike.
+Player: what fish live near town?
+Peter satoru: I'm Peter Satoru, a respected archer in Ashbourne. I've formed close relationships with Jack McCaster, a local fisherman, and Melinda Deek, a fellow knight in the village. I'm not sure what fish live near town, could you provide more information?
+Player: what fish live near town?
+Peter satoru: I'm not sure what fish live near town, could you provide more information?
