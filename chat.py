@@ -59,7 +59,6 @@ def chat(
     receiver: str,
     job: str,
     status: str,
-    index_name: str,
 ) -> None:
     """
     Initiate a conversation with a character. Stops conversation when player says "bye".
@@ -68,7 +67,6 @@ def chat(
     :param receiver: The character receiving query
     :param job: The character's profession
     :param status: Social status of character
-    :param index_name: The index name of the pinecone index
     :return: None
     """
     while True:
@@ -84,7 +82,6 @@ def chat(
             job=job,
             status=status,
             query=QUERY,
-            index_name=index_name,
         )
 
         print(f"{receiver}: {final_answer}")
@@ -97,7 +94,7 @@ def run_query_and_generate_answer(
     receiver: str,
     job: str,
     status: str,
-    index_name: str,
+    index_name: str = "thesis-index",
     save: bool = True,
 ) -> str:
     """
@@ -115,7 +112,7 @@ def run_query_and_generate_answer(
     generate_conversation(f"Text Summaries/Summaries/{namespace.replace('-', '_')}.txt", True, query)
 
     # connect to index
-    index = pinecone.Index(INDEX_NAME)
+    index = pinecone.Index(index_name)
 
     # upload data and generate query embedding.
     embedded_query = embed(query=query)
@@ -213,6 +210,8 @@ def upload(
     data: List[str],
     text_type: str = "background",
     index_name: str = "thesis-index",
+    window: int = 3,
+    stride: int = 2,
 ) -> None:
     """
     'Upserts' text embedding vectors into pinecone DB at the specific index
@@ -221,6 +220,8 @@ def upload(
     :param text_type: The type of text we are embedding. Choose "background", "response", or "question".
         Default value: "background"
     :param index_name: the name of the pinecone index to save the data to
+    :param window: how many sentences are combined
+    :param stride: used to create overlap, num sentences we 'stride' over
     """
     if not pinecone.list_indexes():  # check if there are any indexes
         # create index if it doesn't exist
@@ -230,14 +231,14 @@ def upload(
         return None
 
     # connect to pinecone and retrieve index
-    index = pinecone.Index(INDEX_NAME)
+    index = pinecone.Index(index_name)
 
     results = index.query(embed(" "), top_k=10000, namespace=namespace)
 
     # upload data to pinecone index
-    for j in tqdm(range(0, len(data), STRIDE)):
-        j_end = min(j + WINDOW, len(data))  # get end of batch
-        ids = [str(len(results["matches"])) for _ in range(j, j_end)]  # generate ID
+    for j in tqdm(range(0, len(data), stride)):
+        j_end = min(j + window, len(data))  # get end of batch
+        ids = [str(len(results["matches"]) + i) for i in range(j, j_end)]  # generate ID
         metadata = [{"text": text, "type": text_type} for text in data[j:j_end]]  # generate metadata
         embeddings = [embed(i) for i in data[j:j_end]]  # get embeddings for each sentence
         curr_record = zip(ids, embeddings, metadata)  # compile into single vector
@@ -276,10 +277,10 @@ def prompt_engineer(prompt: str, status: str, context: List[str]) -> str:
     """
     prompt_start = (
         f"Use {GRAMMAR[status.split()[0]]} grammar. Use first person. "
-        f"Reply clearly based on the context. When told "
-        f"new information, rephrase the information as a fact. "
+        f"Reply clearly based only on the context and your background. When told "
+        f"new information, summarize and repeat it back to the user. "
         f"Do not mention your background or the context unless asked, or that you are fictional. "
-        f"Do not provide facts you would deny. Context:"
+        f"Do not make up facts. Context:"
     )
     with open("tried_prompts.txt", "a+") as prompt_file:
         if prompt_start not in prompt_file.readlines():
@@ -381,8 +382,6 @@ if __name__ == "__main__":
         "middle": "satisfactory",
         "high": "formal",
     }
-    WINDOW: int = 3  # how many sentences are combined
-    STRIDE: int = 2  # used to create overlap, num sentences we 'stride' over
 
     HISTORY: List[dict] = []
 
@@ -390,9 +389,9 @@ if __name__ == "__main__":
     # CHARACTER: str = "Evelyn Stone-Brown"  # blacksmith
     # CHARACTER: str = "Caleb Brown"  # baker
     # CHARACTER: str = 'Jack McCaster'  # fisherman
-    # CHARACTER: str = "Peter Satoru"  # archer
+    CHARACTER: str = "Peter Satoru"  # archer
     # CHARACTER: str = "Melinda Deek"  # knight
-    CHARACTER: str = "Sarah Ratengen"  # tavern owner
+    # CHARACTER: str = "Sarah Ratengen"  # tavern owner
 
     with open("Text Summaries/characters.json", "r") as f:
         names = json.load(f)

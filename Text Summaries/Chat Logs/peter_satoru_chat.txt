@@ -10,3 +10,9 @@ Player: what fish live near ashbourne
 Peter satoru: I don't know much about the fish that live near Ashbourne, but I heard there's plenty of them in the rivers. |
 Player: do chromaflukes live near ashbourne?
 Peter satoru: Chromaflukes live in the east river and blackfins live in the west. |
+Player: what fish near here
+Peter satoru: What kinda fish you catchin' 'round here?
+Player: do oyu know what fish i can find near ashbourne?
+Peter satoru: Ya know what kinda fish ya can find 'round Ashbourne?
+Player: what fish can i find near ashbourne?
+Peter satoru: I ain't sure 'bout all the fish 'round here, but I reckon ya can find some trout, perch, and pike in the nearby rivers and lakes.
