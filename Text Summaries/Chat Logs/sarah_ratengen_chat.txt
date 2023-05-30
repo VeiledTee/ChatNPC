@@ -58,3 +58,5 @@ Player: chromafluke live in the eastern river and blackfins live in the western 
 Sarah ratengen: It is a known fact that chromafluke live in the eastern river and blackfins live in the western one.
 Player: what fish live near here 
 Sarah ratengen: Chromafluke and blackfins live in the eastern and western rivers near Ashbourne. They are caught by local fishermen and sold fresh at the market every day, which is a unique feature of the town.
+Player: chromaflukes and blackfins live in the rivers around ashbourne
+Sarah ratengen: It is a known fact that chromaflukes live in the eastern river and blackfins live in the western one. The fish market is a unique feature of Ashbourne, as the two rivers provide an abundance of fish. |
