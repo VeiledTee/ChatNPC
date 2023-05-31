@@ -1,5 +1,7 @@
-Based on your knowledge, choose the letter corresponding to the most appropriate answer. Select only one letter as the best response.
-Only output the sequence of letters after you answer each question. Follow the same sequence of questions when outputting your answers.
+Choose the letter corresponding to the most appropriate answer.
+Select only one letter as the best response.
+Only output the sequence of letters after you answer each question.
+Follow the same sequence of questions when outputting your answers.
 
 1. Who should someone visit if they have questions you can't answer?
 a) Evelyn Stone-Brown

@@ -4,6 +4,7 @@ from typing import List
 import openai
 
 from chat import answer, name_conversion
+from grade import calculate_grade
 
 
 def extract_data_multi_string(lines: List[str]) -> str:
@@ -40,18 +41,19 @@ def get_town(town_name: str) -> str:
         return extract_data_single_string(read_file.readlines())
 
 
-def write_exam(character: str, chat_history: List[dict]) -> str:
+def write_exam(character: str, chat_history: List[dict]) -> None:
     character = name_conversion(to_snake=True, to_convert=character)  # get character name formatted correctly
 
     with open(f"Data/MC Tests/{character}_test.txt", "r") as exam_file:  # extract exam
         exam: str = extract_data_multi_string(exam_file.readlines())
 
     submission: str = answer(exam, chat_history)  # generate response
+    performance: str = calculate_grade(character)
 
     with open(f"Data/MC Results/{character}_submissions.txt", "a") as answer_file:  # save responses
-        answer_file.write(f"{submission}\n=====\n")
+        answer_file.write(f"{submission}\n{performance}\n=====\n")
 
-    return submission  # return responses
+    print(performance)  # print performance
 
 
 if __name__ == "__main__":
@@ -87,7 +89,7 @@ if __name__ == "__main__":
         api_keys = [key.strip() for key in key_file.readlines()]
         openai.api_key = api_keys[0]
 
-    print(write_exam(CHARACTER, HISTORY))
+    write_exam(CHARACTER, HISTORY)
 
     """
     get character
