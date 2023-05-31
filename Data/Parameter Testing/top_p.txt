@@ -1,0 +1,32 @@
+Prompt | Response | top_p Value
+what fish live near here | I ain't really sure, maybe Jack McCaster, the local fisherman might know more 'bout the fish 'round these parts. | 1
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.1
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.25
+what fish live near here | Oh, I'm not sure, but Jack McCaster, a local fisherman, might know what fish live near town. | 0.5
+what fish live near here | Oh, me not know much about fish, but Jack McCaster, him local fisherman, might know what fish live near town. | 0.75
+what fish live near here | I'm not sure, but Jack McCaster, a local fisherman, might know more about what fish live near town. | 1
+==========
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.0
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.1
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.2
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.3
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.4
+what fish live near here | I don't know, but Jack McCaster, a local fisherman, might know what fish live near town. | 0.5
+what fish live near here | I'm not sure, but Jack McCaster, a local fisherman, might know what fish live near town. | 0.6
+what fish live near here | I don't know, but Jack McCaster, a local fisherman, might know. He's a friend of mine and knows a lot about the fish that live in these parts. | 0.7
+what fish live near here | Oh, me not sure 'bout dat, but Jack McCaster, he be knowin' 'bout fish 'round here. | 0.8
+what fish live near here | I'm not sure, but my close friend Jack McCaster, a local fisherman, may know what fish live near town. | 0.9
+what fish live near here | Oh, I not know for sure, but Jack McCaster, he be a fisherman, he might know about what fish live near town. | 1.0
+==========
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.00
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.10
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.20
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.30
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.40
+what fish live near here | Oh, I don't know much about fish, but my friend Jack McCaster, who is a local fisherman, might know what kind of fish live near our town. | 0.50
+what fish live near here | I don't know, but Jack McCaster, a local fisherman, might know. He's a friend of mine and knows a lot about the fish in these parts. | 0.60
+what fish live near here | Oh, I don't know about that, but my friend Jack McCaster, who is a local fisherman, might know. | 0.70
+what fish live near here | I don't know, but Jack McCaster, a local fisherman, might know what fish live near town. | 0.80
+what fish live near here | I dunno much 'bout fish, but maybe Jack McCaster knows. He's a local fisherman 'round these parts, and I'm close with him. | 0.90
+what fish live near here | I not sure, maybe Jack McCaster know. Jack is a buddy of mine, he is a fisherman and live here in Ashbourne his whole life, I think he know what fish can be found nearby. | 1.00
+==========

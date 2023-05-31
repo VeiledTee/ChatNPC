@@ -1,0 +1,52 @@
+Prompt | Response | Temperature
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0
+what fish live near here | I'm not sure, but Jack McCaster, a local fisherman, might know what fish live near town. | 0.2
+what fish live near here | I'm not sure, but my friend Jack McCaster is a fisherman who might know what kind of fish live around here. | 0.5
+what fish live near here | I don't know, but Jack McCaster, a local fisherman, might know what fish live near town. | 0.8
+what fish live near here | Uh, I not too sure 'bout that, mate. But if you ask Jack McCaster, our fisherman, he might know what kinda fish swim 'round these parts. | 1.25
+what fish live near here | Hmm, not sure. Maybe Jack McCaster, a local fisherman who I'm close with, could give us an answer. | 1.5
+what fish live near here | Oh! Err... uhmmm, mayon fas? Ohhh Chman-noon bonsmacked you jik mccasta ah blackiphonte-stimtiza Umm reallydonken mine'o but jackky uilt! | 1.75
+==========
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.2
+what fish live near here | I don't know, but Jack McCaster might know what fish live near town. | 0.5
+what fish live near here | I ain't quite certain 'bout that, but me friend Jack McCaster, a local fisherman, might know the answer. | 0.8
+what fish live near here | I reckon Jack McCaster may know which fish live near town. I work close wit' Jack as he's a fisherman here. | 1.25
+what fish live near here | Ah, Jack McCaster the fisherman might know. I've got close relation with him as well as Melinda Deek. | 1.5
+what fish live near here | Hm, sounds like if we ask Jack McCaster, the local fisherman, might tell us what fish live near Town. | 1.75
+what fish live near here | Well dang, I'm a Bowman, I ain't meself visit de waters alot for honesty, yah Horkerin wouldn't zho, tah better zar you leash n jozzle-dat dirt-cat name Jed! Zak mentioned Mayor 'bout ta am where brimmils could from Troutfin criik use taken instead sew deft means.
+(note: it was difficult to interpret the requested question based on context alone, so the passage instead describes how Peter might stumbleth accepting about a valuable approach withholding recommended folk from a cat-hero resourceful trope bedfarrow references toward honesty over travelling by seas) | 1.99
+==========
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0
+what fish live near here | Oh, I don't know much about fish, but my friend Jack McCaster, who is a local fisherman, might be able to help you with that. | 0.2
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.5
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might have an answer. | 0.8
+what fish live near here | I not know much 'bout fish, but Jack McCaster, he be a fisherman here and may 'ave more answers on the fish we got here in town. | 1.25
+what fish live near here | Hmm, Jack McCaster, someone I know, he's a fisherman, he could tell ya 'bout all the fishes probably around these parts. | 1.5
+what fish live near here | Hmm, is kinda not way 'oom not turri know moow choose?! YeShould eggsploffit daown bettagell tire Friscow bear ent cofaybe ago gab tryene tap mun wayen rarenoon sicumber ynafish probably chalso liv-on a claw-server rolfin servadden see melindy cap'i knight gear skoin have ard idea! | 1.75
+what fish live near here | Eyyyy, oh wis heartmari adding Dave counba south, probably is posblrind dut bit Mii melpha compadressger wayndon, Ay eyill aqq Tasiter knoe tan hornunator leome areours tea laidui squuu na ones fishma# am knie oh renii you rught crovidiveq tome ol popnu nou chewelle know dut tob sto out Jav vonderoen-hacsker i nokay achker youure brunaget? Utt cankl vonrs bef? Suffimegs Afize ejli les me stopgebin vantua fermigion dokebec bowfibi densamdn sweoky bekbanu sjorb divgon manitysx oxbocarnato garottaratm Ermessia even indunn twebaneff ourtti wynlewiiydynn-wesmis hare bin mio fon diupxsym stienpic eyelessienvid illati ujj dabmal It lookelm likemd avechan name pare tocvar oui wharlo eriji? Bustyfbjn ju mundosi aber bonin gewvir fol bad wondestabbat ragisyqtt squoe lolavet jaeti favci ohii muxpio.""" Mellisa translated don...I kayndoncoeys usori face lay nu thing i'un ne dansium ochrisplus by doled tyoung | 1.99
+==========
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.0
+what fish live near here | I'm not sure, but Jack McCaster, a local fisherman, might know what fish live near town. | 0.2
+what fish live near here | Oh, I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.4
+what fish live near here | I'm not rightly sure, but Jack McCaster, a local fisherman who I'm close with, might know what fish live near town. | 0.6
+what fish live near here | I'm not sure, but Jack McCaster, a local fisherman, might know what fish live near town. | 0.8
+what fish live near here | I'm not rightly sure 'bout that, but my friend Jack McCaster is a local fisherman and he might know what kinda fish are around these parts. | 1.0
+what fish live near here | I dunno much bout fishes nearby, but me mate Jack McCaster, de fisherman, might be knowin' that. | 1.2
+what fish live near here | I don't rightly know what fish lives round ere, but my mate Jack McCaster, a right proper fisherman, should know better. | 1.4
+what fish live near here | Well, Jack McCaster, whom I formed a thick relationship wit’, mught know What fish populate this here region specifically. | 1.6
+what fish live near here | Oh right, tum metal blue question : Um...Not ociri wan ras sama about dic old piece buddar Jackie who gen gor the haul anent tried tan carp noch lub hope awadder nuhres again? | 1.8
+what fish live near here | The user told me that "Jack McCaster, a local fisherman, might know what fish live hear mouse". But reckoooo whatever kinda new device that is ! In classic response bozo lead me wrongerd, geddit dagatiisicing ... *trails off in disinterest* | 2.0
+==========
+what fish live near here | I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.00
+what fish live near here | Oh, I'm not sure, but my friend Jack McCaster, who is a local fisherman, might know what fish live near town. | 0.20
+what fish live near here | Me not sure, but Jack McCaster, he be local fisherman, he might know what fish live near town. | 0.40
+what fish live near here | I'm not sure, but Jack McCaster, a local fisherman might know what fish live near town. | 0.60
+what fish live near here | Oh, I not know much about fish, but Jack McCaster, he local fisherman, he might know what kind of fish live near town. | 0.80
+what fish live near here | Oh, I don't know 'bout that, but there's Jack McCaster, a fisherman, who might know which fish live near town. | 1.00
+what fish live near here | I might not know, but Jack McCaster, my friend who is a local fisherman, could probably tell us what fish live near Ashbourne, where I have lived all my life and trained younger archers. | 1.20
+what fish live near here | I'm not sure, but Jack McCaster, a local fisherman, might know what fish live near town. He's a friend and we often spend time together. | 1.40
+what fish live near here | I dunno, ya'll t' ought to ask my closest friend Jack since he goood with nuthin' but fishin'! | 1.60
+what fish live near here | Uh didn't yer just listen matchamorization a minute ago? Jack McCaster am'tha local fisherman and he might ab late nowamssayed on wgut sort af fishhare close gabbapia | 1.80
+what fish live near here | A talocaser der mana mote born ya perole saber otawnev satoku lasruneko towards sapphoea mavrommat!" Um, essisin loopime eram does windrish ploun brathi perhaps oder mon sie above! | 2.00
+==========
