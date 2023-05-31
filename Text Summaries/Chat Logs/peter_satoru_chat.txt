@@ -30,3 +30,9 @@ Player: what fish live near town?
 Peter satoru: I'm Peter Satoru, a respected archer in Ashbourne. I've formed close relationships with Jack McCaster, a local fisherman, and Melinda Deek, a fellow knight in the village. I'm not sure what fish live near town, could you provide more information?
 Player: what fish live near town?
 Peter satoru: I'm not sure what fish live near town, could you provide more information?
+Player: what fish lvie near town?
+Peter satoru: I'm sorry, I don't have that information.
+Player: what fish live near town
+Peter satoru: I'm not sure, but Jack McCaster, a local fisherman, might know what fish live near town.
+Player: what fish live near here
+Peter satoru: I'm not sure, but Jack McCaster, a local fisherman, might know what fish live near town.

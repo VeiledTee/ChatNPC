@@ -85,6 +85,7 @@ def chat(
         )
 
         print(f"{receiver}: {final_answer}")
+        print(HISTORY)
 
 
 def run_query_and_generate_answer(
