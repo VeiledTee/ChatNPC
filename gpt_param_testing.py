@@ -78,6 +78,6 @@ if __name__ == '__main__':
         api_keys = [key.strip() for key in key_file.readlines()]
         openai.api_key = api_keys[0]
 
-    # temperature_testing(list(np.linspace(0, 2, 11)))
-    # top_p_testing(list(np.linspace(0, 1, 11)))
+    temperature_testing(list(np.linspace(0, 2, 11)))
+    top_p_testing(list(np.linspace(0, 1, 11)))
     n_testing([1, 2, 3])
