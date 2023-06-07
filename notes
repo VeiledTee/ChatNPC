@@ -1,0 +1,46 @@
+- bullet point
+* to do
+
+NOTES:
+- use vector database for efficient storage and retrieval of data
+- for testing model:
+	- difficulty with complex choices for answers
+		i.e. a) N + S
+	- answer must be in either character file or town file
+	* incorporate database in future
+* vet information and determine if new or not
+- dynamic ID
+* test different embeddings (all-mpnet-base-v2 vs all-MiniLM-L6-v2)
+-----------------------------------
+Paper flow:
+Intro
+    Introduce project and motivation
+Related Works
+    Embeddings
+        word
+        context/sentence
+    Generated text
+        SotA models
+    LLM Identity?
+    Prompt Engineering
+    Dialogue Systems?
+Challenges
+    Hallucination
+    Over-Saturated Database
+
+Building the Dialogue System
+    Model selection
+        LLaMA
+        GPT-J
+        GPT 3.5
+        Final Decision
+    Knowledge Base
+        Relational Database
+        Vector Database
+
+
+-------------------------------
+Hallucinating example
+can you provide me references for an author that discusses AI in dialogue systems
+chat online -> Hallucinated a book that exists but incorrect authors
+after asking it to verify actual book
