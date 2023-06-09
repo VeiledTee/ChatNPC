@@ -703,3 +703,9 @@
 /keys.txt
 /schema.txt
 /paper comparison
+/grammar_check.py
+/Data/LIGHT/light_data.pkl
+/Data/LIGHT/light_environment.pkl
+/Data/LIGHT/light_unseen_data.pkl
+/.idea/Thesis.iml
+/torch_test.py
