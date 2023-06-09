@@ -35,10 +35,11 @@ if __name__ == "__main__":
         file_data = load_file_information(DATA_FILE)
 
         with open("keys.txt", "r") as key_file:
-            openai.api_key = key_file.readlines()[0]
+            api_keys = [key.strip() for key in key_file.readlines()]
+            openai.api_key = api_keys[0]
             pinecone.init(
-                api_key=key_file.readlines()[1],
-                environment=key_file.readlines()[2],
+                api_key=api_keys[1],
+                environment=api_keys[2],
             )
 
         final_answer = run_query_and_generate_answer(

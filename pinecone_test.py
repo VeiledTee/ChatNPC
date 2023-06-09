@@ -2,8 +2,11 @@ import numpy as np
 import pinecone
 
 with open("keys.txt", "r") as key_file:
-    pinecone.init(api_key=key_file.readlines()[1], environment=key_file.readlines()[2])
-
+    api_keys = [key.strip() for key in key_file.readlines()]
+    pinecone.init(
+        api_key=api_keys[1],
+        environment=api_keys[2],
+    )
 metadata_config = {"indexed": ["color"]}
 
 if len(pinecone.list_indexes()) == 0:  # if no indices

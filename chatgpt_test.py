@@ -1,7 +1,8 @@
 import openai
 
 with open("keys.txt", "r") as key_file:
-    openai.api_key = key_file.readlines()[0]
+    api_keys = [key.strip() for key in key_file.readlines()]
+    openai.api_key = api_keys[0]
 
 PROMPT = "Imagine you are a fisherman"
 
