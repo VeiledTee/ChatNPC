@@ -1,0 +1,101 @@
+ID,Phrase,Topic
+0,John's favorite food is pizza.,X's favourite food is Y
+1,Sarah's go-to dish is sushi.,X's favourite food is Y
+2,Alex can't resist a juicy burger.,X's favourite food is Y
+3,"Emily's preferred cuisine is Mexican, with tacos being her favorite.",X's favourite food is Y
+4,"James is a fan of Italian food, particularly lasagna.",X's favourite food is Y
+5,Olivia's taste buds crave Thai curry.,X's favourite food is Y
+6,Michael is known for devouring plates of barbecue ribs.,X's favourite food is Y
+7,Emma's ultimate comfort food is macaroni and cheese.,X's favourite food is Y
+8,David's all-time favorite is a classic steak.,X's favourite food is Y
+9,Sophia can't get enough of chocolate chip cookies.,X's favourite food is Y
+10,Ryan can never resist a delicious plate of spaghetti and meatballs.,X's favourite food is Y
+11,Lily's ultimate indulgence is a creamy bowl of lobster bisque.,X's favourite food is Y
+12,Ethan's taste buds rejoice at the sight of a perfectly cooked medium-rare steak.,X's favourite food is Y
+13,Ava's gastronomic passion lies in devouring bowls of aromatic shrimp pad Thai.,X's favourite food is Y
+14,Benjamin's culinary weakness is a plate of mouthwatering buffalo wings.,X's favourite food is Y
+15,Chloe's preferred delicacy is a plate of fresh and flavorful sushi rolls.,X's favourite food is Y
+16,Daniel's heart skips a beat for a generous serving of crispy bacon.,X's favourite food is Y
+17,"Mia's taste buds dance with delight when she bites into a warm, buttery croissant.",X's favourite food is Y
+18,Ethan's cravings are satisfied by a hearty serving of spicy buffalo chicken pizza.,X's favourite food is Y
+19,Isabella's guilty pleasure is a sinfully decadent chocolate lava cake.,X's favourite food is Y
+20,The goldfish calls that pond home.,X fish lives in that pond
+21,The koi fish resides within that pond.,X fish lives in that pond
+22,The guppy has made that pond its habitat.,X fish lives in that pond
+23,The betta fish claims that pond as its domain.,X fish lives in that pond
+24,The angelfish has chosen that pond as its dwelling place.,X fish lives in that pond
+25,The trout can be found swimming in that pond.,X fish lives in that pond
+26,The catfish has taken up residence in that pond.,X fish lives in that pond
+27,The clownfish has found its niche in that pond.,X fish lives in that pond
+28,The swordtail fish has established its territory in that pond.,X fish lives in that pond
+29,The carp is comfortably settled in that pond's waters.,X fish lives in that pond
+30,The pufferfish resides peacefully in that pond.,X fish lives in that pond
+31,The swordfish has established its abode in that pond.,X fish lives in that pond
+32,The mackerel fish can be observed swimming in that pond.,X fish lives in that pond
+33,The carp fish has taken up residence in that pond.,X fish lives in that pond
+34,The bass fish calls that pond its home base.,X fish lives in that pond
+35,The perch fish can be found in that pond.,X fish lives in that pond
+36,The plaice fish has made that pond its living quarters.,X fish lives in that pond
+37,The haddock fish resides in that pond.,X fish lives in that pond
+38,The sardine fish has settled in that pond.,X fish lives in that pond
+39,The flounder fish thrives within the depths of that pond.,X fish lives in that pond
+40,Sarah adores painting.,X loves doing Y
+41,James is passionate about playing basketball.,X loves doing Y
+42,Emma finds great joy in gardening.,X loves doing Y
+43,David is enthusiastic about playing the guitar.,X loves doing Y
+44,Olivia takes delight in photography.,X loves doing Y
+45,Michael loves cooking delicious meals.,X loves doing Y
+46,Sophia revels in reading fantasy novels.,X loves doing Y
+47,Ethan thoroughly enjoys hiking in nature.,X loves doing Y
+48,Ava is dedicated to practicing yoga.,X loves doing Y
+49,Liam finds excitement in playing video games.,X loves doing Y
+50,Mia has a deep passion for dancing.,X loves doing Y
+51,Noah loves exploring new places through traveling.,X loves doing Y
+52,Harper takes pleasure in solving crossword puzzles.,X loves doing Y
+53,Benjamin is engrossed in coding and programming.,X loves doing Y
+54,Isabella finds happiness in horseback riding.,X loves doing Y
+55,Alexander is fascinated by astronomy and stargazing.,X loves doing Y
+56,Charlotte is an avid swimmer and loves being in the water.,X loves doing Y
+57,William loves playing chess and strategizing.,X loves doing Y
+58,Amelia enjoys knitting and creating beautiful crafts.,X loves doing Y
+59,Lucas is passionate about playing the piano and composing music.,X loves doing Y
+60,Sarah has a keen interest in astronomy.,X is interested in Y
+61,James is fascinated by ancient history.,X is interested in Y
+62,Emma shows a strong interest in environmental conservation.,X is interested in Y
+63,David has a deep curiosity for psychology.,X is interested in Y
+64,Olivia is passionate about graphic design.,X is interested in Y
+65,Michael has a genuine interest in world politics.,X is interested in Y
+66,Sophia finds art history captivating.,X is interested in Y
+67,Ethan is intrigued by artificial intelligence.,X is interested in Y
+68,Ava is enthusiastic about sustainable fashion.,X is interested in Y
+69,Liam is deeply interested in sports analytics.,X is interested in Y
+70,Mia has a strong inclination towards marine biology.,X is interested in Y
+71,Noah is engrossed in learning about quantum physics.,X is interested in Y
+72,Harper has a keen interest in learning foreign languages.,X is interested in Y
+73,Benjamin is fascinated by entrepreneurship and startups.,X is interested in Y
+74,Isabella shows great interest in organic farming.,X is interested in Y
+75,Alexander is captivated by architecture and urban design.,X is interested in Y
+76,Charlotte is interested in mindfulness and meditation.,X is interested in Y
+77,William has a genuine interest in classical literature.,X is interested in Y
+78,Amelia is passionate about social justice and activism.,X is interested in Y
+79,Lucas is interested in exploring the field of artificial intelligence.,X is interested in Y
+80,Sarah likes to stargaze at night.,At night X likes to Y
+81,James enjoys reading books before bed.,At night X likes to Y
+82,Emma loves to take long walks under the moonlight.,At night X likes to Y
+83,David enjoys watching movies late into the night.,At night X likes to Y
+84,Olivia finds solace in practicing yoga before sleeping.,At night X likes to Y
+85,Michael likes to play video games during the nighttime.,At night X likes to Y
+86,Sophia enjoys writing in her journal before going to sleep.,At night X likes to Y
+87,Ethan likes to listen to music and unwind at night.,At night X likes to Y
+88,Ava finds relaxation in taking a warm bath before bedtime.,At night X likes to Y
+89,Liam loves to have deep conversations with friends late at night.,At night X likes to Y
+90,Mia enjoys painting and creating artwork during nighttime.,At night X likes to Y
+91,Noah finds pleasure in stargazing and identifying constellations.,At night X likes to Y
+92,Harper likes to curl up with a good book and a cup of tea at night.,At night X likes to Y
+93,Benjamin enjoys solving puzzles and brain teasers before bed.,At night X likes to Y
+94,Isabella likes to practice meditation and mindfulness before sleeping.,At night X likes to Y
+95,Alexander enjoys playing musical instruments in the quiet of the night.,At night X likes to Y
+96,Charlotte likes to watch documentaries and expand her knowledge at night.,At night X likes to Y
+97,William enjoys writing poetry and reflecting on his day during nighttime.,At night X likes to Y
+98,Amelia finds joy in knitting or doing crafts before bedtime.,At night X likes to Y
+99,Lucas likes to explore the world of photography and take night shots.,At night X likes to Y
