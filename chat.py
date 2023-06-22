@@ -202,8 +202,8 @@ def embed(query: str) -> List[float]:
     :return: Embedding representation of the sentence
     """
     # create SentenceTransformer model and embed query
-    model = SentenceTransformer("all-MiniLM-L6-v2")  # fast and good
-    # model = SentenceTransformer("")  # slow and great
+    # model = SentenceTransformer("all-MiniLM-L6-v2")  # fast and good
+    model = SentenceTransformer("all-mpnet-base-v2")  # slow and great
     device = "cuda" if torch.cuda.is_available() else "cpu"  # gpu check
     model = model.to(device)
     return model.encode(query).tolist()
