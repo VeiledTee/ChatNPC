@@ -136,17 +136,17 @@ if __name__ == '__main__':
     data = one_hot_encoding(data)
     data['Embedding'] = data['Phrase'].apply(embed)
     phrase_embeddings: np.ndarray = np.array(list(data['Embedding'].values))
-    # # Distance matrix analysis
-    # euclid_dist_matrix: np.ndarray = distance_matrix(phrase_embeddings, phrase_embeddings, 2)  # create distance matrix
-    # # Cosine similarity analysis
-    # cosine_similarity_matrix: np.ndarray = cosine_matrix(phrase_embeddings)
+    # Distance matrix analysis
+    euclid_dist_matrix: np.ndarray = distance_matrix(phrase_embeddings, phrase_embeddings, 2)  # create distance matrix
+    # Cosine similarity analysis
+    cosine_similarity_matrix: np.ndarray = cosine_matrix(phrase_embeddings)
     # tsne analysis
     tsne_embeddings: np.ndarray = generate_tsne_embeddings(phrase_embeddings)
     data['tsne-2d-x'] = tsne_embeddings[:, 0]
     data['tsne-2d-y'] = tsne_embeddings[:, 1]
     # visualize
-    # visualize_matrix(euclid_dist_matrix, topic_labels, "Distance matrix generated through sentence embeddings from contrasting topic dataset", cosine_sim=False)
-    # visualize_matrix(cosine_similarity_matrix, topic_labels, "Cosine similarity across sentence embeddings from contrasting topic dataset", cosine_sim=True)
+    visualize_matrix(euclid_dist_matrix, topic_labels, "Distance matrix generated through sentence embeddings from contrasting topic dataset", cosine_sim=False)
+    visualize_matrix(cosine_similarity_matrix, topic_labels, "Cosine similarity across sentence embeddings from contrasting topic dataset", cosine_sim=True)
     display_tsne(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data)
     """
     Higher cosine score, more similar they are
