@@ -84,7 +84,7 @@ def visualize_matrix(data_to_visualize, axis_labels, title: str, cosine_sim: boo
     :param axis_labels: Labels for the y axis
     :param title: Title of the plot
     :param cosine_sim: True if representing cosine similarity values. Used to set the bounds of the colour bar. Default: False
-    :return:
+    :return: None
     """
     plt.figure(figsize=(8, 8))
     plt.title(title)
@@ -108,8 +108,6 @@ def visualize_matrix(data_to_visualize, axis_labels, title: str, cosine_sim: boo
     ax.tick_params(axis="both", which="major", length=0)
     ax.tick_params(axis="y", which="minor", length=60)
     plt.tight_layout()
-    plt.show()
-    plt.close()
 
 
 def average_similarity(df: pd.DataFrame, label_column: str = "Topic Num") -> dict:
@@ -149,12 +147,12 @@ def cosine_matrix(vectors: np.ndarray) -> np.ndarray:
 
 def kmeans_cluster(x_col: str, y_col: str, df: pd.DataFrame, num_clusters: int) -> None:
     """
-
-    :param x_col:
-    :param y_col:
-    :param df:
-    :param num_clusters:
-    :return:
+    Execute K-Means clustering on data based on the number of clusters presented
+    :param x_col: Name of the column housing the x-data
+    :param y_col: Name of the column housing the y-data
+    :param df: Dataframe containing all data
+    :param num_clusters: Number of clusters to assign
+    :return: None
     """
     kmeans = KMeans(n_clusters=num_clusters)
     kmeans_data = list(zip(df[x_col].values, df[y_col].values))
@@ -202,19 +200,19 @@ if __name__ == "__main__":
     tsne_embeddings: np.ndarray = generate_tsne_embeddings(phrase_embeddings)
     data["tsne-2d-x"] = tsne_embeddings[:, 0]
     data["tsne-2d-y"] = tsne_embeddings[:, 1]
-    # # visualize
-    # visualize_matrix(
-    #     euclid_dist_matrix,
-    #     topic_labels,
-    #     "Distance matrix",
-    #     cosine_sim=False,
-    # )
-    # visualize_matrix(
-    #     cosine_similarity_matrix,
-    #     topic_labels,
-    #     "Cosine similarity",
-    #     cosine_sim=True,
-    # )
+    # visualize
+    visualize_matrix(
+        euclid_dist_matrix,
+        topic_labels,
+        "Distance matrix",
+        cosine_sim=False,
+    )
+    visualize_matrix(
+        cosine_similarity_matrix,
+        topic_labels,
+        "Cosine similarity",
+        cosine_sim=True,
+    )
     display_tsne(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data)
     kmeans_cluster(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data, num_clusters=len(data["Topic"].unique()))
     plt.show()
