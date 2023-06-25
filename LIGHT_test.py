@@ -219,5 +219,5 @@ if __name__ == "__main__":
                     format_speech(
                         characters=data[i]["character"],
                         dialogue=data[i]["speech"],
-                        character_to_check="fisherman",
+                        character_to_check="blacksmith",
                     )

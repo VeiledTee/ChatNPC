@@ -9,6 +9,8 @@ import seaborn as sns
 from scipy.spatial import distance_matrix
 from scipy.spatial.distance import cosine
 import itertools
+import plotly.express as px
+import plotly.graph_objects as go
 
 
 def cosine_similarity(vector_a: list, vector_b: list) -> float:
@@ -29,7 +31,7 @@ def one_hot_encoding(df: pd.DataFrame) -> pd.DataFrame:
     """
     topics: list = list(df["Topic"].unique())
     mapping: dict = dict(zip(topics, range(len(topics))))
-    df["Topic Num"] = [mapping[topic] for topic in df['Topic'].values]
+    df["Topic Num"] = [mapping[topic] for topic in df["Topic"].values]
     print(mapping)
     return df
 
@@ -60,21 +62,10 @@ def display_tsne(x_col: str, y_col: str, df: pd.DataFrame) -> None:
     :param df: Dataframe object holding the T-SNE embeddings of original text
     :return: None
     """
-    plt.figure(figsize=(8, 6))
-    plt.title("T-SNE dimensionality reduction")
-    sns.scatterplot(
-        x=x_col,
-        y=y_col,
-        hue="Topic Num",
-        palette=sns.color_palette("hls", len(df["Topic Num"].unique())),
-        s=20,
-        ec="grey",
-        data=df,
-        legend="full",
-        alpha=0.5,
-    )
-    plt.legend(labels=[f"{df['Topic Num'].unique()[i]} - {df['Topic'].unique()[i]}" for i in
-                       range(len(df['Topic Num'].unique()))])
+    fig = px.scatter(data_frame=df, x=x_col, y=y_col, hover_data=["ID"], color="Topic", symbol="Topic")
+    fig.update_traces(hovertemplate="<br>ID=%{customdata[0]}")
+    fig.update_layout(hovermode="closest")
+    fig.show()
 
 
 def visualize_matrix(data_to_visualize, axis_labels, title: str, cosine_sim: bool = False) -> None:
@@ -154,40 +145,37 @@ def kmeans_cluster(x_col: str, y_col: str, df: pd.DataFrame, num_clusters: int) 
     :param num_clusters: Number of clusters to assign
     :return: None
     """
-    kmeans = KMeans(n_clusters=num_clusters)
+    kmeans = KMeans(n_clusters=num_clusters, random_state=42)
     kmeans_data = list(zip(df[x_col].values, df[y_col].values))
     kmeans.fit(kmeans_data)
-
-    plt.figure(figsize=(8, 6))
-    plt.title("K-Means Clustering")
-    ax = sns.scatterplot(
+    df["Cluster"] = kmeans.labels_
+    fig = px.scatter(
+        data_frame=df,
         x=x_col,
         y=y_col,
-        hue=kmeans.labels_,
-        palette=sns.color_palette("hls", len(df["Topic"].unique())),
-        data=df,
-        s=20,
-        ec="grey",
-        alpha=0.5,
+        hover_data=["Topic", "ID", "Cluster"],
+        color="Topic",
+        symbol="Cluster",
+        hover_name='ID'
     )
-    ax = sns.scatterplot(
-        x=kmeans.cluster_centers_[:, 0],
-        y=kmeans.cluster_centers_[:, 1],
-        hue=range(num_clusters),
-        palette=sns.color_palette("hls", num_clusters),
-        s=45,
-        ec="black",
-        legend=False,
-        alpha=0.75,
-        ax=ax,
+    fig.update_traces(hovertemplate="<br>Topic=%{customdata[0]}<br>ID=%{customdata[1]}<br>Cluster=%{customdata[2]}")
+    fig.add_trace(
+        go.Scatter(
+            x=kmeans.cluster_centers_[:, 0],
+            y=kmeans.cluster_centers_[:, 1],
+            mode="markers",
+            hovertemplate="Centroid",
+            name='Centroid',
+            showlegend=True,
+        )
     )
-    plt.legend(labels=[f"{df['Topic Num'].unique()[i]} - {df['Topic'].unique()[i]}" for i in
-                       range(len(df['Topic Num'].unique()))])
+    fig.update_layout(hovermode="closest")
+    fig.show()
 
 
 if __name__ == "__main__":
     # preprocessing
-    data: pd.DataFrame = pd.read_csv("contrast-dataset.csv", index_col="ID")
+    data: pd.DataFrame = pd.read_csv("contrast-dataset.csv")
     topic_labels: list = list(data["Topic"].values)
     data = one_hot_encoding(data)
     data["Embedding"] = data["Phrase"].apply(embed)
@@ -200,22 +188,22 @@ if __name__ == "__main__":
     tsne_embeddings: np.ndarray = generate_tsne_embeddings(phrase_embeddings)
     data["tsne-2d-x"] = tsne_embeddings[:, 0]
     data["tsne-2d-y"] = tsne_embeddings[:, 1]
-    # visualize
-    visualize_matrix(
-        euclid_dist_matrix,
-        topic_labels,
-        "Distance matrix",
-        cosine_sim=False,
-    )
-    visualize_matrix(
-        cosine_similarity_matrix,
-        topic_labels,
-        "Cosine similarity",
-        cosine_sim=True,
-    )
-    display_tsne(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data)
+    # # visualize
+    # visualize_matrix(
+    #     euclid_dist_matrix,
+    #     topic_labels,
+    #     "Distance matrix",
+    #     cosine_sim=False,
+    # )
+    # visualize_matrix(
+    #     cosine_similarity_matrix,
+    #     topic_labels,
+    #     "Cosine similarity",
+    #     cosine_sim=True,
+    # )
+    # display_tsne(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data)
     kmeans_cluster(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data, num_clusters=len(data["Topic"].unique()))
-    plt.show()
+    # plt.show()
 
     """
     Higher cosine score, more similar they are
