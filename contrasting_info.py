@@ -77,28 +77,54 @@ def visualize_matrix(data_to_visualize, axis_labels, title: str, cosine_sim: boo
     :param cosine_sim: True if representing cosine similarity values. Used to set the bounds of the colour bar. Default: False
     :return: None
     """
-    plt.figure(figsize=(8, 8))
-    plt.title(title)
-    ax = sns.heatmap(data_to_visualize, xticklabels=False, cmap="coolwarm")
-    if cosine_sim:
-        ax.collections[0].set_clim(-1, 1)
-    else:
-        ax.collections[0].set_clim(0, np.amax(data_to_visualize))
-    ticks = []
-    labels = []
-    prev_label = None
-    for i, label in enumerate(axis_labels):
-        if label != prev_label:
-            ticks.append(i)
-            labels.append(label)
-            prev_label = label
-    ticks.append(i + 1)
-    ax.yaxis.set_minor_locator(FixedLocator(ticks))
-    ax.yaxis.set_major_locator(FixedLocator([(t0 + t1) / 2 for t0, t1 in zip(ticks[:-1], ticks[1:])]))
-    ax.set_yticklabels(labels, rotation=0)
-    ax.tick_params(axis="both", which="major", length=0)
-    ax.tick_params(axis="y", which="minor", length=60)
-    plt.tight_layout()
+    # plt.figure(figsize=(8, 8))
+    # plt.title(title)
+    # ax = sns.heatmap(data_to_visualize, xticklabels=False, cmap="coolwarm")
+    # if cosine_sim:
+    #     ax.collections[0].set_clim(-1, 1)
+    # else:
+    #     ax.collections[0].set_clim(0, np.amax(data_to_visualize))
+    # ticks = []
+    # labels = []
+    # prev_label = None
+    # for i, label in enumerate(axis_labels):
+    #     if label != prev_label:
+    #         ticks.append(i)
+    #         labels.append(label)
+    #         prev_label = label
+    # ticks.append(i + 1)
+    # ax.yaxis.set_minor_locator(FixedLocator(ticks))
+    # ax.yaxis.set_major_locator(FixedLocator([(t0 + t1) / 2 for t0, t1 in zip(ticks[:-1], ticks[1:])]))
+    # ax.set_yticklabels(labels, rotation=0)
+    # ax.tick_params(axis="both", which="major", length=0)
+    # ax.tick_params(axis="y", which="minor", length=60)
+    # plt.tight_layout()
+    scale = int(20 * len(set(axis_labels)))
+    fig = px.imshow(data_to_visualize, title=title)
+    for i in range(0, scale + len(set(axis_labels)), int(scale / len(set(axis_labels)))):
+        print(i)
+        if i >= 0:
+            fig.add_trace(
+                go.Scatter(
+                    x=[i - 0.5, i - 0.5],
+                    y=[-0.5, scale - 0.5],
+                    mode="lines",
+                    line_color="black",
+                    line_width=1,
+                    showlegend=False,
+                )
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=[-0.5, scale - 0.5],
+                    y=[i - 0.5, i - 0.5],
+                    mode="lines",
+                    line_color="black",
+                    line_width=1,
+                    showlegend=False,
+                )
+            )
+    fig.show()
 
 
 def average_similarity(df: pd.DataFrame, label_column: str = "Topic Num") -> dict:
@@ -156,7 +182,7 @@ def kmeans_cluster(x_col: str, y_col: str, df: pd.DataFrame, num_clusters: int) 
         hover_data=["Topic", "ID", "Cluster"],
         color="Topic",
         symbol="Cluster",
-        hover_name='ID'
+        hover_name="ID",
     )
     fig.update_traces(hovertemplate="<br>Topic=%{customdata[0]}<br>ID=%{customdata[1]}<br>Cluster=%{customdata[2]}")
     fig.add_trace(
@@ -165,7 +191,7 @@ def kmeans_cluster(x_col: str, y_col: str, df: pd.DataFrame, num_clusters: int) 
             y=kmeans.cluster_centers_[:, 1],
             mode="markers",
             hovertemplate="Centroid",
-            name='Centroid',
+            name="Centroid",
             showlegend=True,
         )
     )
@@ -184,17 +210,17 @@ if __name__ == "__main__":
     euclid_dist_matrix: np.ndarray = distance_matrix(phrase_embeddings, phrase_embeddings, 2)  # create distance matrix
     # Cosine similarity analysis
     cosine_similarity_matrix: np.ndarray = cosine_matrix(phrase_embeddings)
-    # tsne analysis
-    tsne_embeddings: np.ndarray = generate_tsne_embeddings(phrase_embeddings)
-    data["tsne-2d-x"] = tsne_embeddings[:, 0]
-    data["tsne-2d-y"] = tsne_embeddings[:, 1]
-    # # visualize
-    # visualize_matrix(
-    #     euclid_dist_matrix,
-    #     topic_labels,
-    #     "Distance matrix",
-    #     cosine_sim=False,
-    # )
+    # # tsne analysis
+    # tsne_embeddings: np.ndarray = generate_tsne_embeddings(phrase_embeddings)
+    # data["tsne-2d-x"] = tsne_embeddings[:, 0]
+    # data["tsne-2d-y"] = tsne_embeddings[:, 1]
+    # visualize
+    visualize_matrix(
+        euclid_dist_matrix,
+        topic_labels,
+        "Distance matrix",
+        cosine_sim=False,
+    )
     # visualize_matrix(
     #     cosine_similarity_matrix,
     #     topic_labels,
@@ -202,7 +228,7 @@ if __name__ == "__main__":
     #     cosine_sim=True,
     # )
     # display_tsne(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data)
-    kmeans_cluster(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data, num_clusters=len(data["Topic"].unique()))
+    # kmeans_cluster(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data, num_clusters=len(data["Topic"].unique()))
     # plt.show()
 
     """
