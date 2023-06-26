@@ -68,7 +68,7 @@ def display_tsne(x_col: str, y_col: str, df: pd.DataFrame) -> None:
     fig.show()
 
 
-def visualize_matrix(data_to_visualize, axis_labels, title: str) -> None:
+def visualize_heatmap(data_to_visualize, axis_labels, title: str) -> None:
     """
     Visualize a matrix ias a heatmap
     :param data_to_visualize: A 2d matrix representing the value of each cell in the final heatmap
@@ -76,31 +76,12 @@ def visualize_matrix(data_to_visualize, axis_labels, title: str) -> None:
     :param title: Title of the plot
     :return: None
     """
-    # plt.figure(figsize=(8, 8))
-    # plt.title(title)
-    # ax = sns.heatmap(data_to_visualize, xticklabels=False, cmap="coolwarm")
-    # if cosine_sim:
-    #     ax.collections[0].set_clim(-1, 1)
-    # else:
-    #     ax.collections[0].set_clim(0, np.amax(data_to_visualize))
-    # ticks = []
-    # labels = []
-    # prev_label = None
-    # for i, label in enumerate(axis_labels):
-    #     if label != prev_label:
-    #         ticks.append(i)
-    #         labels.append(label)
-    #         prev_label = label
-    # ticks.append(i + 1)
-    # ax.yaxis.set_minor_locator(FixedLocator(ticks))
-    # ax.yaxis.set_major_locator(FixedLocator([(t0 + t1) / 2 for t0, t1 in zip(ticks[:-1], ticks[1:])]))
-    # ax.set_yticklabels(labels, rotation=0)
-    # ax.tick_params(axis="both", which="major", length=0)
-    # ax.tick_params(axis="y", which="minor", length=60)
-    # plt.tight_layout()
-    scale = int(20 * len(set(axis_labels)))
-    fig = px.imshow(data_to_visualize, title=title)
-    for i in range(0, scale + len(set(axis_labels)), int(scale / len(set(axis_labels)))):
+    scale = int(20 * len(axis_labels))  # find scale
+    fig = px.imshow(data_to_visualize, title=title)  # generate heatmap
+    tick_values = []
+    print(axis_labels)
+    for i in range(0, scale + len(axis_labels), int(scale / len(axis_labels))):  # generate grid over heatmap
+        tick_values.append(i)
         if i >= 0:
             fig.add_trace(
                 go.Scatter(
@@ -122,6 +103,12 @@ def visualize_matrix(data_to_visualize, axis_labels, title: str) -> None:
                     showlegend=False,
                 )
             )
+    fig.update_layout(
+        xaxis=dict(
+            tickmode="array", tickvals=[i + 9.5 for i in tick_values], ticktext=axis_labels, side="bottom", tickangle=45
+        ),
+        yaxis=dict(tickmode="array", tickvals=[i + 9.5 for i in tick_values], ticktext=axis_labels),
+    )  # format lables
     fig.show()
 
 
@@ -213,15 +200,15 @@ if __name__ == "__main__":
     data["tsne-2d-x"] = tsne_embeddings[:, 0]
     data["tsne-2d-y"] = tsne_embeddings[:, 1]
     # visualize
-    visualize_matrix(
+    visualize_heatmap(
         euclid_dist_matrix,
-        topic_labels,
-        "Distance matrix",
+        data["Topic"].unique(),
+        "Distance matrix\n",
     )
-    visualize_matrix(
+    visualize_heatmap(
         cosine_similarity_matrix,
-        topic_labels,
-        "Cosine similarity",
+        data['Topic'].unique(),
+        "Cosine similarity\n",
     )
     display_tsne(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data)
     kmeans_cluster(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data, num_clusters=len(data["Topic"].unique()))
