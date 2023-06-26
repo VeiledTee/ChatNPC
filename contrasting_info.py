@@ -68,13 +68,12 @@ def display_tsne(x_col: str, y_col: str, df: pd.DataFrame) -> None:
     fig.show()
 
 
-def visualize_matrix(data_to_visualize, axis_labels, title: str, cosine_sim: bool = False) -> None:
+def visualize_matrix(data_to_visualize, axis_labels, title: str) -> None:
     """
     Visualize a matrix ias a heatmap
     :param data_to_visualize: A 2d matrix representing the value of each cell in the final heatmap
     :param axis_labels: Labels for the y axis
     :param title: Title of the plot
-    :param cosine_sim: True if representing cosine similarity values. Used to set the bounds of the colour bar. Default: False
     :return: None
     """
     # plt.figure(figsize=(8, 8))
@@ -102,7 +101,6 @@ def visualize_matrix(data_to_visualize, axis_labels, title: str, cosine_sim: boo
     scale = int(20 * len(set(axis_labels)))
     fig = px.imshow(data_to_visualize, title=title)
     for i in range(0, scale + len(set(axis_labels)), int(scale / len(set(axis_labels)))):
-        print(i)
         if i >= 0:
             fig.add_trace(
                 go.Scatter(
@@ -210,26 +208,23 @@ if __name__ == "__main__":
     euclid_dist_matrix: np.ndarray = distance_matrix(phrase_embeddings, phrase_embeddings, 2)  # create distance matrix
     # Cosine similarity analysis
     cosine_similarity_matrix: np.ndarray = cosine_matrix(phrase_embeddings)
-    # # tsne analysis
-    # tsne_embeddings: np.ndarray = generate_tsne_embeddings(phrase_embeddings)
-    # data["tsne-2d-x"] = tsne_embeddings[:, 0]
-    # data["tsne-2d-y"] = tsne_embeddings[:, 1]
+    # tsne analysis
+    tsne_embeddings: np.ndarray = generate_tsne_embeddings(phrase_embeddings)
+    data["tsne-2d-x"] = tsne_embeddings[:, 0]
+    data["tsne-2d-y"] = tsne_embeddings[:, 1]
     # visualize
     visualize_matrix(
         euclid_dist_matrix,
         topic_labels,
         "Distance matrix",
-        cosine_sim=False,
     )
-    # visualize_matrix(
-    #     cosine_similarity_matrix,
-    #     topic_labels,
-    #     "Cosine similarity",
-    #     cosine_sim=True,
-    # )
-    # display_tsne(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data)
-    # kmeans_cluster(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data, num_clusters=len(data["Topic"].unique()))
-    # plt.show()
+    visualize_matrix(
+        cosine_similarity_matrix,
+        topic_labels,
+        "Cosine similarity",
+    )
+    display_tsne(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data)
+    kmeans_cluster(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data, num_clusters=len(data["Topic"].unique()))
 
     """
     Higher cosine score, more similar they are
