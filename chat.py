@@ -308,7 +308,7 @@ def answer(prompt: str, chat_history: List[dict], is_chat: bool = True) -> str:
         msgs: List[dict] = chat_history
         msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
         res: str = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo-0301",
             messages=msgs,
             temperature=0,
         )  # conversation with LLM
