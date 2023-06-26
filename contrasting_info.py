@@ -3,9 +3,6 @@ import numpy as np
 from chat import embed
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
-import matplotlib.pyplot as plt
-from matplotlib.ticker import FixedLocator
-import seaborn as sns
 from scipy.spatial import distance_matrix
 from scipy.spatial.distance import cosine
 import itertools
@@ -62,7 +59,9 @@ def display_tsne(x_col: str, y_col: str, df: pd.DataFrame) -> None:
     :param df: Dataframe object holding the T-SNE embeddings of original text
     :return: None
     """
-    fig = px.scatter(data_frame=df, x=x_col, y=y_col, hover_data=["ID"], color="Topic", symbol="Topic")
+    fig = px.scatter(
+        data_frame=df, x=x_col, y=y_col, hover_data=["ID"], color="Topic", symbol="Topic", title="T-SNE Representation"
+    )
     fig.update_traces(hovertemplate="<br>ID=%{customdata[0]}")
     fig.update_layout(hovermode="closest")
     fig.show()
@@ -168,6 +167,7 @@ def kmeans_cluster(x_col: str, y_col: str, df: pd.DataFrame, num_clusters: int) 
         color="Topic",
         symbol="Cluster",
         hover_name="ID",
+        title="K-Means Clustering",
     )
     fig.update_traces(hovertemplate="<br>Topic=%{customdata[0]}<br>ID=%{customdata[1]}<br>Cluster=%{customdata[2]}")
     fig.add_trace(
@@ -186,7 +186,7 @@ def kmeans_cluster(x_col: str, y_col: str, df: pd.DataFrame, num_clusters: int) 
 
 if __name__ == "__main__":
     # preprocessing
-    data: pd.DataFrame = pd.read_csv("contrast-dataset.csv")
+    data: pd.DataFrame = pd.read_csv("Data/contrast-dataset.csv")
     topic_labels: list = list(data["Topic"].values)
     data = one_hot_encoding(data)
     data["Embedding"] = data["Phrase"].apply(embed)
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     )
     visualize_heatmap(
         cosine_similarity_matrix,
-        data['Topic'].unique(),
+        data["Topic"].unique(),
         "Cosine similarity\n",
     )
     display_tsne(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data)
