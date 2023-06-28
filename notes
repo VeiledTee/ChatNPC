@@ -2,63 +2,38 @@
 * to do
 
 NOTES:
-- use vector database for efficient storage and retrieval of data
+- use vector database for efficent storage and retrieval of data
 - for testing model:
 	- difficulty with complex choices for answers
 		i.e. a) N + S
 	- answer must be in either character file or town file
 	* incorporate database in future
-* vet information and determine if new or not
-- dynamic ID
-* test different embeddings (all-mpnet-base-v2 vs all-MiniLM-L6-v2)
------------------------------------
-Paper flow:
-Intro
-    Introduce project and motivation
-Related Works
-    Language Modelling
-        Language models (LMs) are simply models that assign a probability to a sequence of words \cite{NLP Book}.
-            N-Gram
-                Simplest LM is an n-gram
-                Unigram -> one word
-                Bigram -> two words
-                Trigram-> three words
-                etc.
-                Trained on text, finds all sequences of tokens of length $n-1$, uses probability to calculate next word based on provided sequence
-                example
-            Neural Network -> train, pass a single token or sentence through, embedding is values from final layer
-                More complex than N-Gram, more computational power
-                A collection of nodes, or ``neurons'', connected by weights
-                Trained on a large amount of text
-                Post-training, passing a token or a sequence of tokens into the network, and retrieving the weights of the final layer of the network (NOT the output, the layer before that) provide the embedding for the inputted text
-                Revolutionary one is BERT (bidirectional encoder transformers), transformer architecture, trained on \_ tokens using the Masked Language Modeling (MLM) approach.
-                MLM masks words at any part of a sentence, model is trained ot predict which word is hidden based on its training
-
-    Embeddings
-        word
-        context/sentence
-    Generated text
-        SotA models
-    LLM Identity?
-    Prompt Engineering
-    Dialogue Systems?
-Challenges
-    Hallucination
-    Over-Saturated Database
-
-Building the Dialogue System
-    Model selection
-        LLaMA
-        GPT-J
-        GPT 3.5
-        Final Decision
-    Knowledge Base
-        Relational Database
-        Vector Database
+	
+- semantic role labeling
+	- go from phrase to topic
+- 4-5 more topics
+	- fact based
+- Topological Data Analysis
+	- https://web.archive.org/web/20220712055205id_/https://dl.acm.org/doi/pdf/10.1145/3477495.3531881
+	- http://bigdataieee.org/BigData2020/files/IEEE_BigData_2020_Tutorial5_TDA_Tutorial.pdf
+- Contradictory event pairs
+	- https://aclanthology.org/W15-0813.pdf
+- Contradiciton for rumours
+	- https://aclanthology.org/W16-5004.pdf
+	- PHEME RTE dataset: https://www.pheme.eu/2016/04/12/pheme-rte-dataset/
+- Finding Contradicitons in Text (2008)
+	- https://aclanthology.org/P08-1118.pdf
+	
+PROBLEMS
+- context pool saturated -> need to weed out bad responses
+	- contrasting information
+		- local alignment of tokens
+	- fact or opinion
+	- confidence score
+- negation
+	
 
 
--------------------------------
-Hallucinating example
-can you provide me references for an author that discusses AI in dialogue systems
-chat online -> Hallucinated a book that exists but incorrect authors
-after asking it to verify actual book
+1. determine if talking about same thing
+2. determine if contrasting
+3. do something (confidence score, etc.)
