@@ -78,7 +78,6 @@ def visualize_heatmap(data_to_visualize, axis_labels, title: str) -> None:
     scale = int(20 * len(axis_labels))  # find scale
     fig = px.imshow(data_to_visualize, title=title)  # generate heatmap
     tick_values = []
-    print(axis_labels)
     for i in range(0, scale + len(axis_labels), int(scale / len(axis_labels))):  # generate grid over heatmap
         tick_values.append(i)
         if i >= 0:
@@ -146,17 +145,18 @@ def cosine_matrix(vectors: np.ndarray) -> np.ndarray:
     return np.array(similarity_matrix)
 
 
-def kmeans_cluster(x_col: str, y_col: str, df: pd.DataFrame, num_clusters: int) -> None:
+def kmeans_cluster(x_col: str, y_col: str, embedding_col: str, df: pd.DataFrame, num_clusters: int) -> None:
     """
     Execute K-Means clustering on data based on the number of clusters presented
     :param x_col: Name of the column housing the x-data
     :param y_col: Name of the column housing the y-data
+    :param embedding_col: Name of the column housing the embeddings of the data
     :param df: Dataframe containing all data
     :param num_clusters: Number of clusters to assign
     :return: None
     """
     kmeans = KMeans(n_clusters=num_clusters, random_state=42)
-    kmeans_data = list(zip(df[x_col].values, df[y_col].values))
+    kmeans_data = list(df[embedding_col].values)
     kmeans.fit(kmeans_data)
     df["Cluster"] = kmeans.labels_
     fig = px.scatter(
@@ -211,7 +211,7 @@ if __name__ == "__main__":
         "Cosine similarity\n",
     )
     display_tsne(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data)
-    kmeans_cluster(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data, num_clusters=len(data["Topic"].unique()))
+    kmeans_cluster(x_col="tsne-2d-x", y_col="tsne-2d-y", embedding_col='Embedding', df=data, num_clusters=len(data["Topic"].unique()))
 
     """
     Higher cosine score, more similar they are
