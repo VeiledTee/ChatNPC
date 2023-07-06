@@ -203,7 +203,7 @@ for dim in k_holes:
         hole_dim, index, persist = hole
         print(f"Dimension: {hole_dim}, Hole Index: {index}, Persistence: {persist}")
 
-# plot_ph_across_dimensions(diagrams)
+plot_ph_across_dimensions(diagrams)
 
 # print(diagrams)
 
