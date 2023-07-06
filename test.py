@@ -1,41 +1,36 @@
-import matplotlib.pyplot as plt
-import numpy as np
-from ripser import ripser
-from persim import plot_diagrams
-import matplotlib.pyplot as plt
-from typing import List, Tuple, Any
-import torch
-from transformers import BertTokenizer, BertModel
 import logging
+from typing import List
+
+import matplotlib
+import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+import torch
 from ripser import ripser
-from persim import plot_diagrams
-import plotly.graph_objs as gobj
+from transformers import BertTokenizer, BertModel
+
+matplotlib.use('TkAgg')
 
 
-def top_k_holes(diagrams, k: int = 3):
-    print(len(diagrams[0]))
+def top_k_holes(ph_diagrams, k: int = 3):
+    top_holes: list = []
     # Iterate over each dimension
-    for dim, diagram in enumerate(diagrams):
+    for dimension, diag_tuple in enumerate(ph_diagrams):
         # Initialize an empty list to store the hole indices and their persistence values
         holes = []
-        print(dim)
+        print(dimension)
         # Iterate over each feature in the diagram
-        for i, (birth, death) in enumerate(diagram):
-            persistence = death - birth
-            holes.append((dim, i, persistence))
+        for j, (feature_birth, feature_death) in enumerate(diag_tuple):
+            persistence = feature_death - feature_birth
+            holes.append((dimension, j, persistence))
 
         # Sort the holes based on their persistence values in descending order
         holes.sort(key=lambda x: x[2], reverse=True)
 
-        # Select the top k holes
-        top_k = holes[:k]
+        # Select the top k holes and add to list
+        top_holes.append(holes[:k])
 
-        # Print the selected holes
-        for hole in top_k:
-            dim, index, persistence = hole
-            print(f"Dimension: {dim}, Hole Index: {index}, Persistence: {persistence}")
+    # return list of top k holes in each dimension
+    return top_holes
 
 
 def get_bert_embeddings(sentence: str) -> List[float]:
@@ -56,10 +51,10 @@ def get_bert_embeddings(sentence: str) -> List[float]:
     # Obtain the BERT embeddings
     with torch.no_grad():
         outputs = model(input_ids)
-        embeddings = torch.mean(outputs.last_hidden_state, dim=1).squeeze()
+        word_embeddings = torch.mean(outputs.last_hidden_state, dim=1).squeeze()
 
     # Convert embeddings to a Python list
-    embeddings_list = embeddings.tolist()
+    embeddings_list = word_embeddings.tolist()
 
     return embeddings_list
 
@@ -105,6 +100,60 @@ def get_bert_tokens_embeddings(sentence: str) -> tuple[list[str], torch.Tensor]:
     return tokens, token_embeddings
 
 
+def separate_ph(ph_diagrams):
+    dimensions = []
+    for dimension, diag_tuple in enumerate(ph_diagrams):
+        print(f"Dimension {dimension}:")
+        x_values: list[float] = []
+        widths: list[float] = []
+        # Iterate over each feature in the diagram
+        for j, (feature_birth, feature_death) in enumerate(diag_tuple):
+            x_values.append(feature_birth)
+            widths.append(feature_death - feature_birth)
+
+        plt.barh(x_values, widths, left=x_values, height=0.001)
+        # Set the axis labels
+        plt.xlabel('Duration')
+        plt.ylabel('Birth')
+
+        # Show the plot
+        plt.show()
+        dimensions.append([x_values, widths])
+
+
+def plot_ph_across_dimensions(ph_diagrams):
+    fig, axes = plt.subplots(len(ph_diagrams), 1, figsize=(10, 8))
+
+    # Iterate over all dimensions
+    for d, f in enumerate(ph_diagrams):
+        # Extract birth and death values
+        birth_values = [point[0] for point in f]
+        death_values = [point[1] for point in f]
+        sorted_death = sorted(death_values, reverse=True)
+
+        # Compute maximum epsilon value
+        for i in sorted_death:
+            if i != np.inf:
+                max_epsilon = i
+                break
+
+        # Plot the horizontal bar chart in the corresponding subplot
+        ax = axes[d]
+        ax.barh(range(len(birth_values)), width=[point[1] - point[0] for point in f], left=birth_values,
+                align='center', alpha=0.5, color='blue', label=f'H{d} Features')
+        ax.set_xlabel('\u03B5 value')
+        ax.set_title(f'Persistent Homology H{d} Bar Chart')
+        ax.set_xlim(0, max_epsilon)  # Set x-axis limits
+
+    # Set the y-axis label for the last subplot
+    axes[-1].set_ylabel('Feature Index')
+
+    # Adjust spacing between subplots
+    plt.tight_layout()
+
+    # Show the combined figure
+    plt.show()
+
 
 sentences = [
     "The sky is blue.",
@@ -127,9 +176,6 @@ sentences = [
     "He likes to watch football on weekends.",
     "The concert was amazing.",
     "We had a delicious dinner at the restaurant.",
-    "Fuck",
-    "Shit",
-    "Cunt",
 ]
 
 # sentences = [
@@ -148,10 +194,17 @@ e = [get_bert_embeddings(s) for s in sentences]
 embeddings = np.array(e).T
 
 # Compute persistent homology using ripser
-result = ripser(embeddings)
+result = ripser(embeddings, maxdim=2)
 diagrams = result['dgms']
 
-top_k_holes(diagrams, 8)
+k_holes: list = top_k_holes(diagrams, 8)
+for dim in k_holes:
+    for hole in dim:
+        hole_dim, index, persist = hole
+        print(f"Dimension: {hole_dim}, Hole Index: {index}, Persistence: {persist}")
+
+# plot_ph_across_dimensions(diagrams)
+
 # print(diagrams)
 
 # hole_durations = []  # List to store persistence durations
@@ -172,60 +225,7 @@ top_k_holes(diagrams, 8)
 
 
 # Create a figure with subplots
-fig, axes = plt.subplots(len(diagrams), 1, figsize=(8, 6), sharex=True)
 
-# Iterate over all dimensions
-for dim, features in enumerate(diagrams):
-    # Extract birth and death values
-    birth_values = [point[0] for point in features]
-    death_values = [point[1] for point in features]
-    sorted_death = sorted(death_values, reverse=True)
-    print(sorted_death)
-
-    # Compute maximum epsilon value
-    for i in sorted_death:
-        if i != np.inf:
-            max_epsilon = i
-            break
-
-    # Plot the bar chart in the corresponding subplot
-    ax = axes[dim]
-    ax.bar(range(len(birth_values)), height=[point[1] - point[0] for point in features],
-           align='center', alpha=0.5, color='blue', label=f'H{dim} Features')
-    ax.set_ylabel('Persistence')
-    ax.set_title(f'Persistent Homology H{dim} Bar Chart')
-    ax.set_ylim(0, max_epsilon)  # Set y-axis limits
-
-# Set the x-axis label for the last subplot
-axes[-1].set_xlabel('Feature Index')
-
-# Adjust spacing between subplots
-plt.tight_layout()
-
-# Show the combined figure
-plt.show()
-
-dimensions: list[list[float]] = []
-for dim, diagram in enumerate(diagrams):
-    print(f"Dimension {dim}:")
-    x_values: list[float] = []
-    widths: list[float] = []
-    # Iterate over each feature in the diagram
-    for i, (birth, death) in enumerate(diagram):
-        x_values.append(birth)
-        widths.append(death - birth)
-    print(widths.index(max(widths)), max(widths))
-    print(widths[widths.index(max(widths))])
-    print(diagram[widths.index(max(widths))])
-    # print(len(widths[widths.index(max(widths))]))
-    plt.barh(x_values, widths, left=x_values, height=0.001)
-    # Set the axis labels
-    plt.xlabel('Duration')
-    plt.ylabel('Birth')
-
-    # Show the plot
-    plt.show()
-    dimensions.append([x_values, widths])
 
 
 """
