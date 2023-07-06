@@ -184,7 +184,7 @@ Fisherman indexes:
 
 """
 if __name__ == "__main__":
-    # download_LIGHT()
+    download_LIGHT()
     directory = "Data/LIGHT"
     for filename in os.listdir(directory):
         if filename.endswith(".pkl"):
