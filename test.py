@@ -1,53 +1,184 @@
+from typing import Tuple, Dict, List
+import random
+from typing import List, Tuple
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from BiLSTM import BiLSTMModel
+from transformers import BertModel, BertTokenizer
+import logging
 
-# Assume you have your training data (X_train, y_train) ready
+from BiLSTM import BiLSTMModel
+import pandas as pd
+
 
 # Define hyperparameters
-input_size = 10  # Example input size
-hidden_size = 64  # Example hidden size
-num_layers = 2  # Example number of layers
-output_size = 1  # Example output size
-num_epochs = 10
-batch_size = 32
-learning_rate = 0.001
+INPUT_SIZE: int = 768
+SEQUENCE_LENGTH: int = 128
+HIDDEN_SIZE: int = 64
+NUM_LAYERS: int = 2
+OUTPUT_SIZE: int = 1
+EPOCHS: int = 25
+BATCH_SIZE: int = 2
+LEARNING_RATE: float = 0.001
 
-# Create an instance of the BiLSTMModel
-model = BiLSTMModel(input_size, hidden_size, num_layers, output_size)
 
-# Define loss function and optimizer
-criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+def load_txt_file_to_dataframe(dataset_description: str) -> pd.DataFrame:
+    """
+    Load MultiNLI data into dataframe for use
+    :param dataset_description: Which dataset to load and work with
+    :return: Cleaned data contained in a dataframe
+    """
+    to_drop: list = ['label1', 'sentence1_binary_parse', 'sentence2_binary_parse', 'sentence1_parse', 'sentence2_parse', 'promptID', 'pairID', 'genre', 'label2', 'label3', 'label4', 'label5']
+    if dataset_description.lower().strip() == 'train':
+        data_frame = pd.read_csv('Data/MultiNLI/multinli_1.0_train.txt', sep='\t').drop(columns=to_drop)
+    elif dataset_description.lower().strip() == 'match':
+        data_frame = pd.read_csv('Data/MultiNLI/multinli_1.0_dev_matched.txt', sep='\t', nrows=10).drop(columns=to_drop)
+    elif dataset_description.lower().strip() == 'mismatch':
+        data_frame = pd.read_csv('Data/MultiNLI/multinli_1.0_dev_mismatched.txt', sep='\t').drop(columns=to_drop)
+    else:
+        raise ValueError("Pass only 'train', 'match', or 'mismatch' to the function")
 
-# Convert the training data into tensors
-X_train = torch.tensor(X_train, dtype=torch.float32)
-y_train = torch.tensor(y_train, dtype=torch.float32)
+    data_frame.dropna(inplace=True)
+    return data_frame
 
-# Create data loader for batching the training data
-train_dataset = torch.utils.data.TensorDataset(X_train, y_train)
-train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
-# Set the model in training mode
-model.train()
+def create_train_dev_sets(data: list, dev_ratio: float) -> Tuple[List[int], List[int]]:
+    """
+    Create a dev set and training set from a list of data.
 
-# Training loop
-for epoch in range(num_epochs):
-    for i, (inputs, labels) in enumerate(train_loader):
+    :param data: The list of data to split.
+    :param dev_ratio: The ratio of data to be allocated for the dev set.
+    :return: A tuple containing the indexes of the dev set and training set.
+    """
+    data_size = len(data)
+    indices = list(range(data_size))
+    random.shuffle(indices)  # Shuffle the indices randomly
+
+    dev_size = int(data_size * dev_ratio)  # Calculate the dev set size
+
+    dev_indices = indices[:dev_size]  # Extract dev set indices from the beginning of the shuffled indices
+    train_indices = indices[dev_size:]  # Extract training set indices from the remaining shuffled indices
+
+    return train_indices, dev_indices
+
+
+def create_batches(data: torch.Tensor) -> List[torch.Tensor]:
+    # Split the data into batches
+    return torch.split(data, BATCH_SIZE, dim=0)
+
+
+def get_bert_embeddings(sentence1: str, sentence2: str) -> torch.Tensor:
+    # Disable the logging level for the transformers library
+    logging.getLogger("transformers").setLevel(logging.ERROR)
+
+    # Load pre-trained BERT model and tokenizer
+    tokenizer: BertTokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+    model: BertModel = BertModel.from_pretrained('bert-base-uncased')
+
+    # Restoring the logging level
+    logging.getLogger("transformers").setLevel(logging.INFO)
+
+    # Tokenize the sentences and obtain the input IDs and attention masks
+    tokens: Dict[str, torch.Tensor] = tokenizer.encode_plus(sentence1, sentence2, add_special_tokens=True,
+                                                            padding='longest', truncation=True)
+    input_ids: torch.Tensor = torch.tensor(tokens['input_ids']).unsqueeze(0)  # Add batch dimension
+    attention_mask: torch.Tensor = torch.tensor(tokens['attention_mask']).unsqueeze(0)  # Add batch dimension
+
+    # Pad or truncate the input IDs and attention masks to the maximum sequence length
+    input_ids = torch.nn.functional.pad(input_ids, (0, SEQUENCE_LENGTH - input_ids.size(1)))
+    attention_mask = torch.nn.functional.pad(attention_mask, (0, SEQUENCE_LENGTH - attention_mask.size(1)))
+
+    # Obtain the BERT embeddings
+    with torch.no_grad():
+        bert_outputs: Tuple[torch.Tensor] = model(input_ids, attention_mask=attention_mask)
+        embeddings: torch.Tensor = bert_outputs.last_hidden_state  # Extract the last hidden state
+
+    return embeddings
+
+
+if __name__ == '__main__':
+    # load data
+    matched: pd.DataFrame = load_txt_file_to_dataframe('match')
+    # mismatched: pd.DataFrame = load_txt_file_to_dataframe('mismatch')
+
+    # Create train/validation sets
+    training_indices, validation_indices = create_train_dev_sets(list(matched['gold_label'].values), dev_ratio=0.2)
+
+    # Two lists of sentences for training
+    sentenceA: List[str] = [x for x in matched['sentence1']]
+    sentenceB: List[str] = [x for x in matched['sentence2']]
+    print(f"A: {sentenceA}")
+    print(f"B: {sentenceB}")
+
+    # Make labels
+    y_train: List[int] = [1 if x == 'contradiction' else 0 for x in matched['gold_label']]
+    print(f"L: {y_train}")
+
+    x_train = []
+    # Generate embeddings
+    for a, b in zip(sentenceA, sentenceB):
+        x_train.append(get_bert_embeddings(a, b))
+
+    # Create training and dev sets
+    training_x = torch.stack([x_train[i] for i in training_indices]).view(len(training_indices), 128, 768)  # reshape to 3d
+    # print(f"X Train: {training_x.shape}")
+    train_batches = create_batches(training_x)
+    validation_x = torch.stack([x_train[i] for i in validation_indices]).view(len(validation_indices), 128, 768)  # reshape to 3d
+    # print(f"X Val: {validation_x.shape}")
+    validation_batches = create_batches(validation_x)
+    training_y = torch.tensor([[y_train[i]] for i in training_indices]).float()  # convert to float for loss function, same shape as predictions
+    # print(f"Y Train: {training_y.shape}")
+    # print(training_y)
+    validation_y = torch.tensor([[y_train[i]] for i in validation_indices]).float()  # convert to float for loss function, same shape as predictions
+    # print(f"Y Val: {validation_y.shape}")
+
+    # Initialize the BiLSTM model
+    model = BiLSTMModel(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE)
+
+    # Define loss function and optimizer
+    loss_function = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+    # Initialize lists for training and validation loss
+    train_losses = []
+    val_losses = []
+
+    model.train()
+    optimizer.zero_grad()
+
+    for epoch in range(EPOCHS):
         # Forward pass
-        outputs = model(inputs)
-        loss = criterion(outputs, labels)
+        predictions = model(training_x)
+        # print(predictions)
+        # print(predictions.shape)
 
-        # Backward and optimize
-        optimizer.zero_grad()
+        # Calculate the training loss
+        loss = loss_function(predictions, training_y)
+        train_losses.append(loss.item())
+
+        # Backpropagation
         loss.backward()
         optimizer.step()
 
-        # Print the loss for every few iterations
-        if (i + 1) % 10 == 0:
-            print(f"Epoch [{epoch + 1}/{num_epochs}], Iteration [{i + 1}/{len(train_loader)}], Loss: {loss.item():.4f}")
+        # Evaluation phase (optional)
+        model.eval()
+        with torch.no_grad():
+            # Forward pass on the validation set
+            val_predictions = model(validation_x)
 
-# After training, you can save the model if needed
-torch.save(model.state_dict(), 'bilstm_model.pth')
+            # Calculate the validation loss
+            val_loss = loss_function(val_predictions, validation_y)
+            val_losses.append(val_loss.item())
 
+        # Print the training and validation loss for each epoch
+        print(f"Epoch {epoch + 1}/{EPOCHS}: Train Loss: {train_losses[-1]:.4f}, Val Loss: {val_losses[-1]:.4f}")
+
+    # Step 7: Plot the training and validation loss curves
+    plt.plot(range(1, EPOCHS + 1), train_losses, label='Training Loss')
+    plt.plot(range(1, EPOCHS + 1), val_losses, label='Validation Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title('Training and Validation Loss')
+    plt.legend()
+    plt.show()
