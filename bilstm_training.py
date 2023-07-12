@@ -38,7 +38,7 @@ def load_txt_file_to_dataframe(dataset_description: str) -> pd.DataFrame:
     """
     to_drop: list = ['label1', 'sentence1_binary_parse', 'sentence2_binary_parse', 'sentence1_parse', 'sentence2_parse', 'promptID', 'pairID', 'genre', 'label2', 'label3', 'label4', 'label5']
     if dataset_description.lower().strip() == 'train':
-        data_frame = pd.read_csv('Data/MultiNLI/multinli_1.0_train.txt', sep='\t').drop(columns=to_drop)
+        data_frame = pd.read_csv('Data/MultiNLI/multinli_1.0_train.txt', sep='\t', encoding='latin-1').drop(columns=to_drop)
     elif dataset_description.lower().strip() == 'match':
         data_frame = pd.read_csv('Data/MultiNLI/multinli_1.0_dev_matched.txt', sep='\t', nrows=10).drop(columns=to_drop)
     elif dataset_description.lower().strip() == 'mismatch':
@@ -139,8 +139,9 @@ if __name__ == '__main__':
         os.makedirs(f'Checkpoint/{model_num}')
 
     # load data
-    # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # 10 rows
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe('mismatch')  # all
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe('train')  # all train
+    # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # 10 rows of match
+    # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('mismatch')  # all mismatch
 
     # Create train/validation sets
     training_indices, validation_indices = create_train_dev_sets(list(multinli_df['gold_label'].values), dev_ratio=0.2)
