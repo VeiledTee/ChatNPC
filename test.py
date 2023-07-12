@@ -125,9 +125,6 @@ if __name__ == '__main__':
     else:
         print("GPU is not available. PyTorch is using CPU.")
 
-    # Create the "Checkpoint" folder if it doesn't exist
-    if not os.path.exists('Checkpoint'):
-        os.makedirs('Checkpoint')
     # Create the "Models" folder if it doesn't exist
     if not os.path.exists("Models"):
         os.makedirs("Models")
@@ -136,6 +133,10 @@ if __name__ == '__main__':
         os.makedirs("Figures")
 
     model_num: int = count_files('Models')
+
+    # Create the "Checkpoint" folder if it doesn't exist
+    if not os.path.exists(f'Checkpoint/{model_num}'):
+        os.makedirs(f'Checkpoint/{model_num}')
 
     # load data
     # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # 10 rows
