@@ -113,7 +113,6 @@ def count_files(directory: str) -> int:
     """
     file_count = 0
     for _, _, files in os.walk(directory):
-        print(files)
         file_count += len(files)
     return file_count
 
@@ -139,8 +138,8 @@ if __name__ == '__main__':
     model_num: int = count_files('Models')
 
     # load data
-    # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # 10 rows
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe('mismatch')  # all
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # 10 rows
+    # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('mismatch')  # all
 
     # Create train/validation sets
     training_indices, validation_indices = create_train_dev_sets(list(multinli_df['gold_label'].values), dev_ratio=0.2)
