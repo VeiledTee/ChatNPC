@@ -25,7 +25,7 @@ HIDDEN_SIZE: int = 64
 NUM_LAYERS: int = 2
 OUTPUT_SIZE: int = 1
 EPOCHS: int = 250
-BATCH_SIZE: int = 4
+BATCH_SIZE: int = 10
 LEARNING_RATE: float = 0.001
 CHKPT_INTERVAL: int = int(math.ceil(EPOCHS / 10))
 
@@ -138,8 +138,8 @@ if __name__ == '__main__':
     model_num: int = count_files('Models')
 
     # load data
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # 10 rows
-    # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('mismatch')  # all
+    # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # 10 rows
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe('mismatch')  # all
 
     # Create train/validation sets
     training_indices, validation_indices = create_train_dev_sets(list(multinli_df['gold_label'].values), dev_ratio=0.2)
