@@ -139,8 +139,8 @@ if __name__ == '__main__':
     model_num: int = count_files('Models')
 
     # load data
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # 10 rows
-    # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('mismatch')  # all
+    # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # 10 rows
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe('mismatch')  # all
 
     # Create train/validation sets
     training_indices, validation_indices = create_train_dev_sets(list(multinli_df['gold_label'].values), dev_ratio=0.2)
@@ -191,7 +191,7 @@ if __name__ == '__main__':
     train_dataloader: DataLoader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 
     # Initialize the BiLSTM model
-    model: BiLSTMModel = BiLSTMModel(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE)
+    model: BiLSTMModel = BiLSTMModel(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE).to(device)
 
     # Define loss function and optimizer
     loss_function: nn.CrossEntropyLoss = nn.CrossEntropyLoss()
@@ -210,13 +210,13 @@ if __name__ == '__main__':
         # Iterate over the shuffled batches
         for batch_x, batch_y in train_dataloader:
             # Forward pass
-            predictions: torch.Tensor = model(batch_x)
+            predictions: torch.Tensor = model(batch_x.to(device))
             # Create a tensor of zeros with the same number of samples
-            zeros_tensor: torch.Tensor = torch.zeros(predictions.shape[0], 1)
+            zeros_tensor: torch.Tensor = torch.zeros(predictions.shape[0], 1).to(device)
 
             # Concatenate the predictions tensor with the zeros tensor
-            predictions: torch.Tensor = torch.cat((predictions, zeros_tensor), dim=1)
-            batch_y: torch.Tensor = batch_y.squeeze()
+            predictions: torch.Tensor = torch.cat((predictions, zeros_tensor), dim=1).to(device)
+            batch_y: torch.Tensor = batch_y.squeeze().to(device)
 
             # Calculate the training loss
             loss: torch.Tensor = loss_function(predictions, batch_y)  # https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html?highlight=crossentropyloss#torch.nn.CrossEntropyLoss
@@ -235,13 +235,13 @@ if __name__ == '__main__':
         val_samples: int = 0
         with torch.no_grad():
             # Forward pass on the validation set
-            val_predictions: torch.Tensor = model(validation_x)
+            val_predictions: torch.Tensor = model(validation_x.to(device))
             # Create a tensor of zeros with the same number of samples
-            zeros_tensor: torch.Tensor = torch.zeros(val_predictions.shape[0], 1)
+            zeros_tensor: torch.Tensor = torch.zeros(val_predictions.shape[0], 1).to(device)
             # Concatenate the predictions tensor with the zeros tensor
-            val_predictions: torch.Tensor = torch.cat((val_predictions, zeros_tensor), dim=1)
+            val_predictions: torch.Tensor = torch.cat((val_predictions, zeros_tensor), dim=1).to(device)
             # Calculate the validation loss
-            val_loss: torch.Tensor = loss_function(val_predictions, validation_y.squeeze())
+            val_loss: torch.Tensor = loss_function(val_predictions, validation_y.squeeze().to(device))
             val_loss_sum += val_loss.item() * len(validation_x)
             val_samples += len(validation_x)
 
