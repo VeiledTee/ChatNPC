@@ -7,9 +7,15 @@ import torch.nn as nn
 import torch.optim as optim
 from transformers import BertModel, BertTokenizer
 import logging
+from torch.utils.data import DataLoader, TensorDataset
+import os
+
+from tqdm import tqdm
+import concurrent.futures
 
 from BiLSTM import BiLSTMModel
 import pandas as pd
+import math
 
 
 # Define hyperparameters
@@ -18,9 +24,10 @@ SEQUENCE_LENGTH: int = 128
 HIDDEN_SIZE: int = 64
 NUM_LAYERS: int = 2
 OUTPUT_SIZE: int = 1
-EPOCHS: int = 25
-BATCH_SIZE: int = 2
+EPOCHS: int = 250
+BATCH_SIZE: int = 4
 LEARNING_RATE: float = 0.001
+CHKPT_INTERVAL: int = int(math.ceil(EPOCHS / 10))
 
 
 def load_txt_file_to_dataframe(dataset_description: str) -> pd.DataFrame:
@@ -99,82 +106,143 @@ def get_bert_embeddings(sentence1: str, sentence2: str) -> torch.Tensor:
 
 if __name__ == '__main__':
     # load data
-    matched: pd.DataFrame = load_txt_file_to_dataframe('match')
-    # mismatched: pd.DataFrame = load_txt_file_to_dataframe('mismatch')
+    # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # 10 rows
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe('mismatch')  # all
 
     # Create train/validation sets
-    training_indices, validation_indices = create_train_dev_sets(list(matched['gold_label'].values), dev_ratio=0.2)
+    training_indices, validation_indices = create_train_dev_sets(list(multinli_df['gold_label'].values), dev_ratio=0.2)
 
     # Two lists of sentences for training
-    sentenceA: List[str] = [x for x in matched['sentence1']]
-    sentenceB: List[str] = [x for x in matched['sentence2']]
-    print(f"A: {sentenceA}")
-    print(f"B: {sentenceB}")
+    sentenceA: List[str] = [x for x in multinli_df['sentence1']]
+    sentenceB: List[str] = [x for x in multinli_df['sentence2']]
+    # print(f"A: {sentenceA}")
+    # print(f"B: {sentenceB}")
 
     # Make labels
-    y_train: List[int] = [1 if x == 'contradiction' else 0 for x in matched['gold_label']]
-    print(f"L: {y_train}")
+    y_train: List[int] = [1 if x == 'contradiction' else 0 for x in multinli_df['gold_label']]
+    # print(f"L: {y_train}")
 
-    x_train = []
-    # Generate embeddings
-    for a, b in zip(sentenceA, sentenceB):
-        x_train.append(get_bert_embeddings(a, b))
+    x_train: list = []
+    # Using ThreadPoolExecutor for parallel execution
+    with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
+        # Calculate the total number of iterations
+        total_iterations: int = len(sentenceA)
+
+        # Wrap the parallelized execution with tqdm
+        with tqdm(total=total_iterations) as pbar:
+            # Map the function to each pair of sentences in parallel
+            results = executor.map(get_bert_embeddings, sentenceA, sentenceB)
+
+            # Collect the results
+            for result in results:
+                x_train.append(result)
+
+                # Update progress bar
+                pbar.update(1)
 
     # Create training and dev sets
-    training_x = torch.stack([x_train[i] for i in training_indices]).view(len(training_indices), 128, 768)  # reshape to 3d
+    training_x: torch.Tensor = torch.stack([x_train[i] for i in training_indices]).view(len(training_indices), 128, 768)  # reshape to 3d
     # print(f"X Train: {training_x.shape}")
-    train_batches = create_batches(training_x)
-    validation_x = torch.stack([x_train[i] for i in validation_indices]).view(len(validation_indices), 128, 768)  # reshape to 3d
+    validation_x: torch.Tensor = torch.stack([x_train[i] for i in validation_indices]).view(len(validation_indices), 128, 768)  # reshape to 3d
     # print(f"X Val: {validation_x.shape}")
-    validation_batches = create_batches(validation_x)
-    training_y = torch.tensor([[y_train[i]] for i in training_indices]).float()  # convert to float for loss function, same shape as predictions
+    training_y: torch.Tensor = torch.tensor([[y_train[i]] for i in training_indices], dtype=torch.long) # convert to float for loss function, same shape as predictions
     # print(f"Y Train: {training_y.shape}")
     # print(training_y)
-    validation_y = torch.tensor([[y_train[i]] for i in validation_indices]).float()  # convert to float for loss function, same shape as predictions
+    validation_y: torch.Tensor = torch.tensor([[y_train[i]] for i in validation_indices], dtype=torch.long)  # convert to float for loss function, same shape as predictions
     # print(f"Y Val: {validation_y.shape}")
 
+    # Convert training data and labels to TensorDataset
+    train_dataset: TensorDataset = TensorDataset(training_x, training_y)
+
+    # Create a DataLoader with shuffled data
+    train_dataloader: DataLoader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+
     # Initialize the BiLSTM model
-    model = BiLSTMModel(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE)
+    model: BiLSTMModel = BiLSTMModel(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE)
 
     # Define loss function and optimizer
-    loss_function = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    loss_function: nn.CrossEntropyLoss = nn.CrossEntropyLoss()
+    optimizer: optim.Adam = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     # Initialize lists for training and validation loss
-    train_losses = []
-    val_losses = []
+    train_losses: List[float] = []
+    val_losses: List[float] = []
 
-    model.train()
-    optimizer.zero_grad()
-
+    # Training loop
     for epoch in range(EPOCHS):
-        # Forward pass
-        predictions = model(training_x)
-        # print(predictions)
-        # print(predictions.shape)
+        model.train()  # get to training
+        train_loss_sum: float = 0.0
+        train_samples: int = 0
 
-        # Calculate the training loss
-        loss = loss_function(predictions, training_y)
-        train_losses.append(loss.item())
+        # Iterate over the shuffled batches
+        for batch_x, batch_y in train_dataloader:
+            # Forward pass
+            predictions: torch.Tensor = model(batch_x)
+            # Create a tensor of zeros with the same number of samples
+            zeros_tensor: torch.Tensor = torch.zeros(predictions.shape[0], 1)
 
-        # Backpropagation
-        loss.backward()
-        optimizer.step()
+            # Concatenate the predictions tensor with the zeros tensor
+            predictions: torch.Tensor = torch.cat((predictions, zeros_tensor), dim=1)
+            batch_y: torch.Tensor = batch_y.squeeze()
 
-        # Evaluation phase (optional)
+            # Calculate the training loss
+            loss: torch.Tensor = loss_function(predictions, batch_y)  # https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html?highlight=crossentropyloss#torch.nn.CrossEntropyLoss
+            train_loss_sum += loss.item() * len(batch_x)
+            train_samples += len(batch_x)
+
+            # Backpropagation
+            loss.backward()
+            optimizer.step()
+
+        train_losses.append(train_loss_sum / train_samples)  # record avg training loss
+
+        # Validation phase
         model.eval()
+        val_loss_sum: float = 0.0
+        val_samples: int = 0
         with torch.no_grad():
             # Forward pass on the validation set
-            val_predictions = model(validation_x)
-
+            val_predictions: torch.Tensor = model(validation_x)
+            # Create a tensor of zeros with the same number of samples
+            zeros_tensor: torch.Tensor = torch.zeros(val_predictions.shape[0], 1)
+            # Concatenate the predictions tensor with the zeros tensor
+            val_predictions: torch.Tensor = torch.cat((val_predictions, zeros_tensor), dim=1)
             # Calculate the validation loss
-            val_loss = loss_function(val_predictions, validation_y)
-            val_losses.append(val_loss.item())
+            val_loss: torch.Tensor = loss_function(val_predictions, validation_y.squeeze())
+            val_loss_sum += val_loss.item() * len(validation_x)
+            val_samples += len(validation_x)
 
-        # Print the training and validation loss for each epoch
+        val_losses.append(val_loss_sum / val_samples)  # record avg validation loss
+
+        # Print training and validation loss for each epoch
         print(f"Epoch {epoch + 1}/{EPOCHS}: Train Loss: {train_losses[-1]:.4f}, Val Loss: {val_losses[-1]:.4f}")
 
-    # Step 7: Plot the training and validation loss curves
+        # Save checkpoint if we've reached the interval
+        if (epoch + 1) % CHKPT_INTERVAL == 0:
+            # Create the "Checkpoint" folder if it doesn't exist
+            if not os.path.exists('Checkpoint'):
+                os.makedirs('Checkpoint')
+
+            # Define the checkpoint file path
+            checkpoint_path = f'Checkpoint/checkpoint_{epoch + 1}.pth'
+
+            # Save the checkpoint
+            checkpoint = {
+                'epoch': epoch + 1,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'train_loss': train_losses[-1],
+                'val_loss': val_losses[-1]
+            }
+            torch.save(checkpoint, checkpoint_path)
+
+    # Create the "Models" folder if it doesn't exist
+    if not os.path.exists("Models"):
+        os.makedirs("Models")
+    # Save the entire model
+    torch.save(model, 'Models/model0.pth')
+
+    # Plot the training and validation loss curves
     plt.plot(range(1, EPOCHS + 1), train_losses, label='Training Loss')
     plt.plot(range(1, EPOCHS + 1), val_losses, label='Validation Loss')
     plt.xlabel('Epoch')
