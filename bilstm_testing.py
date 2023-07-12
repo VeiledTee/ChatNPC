@@ -6,6 +6,7 @@ from typing import List, Tuple
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
+import numpy as np
 import torch.optim as optim
 from transformers import BertModel, BertTokenizer
 import logging
@@ -22,12 +23,12 @@ import math
 from BiLSTM import BiLSTMModel
 from bilstm_training import load_txt_file_to_dataframe, get_bert_embeddings
 
-# from transformers import LlamaTokenizer, LlamaForCausalLM
+# from transformers import LlamaForCausalLM
 #
 # model_path = 'openlm-research/open_llama_3b'
 # # model_path = 'openlm-research/open_llama_7b'
 #
-# tokenizer = LlamaTokenizer.from_pretrained(model_path)
+# tokenizer = LlamtestAokenizer.from_pretrained(model_path)
 # model = LlamaForCausalLM.from_pretrained(
 #     model_path, torch_dtype=torch.float16, device_map='auto',
 # )
@@ -81,10 +82,10 @@ from bilstm_training import load_txt_file_to_dataframe, get_bert_embeddings
 # # Check if GPU is available
 # if torch.cuda.is_available():
 #     device = torch.device("cuda")  # Create CUDA device object
-#     print("GPU is available. PyTorch is using GPU:", torch.cuda.get_device_name(device))
+#     print("GPU is available. PtestYorch is using GPU:", torch.cuda.get_device_name(device))
 # else:
 #     device = torch.device("cpu")
-#     print("GPU is not available. PyTorch is using CPU.")
+#     print("GPU is not available. PtestYorch is using CPU.")
 #
 # # Move tensors and models to the GPU
 # tensor = torch.tensor([1, 2, 3])  # Create a tensor
@@ -111,46 +112,55 @@ else:
 multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # all
 
 # Two lists of sentences for training
-aT: List[str] = [x for x in multinli_df['sentence1']]
-bT: List[str] = [x for x in multinli_df['sentence2']]
+testA: List[str] = [x for x in multinli_df['sentence1']]
+testB: List[str] = [x for x in multinli_df['sentence2']]
 
 # Make labels
-yT: List[int] = [1 if x == 'contradiction' else 0 for x in multinli_df['gold_label']]
+testY: List[int] = [1 if x == 'contradiction' else 0 for x in multinli_df['gold_label']]
 
-xT: list = []
+testX: list = []
 # Using ThreadPoolExecutor for parallel execution
 with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
     # Calculate the total number of iterations
-    total_iterations: int = len(aT)
+    total_iterations: int = len(testA)
 
     # Wrap the parallelized execution with tqdm
     with tqdm(total=total_iterations) as pbar:
         # Map the function to each pair of sentences in parallel
-        results = executor.map(get_bert_embeddings, aT, bT)
+        results = executor.map(get_bert_embeddings, testA, testB)
 
         # Collect the results
         for result in results:
-            xT.append(result)
+            testX.append(result)
 
             # Update progress bar
             pbar.update(1)
 
-for i in range(len(aT)):
-    print(f"{aT[i]} | {aT[i]}")
-    print(f"{yT[i]}\n")
+for i in range(len(testA)):
+    print(f"{testA[i]} | {testA[i]}")
+    print(f"{testY[i]}\n")
 
 # Create training and dev sets
-test_x: torch.Tensor = torch.stack([xT[i] for i in range(len(xT))]).view(len(xT), 128, 768)  # reshape to 3d
+test_x: torch.Tensor = torch.stack([testX[i] for i in range(len(testX))]).view(len(testX), 128, 768)  # reshape to 3d
 
 model = BiLSTMModel(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE).to(device)
-model.load_state_dict(torch.load('Models/model4.pth', map_location=device).state_dict())
+model.load_state_dict(torch.load('Models/model3.pth', map_location=device).state_dict())
 model.eval()
 
 with torch.no_grad():
     output = model(test_x.to(device))
+    max_pooling_output, _ = torch.max(output, dim=1)
+    print(max_pooling_output)
+    avg_pooling_output = torch.mean(output, dim=1)
+    print(avg_pooling_output)
     probabilities = torch.softmax(output, dim=1)
     predicted_labels = torch.argmax(probabilities, dim=1)
     output_np = predicted_labels.cpu().numpy()
 
-print(f"Actual:      {yT}")
+print(f"Actual:      {np.array(testY)}")
 print(f"Predictions: {output_np}")
+
+accuracy = np.mean(np.array(testY) == output_np)
+score = accuracy.item()
+
+print(f"Score: {score}")
