@@ -104,10 +104,43 @@ def get_bert_embeddings(sentence1: str, sentence2: str) -> torch.Tensor:
     return embeddings
 
 
+def count_files(directory: str) -> int:
+    """
+    Count the number of files in a directory.
+
+    :param directory: The path to the directory.
+    :return: The number of files in the directory.
+    """
+    file_count = 0
+    for _, _, files in os.walk(directory):
+        print(files)
+        file_count += len(files)
+    return file_count
+
+
 if __name__ == '__main__':
+    # Check if GPU is available
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        print("GPU is available. PyTorch is using GPU:", torch.cuda.get_device_name(device))
+    else:
+        print("GPU is not available. PyTorch is using CPU.")
+
+    # Create the "Checkpoint" folder if it doesn't exist
+    if not os.path.exists('Checkpoint'):
+        os.makedirs('Checkpoint')
+    # Create the "Models" folder if it doesn't exist
+    if not os.path.exists("Models"):
+        os.makedirs("Models")
+    # Create the "Models" folder if it doesn't exist
+    if not os.path.exists("Figures"):
+        os.makedirs("Figures")
+
+    model_num: int = count_files('Models')
+
     # load data
-    # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # 10 rows
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe('mismatch')  # all
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # 10 rows
+    # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('mismatch')  # all
 
     # Create train/validation sets
     training_indices, validation_indices = create_train_dev_sets(list(multinli_df['gold_label'].values), dev_ratio=0.2)
@@ -219,12 +252,8 @@ if __name__ == '__main__':
 
         # Save checkpoint if we've reached the interval
         if (epoch + 1) % CHKPT_INTERVAL == 0:
-            # Create the "Checkpoint" folder if it doesn't exist
-            if not os.path.exists('Checkpoint'):
-                os.makedirs('Checkpoint')
-
             # Define the checkpoint file path
-            checkpoint_path = f'Checkpoint/checkpoint_{epoch + 1}.pth'
+            checkpoint_path = f'Checkpoint/checkpoint{model_num}_{epoch + 1}.pth'
 
             # Save the checkpoint
             checkpoint = {
@@ -236,11 +265,8 @@ if __name__ == '__main__':
             }
             torch.save(checkpoint, checkpoint_path)
 
-    # Create the "Models" folder if it doesn't exist
-    if not os.path.exists("Models"):
-        os.makedirs("Models")
     # Save the entire model
-    torch.save(model, 'Models/model0.pth')
+    torch.save(model, f'Models/model{model_num}.pth')
 
     # Plot the training and validation loss curves
     plt.plot(range(1, EPOCHS + 1), train_losses, label='Training Loss')
@@ -249,4 +275,5 @@ if __name__ == '__main__':
     plt.ylabel('Loss')
     plt.title('Training and Validation Loss')
     plt.legend()
-    plt.show()
+    plt.savefig(f"Figures/fig_{model_num}.svg", format='svg')
+    plt.close()
