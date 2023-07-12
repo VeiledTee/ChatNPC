@@ -1,2 +1,3 @@
-Player: do you know what fish live near ashbourne?
-You: Me know fish live near Ashbourne, like chromafluke in western river and blackfins in eastern one.
+version https://git-lfs.github.com/spec/v1
+oid sha256:2cc709154b0d17287de2863938ff18231d3dff13fc60f5221427cd569ea76893
+size 154
