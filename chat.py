@@ -164,11 +164,7 @@ def run_query_and_generate_answer(
     )
 
     update_history(
-        namespace=namespace,
-        info_file=DATA_FILE,
-        prompt=query,
-        response=generated_answer.split(": ")[-1],
-        index=index
+        namespace=namespace, info_file=DATA_FILE, prompt=query, response=generated_answer.split(": ")[-1], index=index
     )
 
     return generated_answer
@@ -240,7 +236,7 @@ def upload(
         j_end = min(j + window, len(data))  # get end of batch
         stats = index.describe_index_stats()
         try:
-            ids = [str(stats['namespaces'][namespace]['vector_count'] + i) for i in range(j, j_end)]  # generate ID
+            ids = [str(stats["namespaces"][namespace]["vector_count"] + i) for i in range(j, j_end)]  # generate ID
         except KeyError:
             ids = [str(0 + i) for i in range(j, j_end)]  # generate ID
         metadata = [{"text": text, "type": text_type} for text in data[j:j_end]]  # generate metadata

@@ -17,7 +17,7 @@ class BiLSTMModel(nn.Module):
         out, _ = self.bilstm(x, (h0, c0))
 
         # Extract the last hidden state from both directions
-        out = torch.cat((out[:, -1, :self.hidden_size], out[:, 0, self.hidden_size:]), dim=1)
+        out = torch.cat((out[:, -1, : self.hidden_size], out[:, 0, self.hidden_size :]), dim=1)
 
         out = self.fc(out)
         return out

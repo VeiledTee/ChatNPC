@@ -108,19 +108,19 @@ else:
     print("GPU is not available. PyTorch is using CPU.")
 
 
-multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # all
+multinli_df: pd.DataFrame = load_txt_file_to_dataframe("match")  # all
 
 # Create train/validation sets
-training_indices, validation_indices = create_train_dev_sets(list(multinli_df['gold_label'].values), dev_ratio=0.2)
+training_indices, validation_indices = create_train_dev_sets(list(multinli_df["gold_label"].values), dev_ratio=0.2)
 
 # Two lists of sentences for training
-sentenceA: List[str] = [x for x in multinli_df['sentence1']]
-sentenceB: List[str] = [x for x in multinli_df['sentence2']]
+sentenceA: List[str] = [x for x in multinli_df["sentence1"]]
+sentenceB: List[str] = [x for x in multinli_df["sentence2"]]
 # print(f"A: {sentenceA}")
 # print(f"B: {sentenceB}")
 
 # Make labels
-y_train: List[int] = [1 if x == 'contradiction' else 0 for x in multinli_df['gold_label']]
+y_train: List[int] = [1 if x == "contradiction" else 0 for x in multinli_df["gold_label"]]
 # print(f"L: {y_train}")
 
 x_train: list = []
@@ -149,10 +149,12 @@ for i in training_indices:
     print(f"{y_train[i]}\n")
 
 # Create training and dev sets
-training_x: torch.Tensor = torch.stack([x_train[i] for i in training_indices]).view(len(training_indices), 128, 768)  # reshape to 3d
+training_x: torch.Tensor = torch.stack([x_train[i] for i in training_indices]).view(
+    len(training_indices), 128, 768
+)  # reshape to 3d
 
 model = BiLSTMModel(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE).to(device)
-model.load_state_dict(torch.load('Models/model4.pth', map_location=device).state_dict())
+model.load_state_dict(torch.load("Models/model4.pth", map_location=device).state_dict())
 model.eval()
 
 with torch.no_grad():

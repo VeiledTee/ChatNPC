@@ -8,7 +8,7 @@ import torch
 from ripser import ripser
 from transformers import BertTokenizer, BertModel
 
-matplotlib.use('TkAgg')
+matplotlib.use("TkAgg")
 
 
 def top_k_holes(ph_diagrams, k: int = 3):
@@ -37,8 +37,8 @@ def get_bert_embeddings(sentence: str) -> List[float]:
     logging.getLogger("transformers").setLevel(logging.ERROR)
 
     # Load pre-trained BERT model and tokenizer
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    model = BertModel.from_pretrained('bert-base-uncased')
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    model = BertModel.from_pretrained("bert-base-uncased")
 
     # Restoring the logging level
     logging.getLogger("transformers").setLevel(logging.INFO)
@@ -63,15 +63,15 @@ def get_bert_tokens_embeddings(sentence: str) -> tuple[list[str], torch.Tensor]:
     logging.getLogger("transformers").setLevel(logging.ERROR)
 
     # Load pre-trained BERT model and tokenizer
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    model = BertModel.from_pretrained('bert-base-uncased')
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    model = BertModel.from_pretrained("bert-base-uncased")
 
     # Restoring the logging level
     logging.getLogger("transformers").setLevel(logging.INFO)
 
     # Tokenize the sentence
     tokens = tokenizer.tokenize(sentence)
-    tokens = ['[CLS]'] + tokens + ['[SEP]']
+    tokens = ["[CLS]"] + tokens + ["[SEP]"]
 
     # Convert tokens to token IDs
     token_ids = tokenizer.convert_tokens_to_ids(tokens)
@@ -112,8 +112,8 @@ def separate_ph(ph_diagrams):
 
         plt.barh(x_values, widths, left=x_values, height=0.001)
         # Set the axis labels
-        plt.xlabel('Duration')
-        plt.ylabel('Birth')
+        plt.xlabel("Duration")
+        plt.ylabel("Birth")
 
         # Show the plot
         plt.show()
@@ -138,14 +138,21 @@ def plot_ph_across_dimensions(ph_diagrams):
 
         # Plot the horizontal bar chart in the corresponding subplot
         ax = axes[d]
-        ax.barh(range(len(birth_values)), width=[point[1] - point[0] for point in f], left=birth_values,
-                align='center', alpha=0.5, color='blue', label=f'H{d} Features')
-        ax.set_xlabel('\u03B5 value')
-        ax.set_title(f'Persistent Homology H{d} Bar Chart')
+        ax.barh(
+            range(len(birth_values)),
+            width=[point[1] - point[0] for point in f],
+            left=birth_values,
+            align="center",
+            alpha=0.5,
+            color="blue",
+            label=f"H{d} Features",
+        )
+        ax.set_xlabel("\u03B5 value")
+        ax.set_title(f"Persistent Homology H{d} Bar Chart")
         ax.set_xlim(0, max_epsilon)  # Set x-axis limits
 
     # Set the y-axis label for the last subplot
-    axes[-1].set_ylabel('Feature Index')
+    axes[-1].set_ylabel("Feature Index")
 
     # Adjust spacing between subplots
     plt.tight_layout()
@@ -177,10 +184,7 @@ def plot_ph_across_dimensions(ph_diagrams):
 #     "We had a delicious dinner at the restaurant.",
 # ]
 
-sentences = [
-    "Billy loves cake",
-    "Josh hates cake"
-]
+sentences = ["Billy loves cake", "Josh hates cake"]
 
 # data: pd.DataFrame = pd.read_csv("Data/contrast-dataset.csv")
 # sentences = data["Phrase"].values
@@ -194,7 +198,7 @@ for phrase in sentences:
 
     # Compute persistent homology using ripser
     result = ripser(embeddings, maxdim=1)
-    diagrams = result['dgms']
+    diagrams = result["dgms"]
 
     k_holes: list = top_k_holes(diagrams, 3)
     for dim in k_holes:
@@ -222,7 +226,6 @@ for phrase in sentences:
     # # Print the persistence durations of the holes
     # for i, duration in enumerate(hole_durations):
     #     print(f"Hole {i+1}: Persistence Duration = {duration}")
-
 
     # Create a figure with subplots
 

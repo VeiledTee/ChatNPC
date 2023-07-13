@@ -28,7 +28,7 @@ if __name__ == "__main__":
             environment=api_keys[2],
         )
 
-    index = pinecone.Index('thesis-index')
+    index = pinecone.Index("thesis-index")
 
     # # upload data and generate query embedding.
     # embedded_query = embed("what fish can be found near ashbourne")
@@ -57,7 +57,7 @@ if __name__ == "__main__":
         names = json.load(f)
 
     delete_all_vectors(names)
-    print('deleted')
+    print("deleted")
 
     # loop through characters and store background in database
     for i in range(len(names)):

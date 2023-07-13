@@ -211,7 +211,13 @@ if __name__ == "__main__":
         "Cosine similarity\n",
     )
     display_tsne(x_col="tsne-2d-x", y_col="tsne-2d-y", df=data)
-    kmeans_cluster(x_col="tsne-2d-x", y_col="tsne-2d-y", embedding_col='Embedding', df=data, num_clusters=len(data["Topic"].unique()))
+    kmeans_cluster(
+        x_col="tsne-2d-x",
+        y_col="tsne-2d-y",
+        embedding_col="Embedding",
+        df=data,
+        num_clusters=len(data["Topic"].unique()),
+    )
 
     """
     Higher cosine score, more similar they are

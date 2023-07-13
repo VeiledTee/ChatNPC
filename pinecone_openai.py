@@ -3,8 +3,7 @@ import json
 import openai
 import pinecone
 
-from chat import (extract_name, get_information, load_file_information,
-                  run_query_and_generate_answer)
+from chat import extract_name, get_information, load_file_information, run_query_and_generate_answer
 
 if __name__ == "__main__":
     GRAMMAR: dict = {
