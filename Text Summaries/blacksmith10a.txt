@@ -1,10 +1,3 @@
-Bring me the hammer and the anvil, for we shall shape metal with fire and sweat.
-Strike while the iron is hot, lad. Give it all ye've got!
-The forge is my sanctuary, where raw ore transforms into sturdy blades and noble armor.
-A well-crafted sword is a knight's truest companion. I'll make ye one that sings in battle.
-Feel the rhythm of the hammer, let it guide yer strikes. Each blow forges strength and purpose.
-Beware the sparks that dance in the air, for they hold the secret to creation.
-An iron heart and a skilled hand, that's what makes a blacksmith true.
-I've breathed life into this steel, shaping it with my hands. 'Tis a piece of me, it is.
-The anvil sings a symphony of metal as I shape it into the armor that shall protect thee.
-In this forge, I bring forth the weapons that defend kingdoms and the tools that shape civilization.
+version https://git-lfs.github.com/spec/v1
+oid sha256:947c90102208d516fd909090c26ac497a6798ef80bda968e18e08a63c311f68f
+size 844

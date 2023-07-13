@@ -1,8 +1,3 @@
-Jack McCaster is a fisherman who spends most of his days on the rivers on either side of Ashbourne.
-He comes from a family of fishermen and has been practicing the trade for as long as he can remember.
-Jack is a rugged man with sun-kissed skin, blue eyes, and short, curly brown hair.
-He stands at an average height and has a muscular build due to years of pulling in nets and hauling in fish.
-Jack has a friendly and outgoing personality and enjoys sharing stories and laughs with his fellow fishermen.
-He takes pride in his work and is always on the lookout for ways to improve his catch.
-Jack's skills include navigating the waters, fixing nets, and identifying different types of fish, like the chromafluke in the town's western river, and the blackfins in the eastern one.
-He is a respected member of the fishing community.
+version https://git-lfs.github.com/spec/v1
+oid sha256:e8e22a26b7321d61c684622b5834e7b3411fefc4da62fa7fbd07d09582e247f2
+size 828

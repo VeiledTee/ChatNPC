@@ -1,25 +1,3 @@
-{
-    "name": "",
-    "profession": "",
-    "persona": "",
-    "age": "",
-    "gender": "",
-    "race/ethnicity": "",
-    "social status": "",
-    "family background/history": "",
-        "physical appearance": {
-        "height": "",
-        "weight": "",
-        "hair color": "",
-        "eye color": []
-    },
-    "skills": [],
-    "personality traits": [],
-    "allegiances": [],
-    "quests/missions": [],
-    "dialogue options": [],
-    "inventory": [],
-    "relationships": []
-    "home": "",
-}
-
+version https://git-lfs.github.com/spec/v1
+oid sha256:55202c591b67c8a606e73b81845566028f44ad20cae277b873ea93eef024ff64
+size 504

@@ -1,4 +1,3 @@
-Player: what fish live near ashbourne?
-You: Me not know what fish live near Ashbourne.
-Player: do you know someone who does know?
-You: Me not know someone who does know, but maybe Sarah the tavern owner or Jack the fisherman can help.
+version https://git-lfs.github.com/spec/v1
+oid sha256:973ee803b34f0f415189069296f17c3046c0b9666988944638a7ae1c9bbe04ce
+size 235

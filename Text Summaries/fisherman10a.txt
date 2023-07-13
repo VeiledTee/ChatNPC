@@ -1,10 +1,3 @@
-Aye, the sea be a fickle mistress, but she provides me livelihood.
-Hoist the sails, me hearties! We set sail at dawn!
-Beware the storm clouds on the horizon, for they bring tempests and treacherous waters.
-Tis a fine catch today, me mates. We'll feast like kings tonight!
-The legends speak of a great leviathan lurking beneath these depths. I've seen its shadow, I swear!
-Mayhaps the fish be playin' hide and seek today. We'll need to cast our nets wider.
-Patience, lads. Fishin' be a game of waitin' and watchin'.
-Aye, the fish be bitin' fierce today. Our baskets shall be overflowing!
-The sea be our lifeblood, our sustenance. We honor it with every catch.
-As the tides ebb and flow, so too does the fortune of us humble fisherfolk.
+version https://git-lfs.github.com/spec/v1
+oid sha256:86e8e08c6e12a90870821ae0a563d9b224766f4b31904d42de93f252447abf62
+size 734
