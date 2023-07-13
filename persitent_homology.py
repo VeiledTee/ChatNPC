@@ -17,14 +17,13 @@ def top_k_holes(ph_diagrams, k: int = 3):
     for dimension, diag_tuple in enumerate(ph_diagrams):
         # Initialize an empty list to store the hole indices and their persistence values
         holes = []
-        print(dimension)
         # Iterate over each feature in the diagram
         for j, (feature_birth, feature_death) in enumerate(diag_tuple):
             persistence = feature_death - feature_birth
-            holes.append((dimension, j, persistence))
+            holes.append((dimension, j, feature_birth, feature_death, persistence))
 
         # Sort the holes based on their persistence values in descending order
-        holes.sort(key=lambda x: x[2], reverse=True)
+        holes.sort(key=lambda x: x[4], reverse=True)
 
         # Select the top k holes and add to list
         top_holes.append(holes[:k])
@@ -155,78 +154,79 @@ def plot_ph_across_dimensions(ph_diagrams):
     plt.show()
 
 
-sentences = [
-    "The sky is blue.",
-    "I love eating pizza.",
-    "She plays the piano beautifully.",
-    "The cat is sleeping.",
-    "I enjoy reading books.",
-    "He runs every morning.",
-    "The flowers are blooming in the garden.",
-    "They went for a walk in the park.",
-    "The movie was fantastic.",
-    "We had a great time at the beach.",
-    "She smiled and waved at me.",
-    "The rain is pouring outside.",
-    "He is studying for his exams.",
-    "The coffee tastes delicious.",
-    "I'm going to the gym later.",
-    "They are planning a trip to Europe.",
-    "She wrote a poem for her friend.",
-    "He likes to watch football on weekends.",
-    "The concert was amazing.",
-    "We had a delicious dinner at the restaurant.",
-]
-
 # sentences = [
-#     "Billy loves cake",
-#     "Olivia loves cake",
-#     "Josh hates cake"
+#     "The sky is blue.",
+#     "I love eating pizza.",
+#     "She plays the piano beautifully.",
+#     "The cat is sleeping.",
+#     "I enjoy reading books.",
+#     "He runs every morning.",
+#     "The flowers are blooming in the garden.",
+#     "They went for a walk in the park.",
+#     "The movie was fantastic.",
+#     "We had a great time at the beach.",
+#     "She smiled and waved at me.",
+#     "The rain is pouring outside.",
+#     "He is studying for his exams.",
+#     "The coffee tastes delicious.",
+#     "I'm going to the gym later.",
+#     "They are planning a trip to Europe.",
+#     "She wrote a poem for her friend.",
+#     "He likes to watch football on weekends.",
+#     "The concert was amazing.",
+#     "We had a delicious dinner at the restaurant.",
 # ]
+
+sentences = [
+    "Billy loves cake",
+    "Josh hates cake"
+]
 
 # data: pd.DataFrame = pd.read_csv("Data/contrast-dataset.csv")
 # sentences = data["Phrase"].values
 
-e = [get_bert_embeddings(s) for s in sentences]
-# t, e = zip(*[get_bert_embeddings(s) for s in sentences])
+for phrase in sentences:
+    e = [get_bert_embeddings(s) for s in phrase]
+    # t, e = zip(*[get_bert_embeddings(s) for s in sentences])
 
-# Convert the list of BERT embeddings to a numpy array
-embeddings = np.array(e).T
+    # Convert the list of BERT embeddings to a numpy array
+    embeddings = np.array(e).T
 
-# Compute persistent homology using ripser
-result = ripser(embeddings, maxdim=2)
-diagrams = result['dgms']
+    # Compute persistent homology using ripser
+    result = ripser(embeddings, maxdim=1)
+    diagrams = result['dgms']
 
-k_holes: list = top_k_holes(diagrams, 8)
-for dim in k_holes:
-    for hole in dim:
-        hole_dim, index, persist = hole
-        print(f"Dimension: {hole_dim}, Hole Index: {index}, Persistence: {persist}")
+    k_holes: list = top_k_holes(diagrams, 3)
+    for dim in k_holes:
+        for hole in dim:
+            hole_dim, index, birth, death, persist = hole
+            # print(f"Dimension: {hole_dim}, Hole Index: {index}, Birth: {birth}, Persistence: {persist}")
+            print([hole[i] for i in [0, 2, 3, 4]])
+        print()
+    plot_ph_across_dimensions(diagrams)
 
-plot_ph_across_dimensions(diagrams)
+    # print(diagrams)
 
-# print(diagrams)
-
-# hole_durations = []  # List to store persistence durations
-#
-# for feature in diagrams:
-#     for element in feature:
-#         if any(e == float('inf') for e in element):
-#             continue  # Skip if any element is infinity
-#         else:
-#             birth = element[0]
-#             death = element[1]
-#             duration = death - birth
-#             hole_durations.append(duration)
-#
-# # Print the persistence durations of the holes
-# for i, duration in enumerate(hole_durations):
-#     print(f"Hole {i+1}: Persistence Duration = {duration}")
+    # hole_durations = []  # List to store persistence durations
+    #
+    # for feature in diagrams:
+    #     for element in feature:
+    #         if any(e == float('inf') for e in element):
+    #             continue  # Skip if any element is infinity
+    #         else:
+    #             birth = element[0]
+    #             death = element[1]
+    #             duration = death - birth
+    #             hole_durations.append(duration)
+    #
+    # # Print the persistence durations of the holes
+    # for i, duration in enumerate(hole_durations):
+    #     print(f"Hole {i+1}: Persistence Duration = {duration}")
 
 
-# Create a figure with subplots
+    # Create a figure with subplots
 
-"""
-Get longest lasting feature
-print and figure out shape
-"""
+    """
+    Get longest lasting feature
+    print and figure out shape
+    """
