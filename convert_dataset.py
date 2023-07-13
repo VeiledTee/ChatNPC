@@ -1,23 +1,13 @@
-from typing import Tuple, Dict, List
-import random
-from typing import List, Tuple
-import matplotlib.pyplot as plt
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from transformers import BertModel, BertTokenizer
-import logging
-from torch.utils.data import DataLoader, TensorDataset
-import os
-
-from tqdm import tqdm
 import concurrent.futures
-
-from BiLSTM import BiLSTMModel
-import pandas as pd
+import logging
 import math
+from typing import Dict, List, Tuple
 
+import numpy as np
+import pandas as pd
+import torch
+from tqdm import tqdm
+from transformers import BertModel, BertTokenizer
 
 # Disable the logging level for the transformers library
 logging.getLogger("transformers").setLevel(logging.ERROR)
@@ -40,13 +30,28 @@ def load_txt_file_to_dataframe(dataset_description: str) -> pd.DataFrame:
     :param dataset_description: Which dataset to load and work with
     :return: Cleaned data contained in a dataframe
     """
-    to_drop: list = ['label1', 'sentence1_binary_parse', 'sentence2_binary_parse', 'sentence1_parse', 'sentence2_parse', 'promptID', 'pairID', 'genre', 'label2', 'label3', 'label4', 'label5']
-    if dataset_description.lower().strip() == 'train':
-        data_frame = pd.read_csv('Data/MultiNLI/multinli_1.0_train.txt', sep='\t', encoding='latin-1').drop(columns=to_drop)
-    elif dataset_description.lower().strip() == 'match':
-        data_frame = pd.read_csv('Data/MultiNLI/multinli_1.0_dev_matched.txt', sep='\t', nrows=10).drop(columns=to_drop)
-    elif dataset_description.lower().strip() == 'mismatch':
-        data_frame = pd.read_csv('Data/MultiNLI/multinli_1.0_dev_mismatched.txt', sep='\t').drop(columns=to_drop)
+    to_drop: list = [
+        "label1",
+        "sentence1_binary_parse",
+        "sentence2_binary_parse",
+        "sentence1_parse",
+        "sentence2_parse",
+        "promptID",
+        "pairID",
+        "genre",
+        "label2",
+        "label3",
+        "label4",
+        "label5",
+    ]
+    if dataset_description.lower().strip() == "train":
+        data_frame = pd.read_csv("Data/MultiNLI/multinli_1.0_train.txt", sep="\t", encoding="latin-1").drop(
+            columns=to_drop
+        )
+    elif dataset_description.lower().strip() == "match":
+        data_frame = pd.read_csv("Data/MultiNLI/multinli_1.0_dev_matched.txt", sep="\t", nrows=10).drop(columns=to_drop)
+    elif dataset_description.lower().strip() == "mismatch":
+        data_frame = pd.read_csv("Data/MultiNLI/multinli_1.0_dev_mismatched.txt", sep="\t").drop(columns=to_drop)
     else:
         raise ValueError("Pass only 'train', 'match', or 'mismatch' to the function")
 
@@ -58,17 +63,17 @@ def split_into_batches(df: pd.DataFrame) -> List[List[List[str | int]]]:
     num_batches = len(df) // BATCH_SIZE
     batches = []
 
-    gold_label: List[int] = [1 if x == 'contradiction' else 0 for x in df['gold_label']]
+    gold_label: List[int] = [1 if x == "contradiction" else 0 for x in df["gold_label"]]
 
     for i in range(num_batches):
         start_index = i * BATCH_SIZE
         end_index = start_index + BATCH_SIZE
 
         batch: Tuple[List[List[str]], List[List[str]], List[int], List[int]] = (
-            df['sentence1'].iloc[start_index:end_index].tolist(),
-            df['sentence2'].iloc[start_index:end_index].tolist(),
+            df["sentence1"].iloc[start_index:end_index].tolist(),
+            df["sentence2"].iloc[start_index:end_index].tolist(),
             gold_label[start_index:end_index],
-            df.index[start_index:end_index].tolist()
+            df.index[start_index:end_index].tolist(),
         )
 
         batches.append(batch)
@@ -77,10 +82,10 @@ def split_into_batches(df: pd.DataFrame) -> List[List[List[str | int]]]:
     if len(df) % BATCH_SIZE != 0:
         start_index = num_batches * BATCH_SIZE
         batch: Tuple[List[List[str]], List[List[str]], List[int], List[int]] = (
-            df['sentence1'].iloc[start_index:].tolist(),
-            df['sentence2'].iloc[start_index:].tolist(),
+            df["sentence1"].iloc[start_index:].tolist(),
+            df["sentence2"].iloc[start_index:].tolist(),
             gold_label[start_index:],
-            df.index[start_index:].tolist()
+            df.index[start_index:].tolist(),
         )
 
         batches.append(batch)
@@ -94,8 +99,8 @@ def save_embeddings(arr: np.ndarray, IDs: list, filename: str) -> None:
         existing_data = np.load(filename)
 
         # If the file exists, extract the existing data
-        existing_arr = existing_data['arr']
-        existing_ids = existing_data['IDs']
+        existing_arr = existing_data["arr"]
+        existing_ids = existing_data["IDs"]
 
         # Reshape the existing_arr to have the same dimensions as arr
         existing_arr = np.reshape(existing_arr, (existing_arr.shape[0],) + arr.shape[1:])
@@ -115,14 +120,15 @@ def save_embeddings(arr: np.ndarray, IDs: list, filename: str) -> None:
 
 def get_bert_embeddings(sentence1: str, sentence2: str) -> np.ndarray:
     # Load pre-trained BERT model and tokenizer
-    tokenizer: BertTokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    model: BertModel = BertModel.from_pretrained('bert-base-uncased')
+    tokenizer: BertTokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    model: BertModel = BertModel.from_pretrained("bert-base-uncased")
 
     # Tokenize the sentences and obtain the input IDs and attention masks
-    tokens: Dict[str, torch.Tensor] = tokenizer.encode_plus(sentence1, sentence2, add_special_tokens=True,
-                                                            padding='longest', truncation=True)
-    input_ids: torch.Tensor = torch.tensor(tokens['input_ids']).unsqueeze(0)  # Add batch dimension
-    attention_mask: torch.Tensor = torch.tensor(tokens['attention_mask']).unsqueeze(0)  # Add batch dimension
+    tokens: Dict[str, torch.Tensor] = tokenizer.encode_plus(
+        sentence1, sentence2, add_special_tokens=True, padding="longest", truncation=True
+    )
+    input_ids: torch.Tensor = torch.tensor(tokens["input_ids"]).unsqueeze(0)  # Add batch dimension
+    attention_mask: torch.Tensor = torch.tensor(tokens["attention_mask"]).unsqueeze(0)  # Add batch dimension
 
     # Pad or truncate the input IDs and attention masks to the maximum sequence length
     input_ids = torch.nn.functional.pad(input_ids, (0, SEQUENCE_LENGTH - input_ids.size(1)))
@@ -150,7 +156,7 @@ def process_batch(batch):
     return arrays
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Check if GPU is available
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -159,7 +165,7 @@ if __name__ == '__main__':
         print("GPU is not available. PyTorch is using CPU.")
 
     # load data
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe('train')  # all train
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe("train")  # all train
     # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # 10 rows of match
     # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('mismatch')  # all mismatch
 
@@ -174,7 +180,6 @@ if __name__ == '__main__':
             for result, batch in zip(results, data_batches):
                 embeddings.append(result)
                 pbar.update(1)
-                save_embeddings(result, batch[3], 'embeddings.npz')
+                save_embeddings(result, batch[3], "embeddings.npz")
 
     embeddings = np.concatenate(embeddings)
-
