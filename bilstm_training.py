@@ -17,6 +17,8 @@ from BiLSTM import BiLSTMModel
 import pandas as pd
 import math
 
+# Disable the logging level for the transformers library
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
 # Define hyperparameters
 INPUT_SIZE: int = 768
@@ -91,15 +93,9 @@ def create_batches(data: torch.Tensor) -> List[torch.Tensor]:
 
 
 def get_bert_embeddings(sentence1: str, sentence2: str) -> torch.Tensor:
-    # Disable the logging level for the transformers library
-    logging.getLogger("transformers").setLevel(logging.ERROR)
-
     # Load pre-trained BERT model and tokenizer
     tokenizer: BertTokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
     model: BertModel = BertModel.from_pretrained("bert-base-uncased")
-
-    # Restoring the logging level
-    logging.getLogger("transformers").setLevel(logging.INFO)
 
     # Tokenize the sentences and obtain the input IDs and attention masks
     tokens: Dict[str, torch.Tensor] = tokenizer.encode_plus(
