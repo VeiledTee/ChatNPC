@@ -1,6 +1,6 @@
 import concurrent.futures
 import logging
-import math
+import queue
 from typing import Dict, List, Tuple
 
 import numpy as np
@@ -13,16 +13,8 @@ from transformers import BertModel, BertTokenizer
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
 # Define hyperparameters
-INPUT_SIZE: int = 768
 SEQUENCE_LENGTH: int = 128
-HIDDEN_SIZE: int = 64
-NUM_LAYERS: int = 2
-OUTPUT_SIZE: int = 1
-EPOCHS: int = 250
 BATCH_SIZE: int = 128
-LEARNING_RATE: float = 0.001
-CHKPT_INTERVAL: int = int(math.ceil(EPOCHS / 10))
-
 
 def load_txt_file_to_dataframe(dataset_description: str) -> pd.DataFrame:
     """
@@ -93,7 +85,7 @@ def split_into_batches(df: pd.DataFrame) -> List[List[List[str | int]]]:
     return batches
 
 
-def save_embeddings(arr: np.ndarray, IDs: list, filename: str) -> None:
+def save_embeddings(arr: np.ndarray, IDs: np.ndarray, filename: str) -> None:
     # Check if the file already exists
     try:
         existing_data = np.load(filename)
@@ -107,7 +99,8 @@ def save_embeddings(arr: np.ndarray, IDs: list, filename: str) -> None:
 
         # Append the new data to the existing arrays
         arr = np.concatenate((existing_arr, arr))
-        IDs = existing_ids + IDs
+        existing_ids += IDs[:existing_ids.shape[0]]
+        IDs = existing_ids
     except FileNotFoundError:
         pass
 
@@ -146,11 +139,26 @@ def process_batch(batch):
     sentenceA, sentenceB = batch[0], batch[1]
     x_train = []
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=16) as exe:
-        output = executor.map(get_bert_embeddings, sentenceA, sentenceB)
+    q = queue.Queue(maxsize=16)  # Set the maximum number of concurrent threads to 16
 
-        for o in output:
-            x_train.append(o)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as exe:
+        futures = []
+
+        for i in range(len(sentenceA)):
+            # Submit the task to the executor and add the future object to the list
+            futures.append(exe.submit(get_bert_embeddings, sentenceA[i], sentenceB[i]))
+
+            # Check if the maximum number of concurrent threads is reached
+            if len(futures) >= 16:
+                # Wait for the first completed future and retrieve the result
+                completed = concurrent.futures.as_completed(futures)
+                for future in completed:
+                    x_train.append(future.result())  # Append the result to the list
+                    futures.remove(future)  # Remove the completed future
+
+        # Process the remaining futures
+        for future in concurrent.futures.as_completed(futures):
+            x_train.append(future.result())  # Append the result to the list
 
     arrays = np.array([np.squeeze(x) for x in x_train])
     return arrays
@@ -168,18 +176,17 @@ if __name__ == "__main__":
     multinli_df: pd.DataFrame = load_txt_file_to_dataframe("train")  # all train
     # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # 10 rows of match
     # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('mismatch')  # all mismatch
-
+    print(len(multinli_df.index))
     data_batches = split_into_batches(multinli_df)
     print(len(data_batches))
     embeddings = []
 
     with tqdm(total=len(data_batches)) as pbar:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
             results = executor.map(process_batch, data_batches)
-
             for result, batch in zip(results, data_batches):
                 embeddings.append(result)
                 pbar.update(1)
-                save_embeddings(result, batch[3], "Data/MultiNLI/train_embeddings.npz")
+                save_embeddings(result, np.array(batch[3]), "Data/MultiNLI/training.npz")
 
-    embeddings = np.concatenate(embeddings)
+    # embeddings = np.concatenate(embeddings)
