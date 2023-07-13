@@ -180,6 +180,6 @@ if __name__ == "__main__":
             for result, batch in zip(results, data_batches):
                 embeddings.append(result)
                 pbar.update(1)
-                save_embeddings(result, batch[3], "embeddings.npz")
+                save_embeddings(result, batch[3], "Data/MultiNLI/train_embeddings.npz")
 
     embeddings = np.concatenate(embeddings)
