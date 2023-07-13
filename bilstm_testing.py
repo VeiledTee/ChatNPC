@@ -109,14 +109,14 @@ else:
     print("GPU is not available. PyTorch is using CPU.")
 
 
-multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # all
+multinli_df: pd.DataFrame = load_txt_file_to_dataframe("match")  # all
 
 # Two lists of sentences for training
-testA: List[str] = [x for x in multinli_df['sentence1']]
-testB: List[str] = [x for x in multinli_df['sentence2']]
+testA: List[str] = [x for x in multinli_df["sentence1"]]
+testB: List[str] = [x for x in multinli_df["sentence2"]]
 
 # Make labels
-testY: List[int] = [1 if x == 'contradiction' else 0 for x in multinli_df['gold_label']]
+testY: List[int] = [1 if x == "contradiction" else 0 for x in multinli_df["gold_label"]]
 
 testX: list = []
 # Using ThreadPoolExecutor for parallel execution
@@ -144,7 +144,7 @@ for i in range(len(testA)):
 test_x: torch.Tensor = torch.stack([testX[i] for i in range(len(testX))]).view(len(testX), 128, 768)  # reshape to 3d
 
 model = BiLSTMModel(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE).to(device)
-model.load_state_dict(torch.load('Models/model3.pth', map_location=device).state_dict())
+model.load_state_dict(torch.load("Models/model3.pth", map_location=device).state_dict())
 model.eval()
 
 with torch.no_grad():

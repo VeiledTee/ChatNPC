@@ -36,13 +36,28 @@ def load_txt_file_to_dataframe(dataset_description: str) -> pd.DataFrame:
     :param dataset_description: Which dataset to load and work with
     :return: Cleaned data contained in a dataframe
     """
-    to_drop: list = ['label1', 'sentence1_binary_parse', 'sentence2_binary_parse', 'sentence1_parse', 'sentence2_parse', 'promptID', 'pairID', 'genre', 'label2', 'label3', 'label4', 'label5']
-    if dataset_description.lower().strip() == 'train':
-        data_frame = pd.read_csv('Data/MultiNLI/multinli_1.0_train.txt', sep='\t', encoding='latin-1').drop(columns=to_drop)
-    elif dataset_description.lower().strip() == 'match':
-        data_frame = pd.read_csv('Data/MultiNLI/multinli_1.0_dev_matched.txt', sep='\t', nrows=10).drop(columns=to_drop)
-    elif dataset_description.lower().strip() == 'mismatch':
-        data_frame = pd.read_csv('Data/MultiNLI/multinli_1.0_dev_mismatched.txt', sep='\t').drop(columns=to_drop)
+    to_drop: list = [
+        "label1",
+        "sentence1_binary_parse",
+        "sentence2_binary_parse",
+        "sentence1_parse",
+        "sentence2_parse",
+        "promptID",
+        "pairID",
+        "genre",
+        "label2",
+        "label3",
+        "label4",
+        "label5",
+    ]
+    if dataset_description.lower().strip() == "train":
+        data_frame = pd.read_csv("Data/MultiNLI/multinli_1.0_train.txt", sep="\t", encoding="latin-1").drop(
+            columns=to_drop
+        )
+    elif dataset_description.lower().strip() == "match":
+        data_frame = pd.read_csv("Data/MultiNLI/multinli_1.0_dev_matched.txt", sep="\t", nrows=10).drop(columns=to_drop)
+    elif dataset_description.lower().strip() == "mismatch":
+        data_frame = pd.read_csv("Data/MultiNLI/multinli_1.0_dev_mismatched.txt", sep="\t").drop(columns=to_drop)
     else:
         raise ValueError("Pass only 'train', 'match', or 'mismatch' to the function")
 
@@ -80,17 +95,18 @@ def get_bert_embeddings(sentence1: str, sentence2: str) -> torch.Tensor:
     logging.getLogger("transformers").setLevel(logging.ERROR)
 
     # Load pre-trained BERT model and tokenizer
-    tokenizer: BertTokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    model: BertModel = BertModel.from_pretrained('bert-base-uncased')
+    tokenizer: BertTokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    model: BertModel = BertModel.from_pretrained("bert-base-uncased")
 
     # Restoring the logging level
     logging.getLogger("transformers").setLevel(logging.INFO)
 
     # Tokenize the sentences and obtain the input IDs and attention masks
-    tokens: Dict[str, torch.Tensor] = tokenizer.encode_plus(sentence1, sentence2, add_special_tokens=True,
-                                                            padding='longest', truncation=True)
-    input_ids: torch.Tensor = torch.tensor(tokens['input_ids']).unsqueeze(0)  # Add batch dimension
-    attention_mask: torch.Tensor = torch.tensor(tokens['attention_mask']).unsqueeze(0)  # Add batch dimension
+    tokens: Dict[str, torch.Tensor] = tokenizer.encode_plus(
+        sentence1, sentence2, add_special_tokens=True, padding="longest", truncation=True
+    )
+    input_ids: torch.Tensor = torch.tensor(tokens["input_ids"]).unsqueeze(0)  # Add batch dimension
+    attention_mask: torch.Tensor = torch.tensor(tokens["attention_mask"]).unsqueeze(0)  # Add batch dimension
 
     # Pad or truncate the input IDs and attention masks to the maximum sequence length
     input_ids = torch.nn.functional.pad(input_ids, (0, SEQUENCE_LENGTH - input_ids.size(1)))
@@ -117,7 +133,7 @@ def count_files(directory: str) -> int:
     return file_count
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Check if GPU is available
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -132,28 +148,28 @@ if __name__ == '__main__':
     if not os.path.exists("Figures"):
         os.makedirs("Figures")
 
-    model_num: int = count_files('Models')
+    model_num: int = count_files("Models")
 
     # Create the "Checkpoint" folder if it doesn't exist
-    if not os.path.exists(f'Checkpoint/{model_num}'):
-        os.makedirs(f'Checkpoint/{model_num}')
+    if not os.path.exists(f"Checkpoint/{model_num}"):
+        os.makedirs(f"Checkpoint/{model_num}")
 
     # load data
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe('train')  # all train
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe("train")  # all train
     # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # 10 rows of match
     # multinli_df: pd.DataFrame = load_txt_file_to_dataframe('mismatch')  # all mismatch
 
     # Create train/validation sets
-    training_indices, validation_indices = create_train_dev_sets(list(multinli_df['gold_label'].values), dev_ratio=0.2)
+    training_indices, validation_indices = create_train_dev_sets(list(multinli_df["gold_label"].values), dev_ratio=0.2)
 
     # Two lists of sentences for training
-    sentenceA: List[str] = [x for x in multinli_df['sentence1']]
-    sentenceB: List[str] = [x for x in multinli_df['sentence2']]
+    sentenceA: List[str] = [x for x in multinli_df["sentence1"]]
+    sentenceB: List[str] = [x for x in multinli_df["sentence2"]]
     # print(f"A: {sentenceA}")
     # print(f"B: {sentenceB}")
 
     # Make labels
-    y_train: List[int] = [1 if x == 'contradiction' else 0 for x in multinli_df['gold_label']]
+    y_train: List[int] = [1 if x == "contradiction" else 0 for x in multinli_df["gold_label"]]
     # print(f"L: {y_train}")
 
     x_train: list = []
@@ -175,14 +191,22 @@ if __name__ == '__main__':
                 pbar.update(1)
 
     # Create training and dev sets
-    training_x: torch.Tensor = torch.stack([x_train[i] for i in training_indices]).view(len(training_indices), 128, 768)  # reshape to 3d
+    training_x: torch.Tensor = torch.stack([x_train[i] for i in training_indices]).view(
+        len(training_indices), 128, 768
+    )  # reshape to 3d
     # print(f"X Train: {training_x.shape}")
-    validation_x: torch.Tensor = torch.stack([x_train[i] for i in validation_indices]).view(len(validation_indices), 128, 768)  # reshape to 3d
+    validation_x: torch.Tensor = torch.stack([x_train[i] for i in validation_indices]).view(
+        len(validation_indices), 128, 768
+    )  # reshape to 3d
     # print(f"X Val: {validation_x.shape}")
-    training_y: torch.Tensor = torch.tensor([[y_train[i]] for i in training_indices], dtype=torch.long) # convert to float for loss function, same shape as predictions
+    training_y: torch.Tensor = torch.tensor(
+        [[y_train[i]] for i in training_indices], dtype=torch.long
+    )  # convert to float for loss function, same shape as predictions
     # print(f"Y Train: {training_y.shape}")
     # print(training_y)
-    validation_y: torch.Tensor = torch.tensor([[y_train[i]] for i in validation_indices], dtype=torch.long)  # convert to float for loss function, same shape as predictions
+    validation_y: torch.Tensor = torch.tensor(
+        [[y_train[i]] for i in validation_indices], dtype=torch.long
+    )  # convert to float for loss function, same shape as predictions
     # print(f"Y Val: {validation_y.shape}")
 
     # Convert training data and labels to TensorDataset
@@ -220,7 +244,9 @@ if __name__ == '__main__':
             batch_y: torch.Tensor = batch_y.squeeze().to(device)
 
             # Calculate the training loss
-            loss: torch.Tensor = loss_function(predictions, batch_y)  # https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html?highlight=crossentropyloss#torch.nn.CrossEntropyLoss
+            loss: torch.Tensor = loss_function(
+                predictions, batch_y
+            )  # https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html?highlight=crossentropyloss#torch.nn.CrossEntropyLoss
             train_loss_sum += loss.item() * len(batch_x)
             train_samples += len(batch_x)
 
@@ -254,27 +280,27 @@ if __name__ == '__main__':
         # Save checkpoint if we've reached the interval
         if (epoch + 1) % CHKPT_INTERVAL == 0:
             # Define the checkpoint file path
-            checkpoint_path = f'Checkpoint/checkpoint{model_num}_{epoch + 1}.pth'
+            checkpoint_path = f"Checkpoint/checkpoint{model_num}_{epoch + 1}.pth"
 
             # Save the checkpoint
             checkpoint = {
-                'epoch': epoch + 1,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'train_loss': train_losses[-1],
-                'val_loss': val_losses[-1]
+                "epoch": epoch + 1,
+                "model_state_dict": model.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "train_loss": train_losses[-1],
+                "val_loss": val_losses[-1],
             }
             torch.save(checkpoint, checkpoint_path)
 
     # Save the entire model
-    torch.save(model, f'Models/model{model_num}.pth')
+    torch.save(model, f"Models/model{model_num}.pth")
 
     # Plot the training and validation loss curves
-    plt.plot(range(1, EPOCHS + 1), train_losses, label='Training Loss')
-    plt.plot(range(1, EPOCHS + 1), val_losses, label='Validation Loss')
-    plt.xlabel('Epoch')
-    plt.ylabel('Loss')
-    plt.title('Training and Validation Loss')
+    plt.plot(range(1, EPOCHS + 1), train_losses, label="Training Loss")
+    plt.plot(range(1, EPOCHS + 1), val_losses, label="Validation Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Training and Validation Loss")
     plt.legend()
-    plt.savefig(f"Figures/fig_{model_num}.svg", format='svg')
+    plt.savefig(f"Figures/fig_{model_num}.svg", format="svg")
     plt.close()
