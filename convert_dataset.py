@@ -1,7 +1,7 @@
 import concurrent.futures
 import logging
 import os
-from typing import Dict, List, Tuple
+from typing import List
 
 import numpy as np
 import pandas as pd
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     for directory in ["Data/NPZ", "Data/MultiNLI"]:
         if not os.path.exists(directory):
             os.makedirs(directory)
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe("match")  # 10 rows of match
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe("train")
     print(f"\nRow count: {len(multinli_df)}")
     data_batches = group_rows(multinli_df)
     print(f"Num Batches: {len(data_batches)}")
