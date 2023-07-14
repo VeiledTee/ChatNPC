@@ -111,7 +111,7 @@ def get_bert_embeddings(sentence1: str, sentence2: str) -> np.ndarray:
 def group_rows(dataframe):
     grouped_data = []
     for i in range(0, len(dataframe), BATCH_SIZE):
-        batch = dataframe.iloc[i:i+BATCH_SIZE]
+        batch = dataframe.iloc[i : i + BATCH_SIZE]
         sentenceA: List[str] = [x for x in batch["sentence1"]]
         sentenceB: List[str] = [x for x in batch["sentence2"]]
         labels: List[int] = [1 if x == "contradiction" else 0 for x in batch["gold_label"]]
@@ -121,13 +121,13 @@ def group_rows(dataframe):
 
 
 def combine_npz_files(directory: str = "Data/NPZ", output_file: str = "Data/MultiNLI/batch_sum.npz"):
-    npz_files = [file for file in os.listdir(directory) if file.endswith('.npz')]
+    npz_files = [file for file in os.listdir(directory) if file.endswith(".npz")]
     combined_data = {}
 
     for file in npz_files:
-        retrieved = read_npz_file(os.path.join(directory, file))
-        for key, array in retrieved.items():
-            combined_data[key] = array
+        file_data = read_npz_file(os.path.join(directory, file))
+        for key, value in file_data.items():
+            combined_data[key] = value
     np.savez_compressed(output_file, **combined_data)
 
 
@@ -141,11 +141,11 @@ def read_npz_file(file_path):
     return data
 
 
-if __name__ == '__main__':
-    for dir in ["Data/NPZ", "Data/MultiNLI"]:
-        if not os.path.exists(dir):
-            os.makedirs(dir)
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe('match')  # 10 rows of match
+if __name__ == "__main__":
+    for directory in ["Data/NPZ", "Data/MultiNLI"]:
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe("match")  # 10 rows of match
     print(f"\nRow count: {len(multinli_df)}")
     data_batches = group_rows(multinli_df)
     print(f"Num Batches: {len(data_batches)}")
