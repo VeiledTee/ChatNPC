@@ -14,7 +14,8 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 
 # Define hyperparameters
 SEQUENCE_LENGTH: int = 128
-BATCH_SIZE: int = 4
+BATCH_SIZE: int = 128
+
 # Check if GPU is available
 if torch.cuda.is_available():
     DEVICE = torch.device("cuda")
@@ -58,25 +59,27 @@ def load_txt_file_to_dataframe(dataset_description: str) -> pd.DataFrame:
     return data_frame
 
 
-def parallel_get_bert_embeddings(batches):
-    embeddings = []
+def parallel_get_bert_embeddings(batches) -> np.ndarray:
+    embeddings: list = []
+    start: int = get_start()
+    print(f"Starting at batch: {start}")
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        total_batches = len(batches)
+        total_batches: int = len(batches)
         with tqdm(total=total_batches, desc="Processing batches") as pbar:
             for i, batch in enumerate(batches):
-                futures = []
-                ids = batch[3]
-                for b in range(len(batch[0])):
-                    future = executor.submit(get_bert_embeddings, batch[0][b], batch[1][b])
-                    futures.append(future)
-                print(len([future.result() for future in futures]))
-                results = np.array([future.result() for future in futures]).squeeze()
-                embeddings.extend(results)
-                pbar.update(1)
+                if i >= start:
+                    futures: list = []
+                    ids: List[int] = batch[3]
+                    for b in range(len(batch[0])):
+                        future = executor.submit(get_bert_embeddings, batch[0][b], batch[1][b])
+                        futures.append(future)
+                    results = np.array([future.result() for future in futures]).squeeze()
+                    embeddings.extend(results)
 
-                # Save embeddings from each batch with corresponding IDs as keys
-                batch_output_file = f"Data/NPZ/batch_{i}.npz"
-                np.savez_compressed(batch_output_file, **{str(identity): emb for identity, emb in zip(ids, results)})
+                    # Save embeddings from each batch with corresponding IDs as keys
+                    batch_output_file = f"Data/NPZ/batch_{i}.npz"
+                    np.savez_compressed(batch_output_file, **{str(identity): emb for identity, emb in zip(ids, results)})
+                pbar.update(1)
 
     return np.array(embeddings)
 
@@ -120,18 +123,20 @@ def group_rows(dataframe):
     return grouped_data
 
 
-def combine_npz_files(directory: str = "Data/NPZ", output_file: str = "Data/MultiNLI/batch_sum.npz"):
-    npz_files = [file for file in os.listdir(directory) if file.endswith(".npz")]
+def combine_npz_files(npz_dir: str = "Data/NPZ", output_file: str = "Data/MultiNLI/batch_sum.npz"):
+    npz_files = [file for file in os.listdir(npz_dir) if file.endswith(".npz")]
     combined_data = {}
+    print(len(npz_files))
 
     for file in npz_files:
-        file_data = read_npz_file(os.path.join(directory, file))
+        file_data = read_npz_file(f"{npz_dir}/{file}")
         for key, value in file_data.items():
             combined_data[key] = value
     np.savez_compressed(output_file, **combined_data)
 
 
 def read_npz_file(file_path):
+    print(file_path)
     loaded_data = np.load(file_path)
     data = {}
 
@@ -141,11 +146,21 @@ def read_npz_file(file_path):
     return data
 
 
+def get_start(npz_dir: str = "Data/NPZ") -> int:
+    npz_files = [file for file in os.listdir(npz_dir) if file.endswith(".npz")]  # retrieve npz files
+    return len(npz_files)  # return largest completed batch
+
+
 if __name__ == "__main__":
+    # combine_npz_files()
+    # retrieved = read_npz_file("Data/MultiNLI/batch_sum.npz")
+    # for k, array in retrieved.items():
+    #     print(f"Array with key '{k}': {array.shape}")
+
     for directory in ["Data/NPZ", "Data/MultiNLI"]:
         if not os.path.exists(directory):
             os.makedirs(directory)
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe("train")
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe("mismatch")
     print(f"\nRow count: {len(multinli_df)}")
     data_batches = group_rows(multinli_df)
     print(f"Num Batches: {len(data_batches)}")
