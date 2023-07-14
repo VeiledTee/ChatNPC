@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional, Tuple
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -8,101 +8,78 @@ import torch
 from ripser import ripser
 from transformers import BertTokenizer, BertModel
 
+# Check if GPU is available
+if torch.cuda.is_available():
+    DEVICE = torch.device("cuda")
+    print("GPU is available. PyTorch is using GPU:", torch.cuda.get_device_name(DEVICE))
+else:
+    DEVICE = torch.device('cpu')
+    print("GPU is not available. PyTorch is using CPU.")
+
+# Disable the logging level for the transformers library
+logging.getLogger("transformers").setLevel(logging.ERROR)
 matplotlib.use("TkAgg")
 
 
-def top_k_holes(ph_diagrams, k: int = 3):
-    top_holes: list = []
-    # Iterate over each dimension
-    for dimension, diag_tuple in enumerate(ph_diagrams):
-        # Initialize an empty list to store the hole indices and their persistence values
-        holes = []
-        # Iterate over each feature in the diagram
-        for j, (feature_birth, feature_death) in enumerate(diag_tuple):
-            persistence = feature_death - feature_birth
-            holes.append((dimension, j, feature_birth, feature_death, persistence))
-
-        # Sort the holes based on their persistence values in descending order
-        holes.sort(key=lambda x: x[4], reverse=True)
-
-        # Select the top k holes and add to list
-        top_holes.append(holes[:k])
-
-    # return list of top k holes in each dimension
-    return top_holes
-
-
-def get_bert_embeddings(sentence: str) -> List[float]:
-    # Disable the logging level for the transformers library
-    logging.getLogger("transformers").setLevel(logging.ERROR)
-
+def get_bert_embeddings(sentence: str) -> np.ndarray:
     # Load pre-trained BERT model and tokenizer
     tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    model = BertModel.from_pretrained("bert-base-uncased")
-
-    # Restoring the logging level
-    logging.getLogger("transformers").setLevel(logging.INFO)
+    model = BertModel.from_pretrained("bert-base-uncased").to(DEVICE)
 
     # Tokenize and encode the sentence
     tokens = tokenizer.encode(sentence, add_special_tokens=True)
-    input_ids = torch.tensor([tokens])
+    input_ids = torch.tensor([tokens]).to(DEVICE)
 
     # Obtain the BERT embeddings
     with torch.no_grad():
         outputs = model(input_ids)
         word_embeddings = torch.mean(outputs.last_hidden_state, dim=1).squeeze()
 
-    # Convert embeddings to a Python list
-    embeddings_list = word_embeddings.tolist()
-
-    return embeddings_list
+    # Convert embeddings to a NumPy aray
+    return word_embeddings.cpu().numpy()
 
 
-def get_bert_tokens_embeddings(sentence: str) -> tuple[list[str], torch.Tensor]:
-    # Disable the logging level for the transformers library
-    logging.getLogger("transformers").setLevel(logging.ERROR)
+def top_k_holes(ph_diagrams: List[np.ndarray], k: Optional[List[int]] = None) -> List[np.ndarray]:
+    """
+    Find the k holes in each dimension that persist the longest and return their information
+    :param ph_diagrams: Diagrams generated using the "ripser" library
+    :param k: A list of k values to use in each dimension.
+    :return: List of top k holes in each dimension
+    """
+    if k is None:
+        k = [260, 50]
+    if len(k) > len(ph_diagrams):
+        print(Warning(
+            f"You provided more k values than dimensions. There are {len(ph_diagrams)} dimensions but {len(k)} k values. Only the first {len(ph_diagrams)} k values will be used"))
+    elif len(k) < len(ph_diagrams):
+        raise ValueError(
+            f"Less k values than there are dimensions. You provided {len(k)} k values for {len(ph_diagrams)} dimensions. Ensure there is a k value for every dimension.")
 
-    # Load pre-trained BERT model and tokenizer
-    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    model = BertModel.from_pretrained("bert-base-uncased")
+    top_holes: List[np.ndarray] = []
+    # Iterate over each dimension
+    for dimension, diag_array in enumerate(ph_diagrams):
+        # Initialize an empty list to store the hole indices and their persistence values
+        holes = []
+        # Iterate over each feature in the diagram
+        for j in range(diag_array.shape[0]):
+            feature_birth = diag_array[j, 0]
+            feature_death = diag_array[j, 1]
+            persistence = feature_death - feature_birth
+            holes.append(np.array([dimension, j, feature_birth, feature_death, persistence]))
 
-    # Restoring the logging level
-    logging.getLogger("transformers").setLevel(logging.INFO)
+        # Sort the holes based on their persistence values in descending order
+        holes.sort(key=lambda x: x[4], reverse=True)
 
-    # Tokenize the sentence
-    tokens = tokenizer.tokenize(sentence)
-    tokens = ["[CLS]"] + tokens + ["[SEP]"]
+        # Select the top k holes and add to list
+        top_holes.append(np.array(holes[:k[dimension]]))
 
-    # Convert tokens to token IDs
-    token_ids = tokenizer.convert_tokens_to_ids(tokens)
-
-    # Define the desired length of the embeddings
-    max_length = 128
-
-    # Pad or truncate token IDs to the desired length
-    if len(token_ids) < max_length:
-        token_ids = token_ids + [0] * (max_length - len(token_ids))
-    else:
-        token_ids = token_ids[:max_length]
-
-    # Convert token IDs to tensor
-    token_ids_tensor = torch.tensor([token_ids])
-
-    # Get the token embeddings
-    with torch.no_grad():
-        outputs = model(token_ids_tensor)
-        token_embeddings = outputs.last_hidden_state
-
-    # Convert token embeddings to a list
-    token_embeddings = token_embeddings.squeeze().tolist()
-
-    return tokens, token_embeddings
+    # return list of top k holes in each dimension
+    return top_holes
 
 
 def separate_ph(ph_diagrams):
     dimensions = []
     for dimension, diag_tuple in enumerate(ph_diagrams):
-        print(f"Dimension {dimension}:")
         x_values: list[float] = []
         widths: list[float] = []
         # Iterate over each feature in the diagram
@@ -161,6 +138,27 @@ def plot_ph_across_dimensions(ph_diagrams):
     plt.show()
 
 
+def persistent_homology_features(phrases: List[str]) -> List[List[np.ndarray]]:
+    features: list = []
+    for sentence in phrases:
+        embedding = [get_bert_embeddings(s) for s in sentence]
+
+        # Convert the list of BERT embeddings to a numpy array
+        all_embeddings = np.array(embedding).T
+
+        # Compute persistent homology using ripser
+        ph = ripser(all_embeddings, maxdim=1)
+        ph_diagrams = ph["dgms"]
+
+        phrase_holes: list = top_k_holes(ph_diagrams)
+        for number, dimension in enumerate(phrase_holes):
+            print(f"Dimension {number} Len: {len(dimension)}")
+            print(f"Dimension {number} shape: {dimension.shape}")
+        print()
+        features.append(phrase_holes)
+    return features
+
+
 # sentences = [
 #     "The sky is blue.",
 #     "I love eating pizza.",
@@ -186,50 +184,53 @@ def plot_ph_across_dimensions(ph_diagrams):
 
 sentences = ["Billy loves cake", "Josh hates cake"]
 
+ph_features: list = persistent_homology_features(phrases=sentences)
+
 # data: pd.DataFrame = pd.read_csv("Data/contrast-dataset.csv")
 # sentences = data["Phrase"].values
-
-for phrase in sentences:
-    e = [get_bert_embeddings(s) for s in phrase]
-    # t, e = zip(*[get_bert_embeddings(s) for s in sentences])
-
-    # Convert the list of BERT embeddings to a numpy array
-    embeddings = np.array(e).T
-
-    # Compute persistent homology using ripser
-    result = ripser(embeddings, maxdim=1)
-    diagrams = result["dgms"]
-
-    k_holes: list = top_k_holes(diagrams, 3)
-    for dim in k_holes:
-        for hole in dim:
-            hole_dim, index, birth, death, persist = hole
-            # print(f"Dimension: {hole_dim}, Hole Index: {index}, Birth: {birth}, Persistence: {persist}")
-            print([hole[i] for i in [0, 2, 3, 4]])
-        print()
-    plot_ph_across_dimensions(diagrams)
-
-    # print(diagrams)
-
-    # hole_durations = []  # List to store persistence durations
-    #
-    # for feature in diagrams:
-    #     for element in feature:
-    #         if any(e == float('inf') for e in element):
-    #             continue  # Skip if any element is infinity
-    #         else:
-    #             birth = element[0]
-    #             death = element[1]
-    #             duration = death - birth
-    #             hole_durations.append(duration)
-    #
-    # # Print the persistence durations of the holes
-    # for i, duration in enumerate(hole_durations):
-    #     print(f"Hole {i+1}: Persistence Duration = {duration}")
-
-    # Create a figure with subplots
-
-    """
-    Get longest lasting feature
-    print and figure out shape
-    """
+#
+# for phrase in sentences:
+#     e = [get_bert_embeddings(s) for s in phrase]
+#
+#     # Convert the list of BERT embeddings to a numpy array
+#     embeddings = np.array(e).T
+#
+#     # Compute persistent homology using ripser
+#     result = ripser(embeddings, maxdim=1)
+#     diagrams = result["dgms"]
+#
+#     k_holes: list = top_k_holes(diagrams)
+#     for dim in k_holes:
+#         print(f"Dim Len: {len(dim)}")
+#         print(f"Dim shape: {dim.shape}")
+#         for hole in dim:
+#             hole_dim, index, birth, death, persist = hole
+#             # print(f"Dimension: {hole_dim}, Hole Index: {index}, Birth: {birth}, Persistence: {persist}")
+#             # print([hole[i] for i in [0, 2, 3]])
+#     print()
+#     # plot_ph_across_dimensions(diagrams)
+#
+#     # print(diagrams)
+#
+#     # hole_durations = []  # List to store persistence durations
+#     #
+#     # for feature in diagrams:
+#     #     for element in feature:
+#     #         if any(e == float('inf') for e in element):
+#     #             continue  # Skip if any element is infinity
+#     #         else:
+#     #             birth = element[0]
+#     #             death = element[1]
+#     #             duration = death - birth
+#     #             hole_durations.append(duration)
+#     #
+#     # # Print the persistence durations of the holes
+#     # for i, duration in enumerate(hole_durations):
+#     #     print(f"Hole {i+1}: Persistence Duration = {duration}")
+#
+#     # Create a figure with subplots
+#
+#     """
+#     Get longest lasting feature
+#     print and figure out shape
+#     """
