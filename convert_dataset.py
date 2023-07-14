@@ -9,12 +9,15 @@ import torch
 from tqdm import tqdm
 from transformers import BertModel, BertTokenizer
 
+
 # Disable the logging level for the transformers library
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
 # Define hyperparameters
 SEQUENCE_LENGTH: int = 128
+# BATCH_SIZE: int = 9984
 BATCH_SIZE: int = 128
+DATASET: str = "mismatch"
 
 # Check if GPU is available
 if torch.cuda.is_available():
@@ -78,7 +81,7 @@ def parallel_get_bert_embeddings(batches) -> np.ndarray:
                     embeddings.extend(results)
 
                     # Save embeddings from each batch with corresponding IDs as keys
-                    batch_output_file = f"Data/NPZ/batch_{i}.npz"
+                    batch_output_file = f"Data/NPZ/{DATASET.capitalize()}/batch_{i}.npz"
                     np.savez_compressed(batch_output_file, **{str(identity): emb for identity, emb in zip(ids, results)})
                 pbar.update(1)
 
@@ -124,7 +127,7 @@ def group_rows(dataframe):
     return grouped_data
 
 
-def combine_npz_files(npz_dir: str = "Data/NPZ", output_file: str = "Data/MultiNLI/mismatched_embeddings.npz"):
+def combine_npz_files(output_file: str, npz_dir: str = f"Data/NPZ/{DATASET.capitalize()}"):
     npz_files = [file for file in os.listdir(npz_dir) if file.endswith(".npz")]
     combined_data = {}
     for file in npz_files:
@@ -144,37 +147,37 @@ def read_npz_file(file_path):
     return data
 
 
-def delete_npz_files(npz_dir: str = "Data/NPZ"):
+def delete_npz_files(npz_dir: str = f"Data/NPZ/{DATASET.capitalize()}"):
     for file in os.listdir(npz_dir):
         if file.endswith(".npz"):
             file_path = os.path.join(npz_dir, file)
             os.remove(file_path)
 
 
-def get_start(npz_dir: str = "Data/NPZ") -> int:
+def get_start(npz_dir: str = f"Data/NPZ/{DATASET.capitalize()}") -> int:
     npz_files = [file for file in os.listdir(npz_dir) if file.endswith(".npz")]  # retrieve npz files
     return len(npz_files)  # return largest completed batch
 
 
 if __name__ == "__main__":
     # combine_npz_files()
-    # retrieved = read_npz_file("Data/MultiNLI/mismatched_embeddings.npz")
+    # retrieved = read_npz_file("Data/MultiNLI/matched_embeddings.npz")
     # for k, array in retrieved.items():
     #     print(f"Array with key '{k}': {array.shape}")
 
-    for directory in ["Data/NPZ", "Data/MultiNLI"]:
+    for directory in ["Data/NPZ", "Data/MultiNLI", f"Data/NPZ/{DATASET.capitalize()}"]:
         if not os.path.exists(directory):
             os.makedirs(directory)
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe("match")
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe(DATASET)
     print(f"\nRow count: {len(multinli_df)}")
     data_batches = group_rows(multinli_df)
     print(f"Num Batches: {len(data_batches)}")
     embedded_batches = parallel_get_bert_embeddings(data_batches)
     print(f"Embedding count: {len(embedded_batches)}")
     print(f"Embedding shape: {embedded_batches.shape}")
-    combine_npz_files()
-    # delete_npz_files()
-    retrieved = read_npz_file("Data/MultiNLI/matched_embeddings.npz")
+    combine_npz_files(output_file=f"Data/MultiNLI/{DATASET}_embeddings.npz")
+    retrieved = read_npz_file(f"Data/MultiNLI/{DATASET}_embeddings.npz")
     for k, array in retrieved.items():
         if not np.array_equal(embedded_batches[int(k)], array):
             print(f"Array {k} not equal")
+    # delete_npz_files()
