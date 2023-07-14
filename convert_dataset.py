@@ -21,6 +21,7 @@ if torch.cuda.is_available():
     DEVICE = torch.device("cuda")
     print("GPU is available. PyTorch is using GPU:", torch.cuda.get_device_name(DEVICE))
 else:
+    DEVICE = torch.device('cpu')
     print("GPU is not available. PyTorch is using CPU.")
 
 
@@ -49,7 +50,7 @@ def load_txt_file_to_dataframe(dataset_description: str) -> pd.DataFrame:
             columns=to_drop
         )
     elif dataset_description.lower().strip() == "match":
-        data_frame = pd.read_csv("Data/MultiNLI/multinli_1.0_dev_matched.txt", sep="\t", nrows=10).drop(columns=to_drop)
+        data_frame = pd.read_csv("Data/MultiNLI/multinli_1.0_dev_matched.txt", sep="\t").drop(columns=to_drop)
     elif dataset_description.lower().strip() == "mismatch":
         data_frame = pd.read_csv("Data/MultiNLI/multinli_1.0_dev_mismatched.txt", sep="\t").drop(columns=to_drop)
     else:
@@ -123,11 +124,9 @@ def group_rows(dataframe):
     return grouped_data
 
 
-def combine_npz_files(npz_dir: str = "Data/NPZ", output_file: str = "Data/MultiNLI/batch_sum.npz"):
+def combine_npz_files(npz_dir: str = "Data/NPZ", output_file: str = "Data/MultiNLI/mismatched_embeddings.npz"):
     npz_files = [file for file in os.listdir(npz_dir) if file.endswith(".npz")]
     combined_data = {}
-    print(len(npz_files))
-
     for file in npz_files:
         file_data = read_npz_file(f"{npz_dir}/{file}")
         for key, value in file_data.items():
@@ -136,7 +135,6 @@ def combine_npz_files(npz_dir: str = "Data/NPZ", output_file: str = "Data/MultiN
 
 
 def read_npz_file(file_path):
-    print(file_path)
     loaded_data = np.load(file_path)
     data = {}
 
@@ -146,6 +144,13 @@ def read_npz_file(file_path):
     return data
 
 
+def delete_npz_files(npz_dir: str = "Data/NPZ"):
+    for file in os.listdir(npz_dir):
+        if file.endswith(".npz"):
+            file_path = os.path.join(npz_dir, file)
+            os.remove(file_path)
+
+
 def get_start(npz_dir: str = "Data/NPZ") -> int:
     npz_files = [file for file in os.listdir(npz_dir) if file.endswith(".npz")]  # retrieve npz files
     return len(npz_files)  # return largest completed batch
@@ -153,14 +158,14 @@ def get_start(npz_dir: str = "Data/NPZ") -> int:
 
 if __name__ == "__main__":
     # combine_npz_files()
-    # retrieved = read_npz_file("Data/MultiNLI/batch_sum.npz")
+    # retrieved = read_npz_file("Data/MultiNLI/mismatched_embeddings.npz")
     # for k, array in retrieved.items():
     #     print(f"Array with key '{k}': {array.shape}")
 
     for directory in ["Data/NPZ", "Data/MultiNLI"]:
         if not os.path.exists(directory):
             os.makedirs(directory)
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe("mismatch")
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe("match")
     print(f"\nRow count: {len(multinli_df)}")
     data_batches = group_rows(multinli_df)
     print(f"Num Batches: {len(data_batches)}")
@@ -168,6 +173,8 @@ if __name__ == "__main__":
     print(f"Embedding count: {len(embedded_batches)}")
     print(f"Embedding shape: {embedded_batches.shape}")
     combine_npz_files()
-    retrieved = read_npz_file("Data/MultiNLI/batch_sum.npz")
+    # delete_npz_files()
+    retrieved = read_npz_file("Data/MultiNLI/matched_embeddings.npz")
     for k, array in retrieved.items():
-        print(f"Array with key '{k}': {np.array_equal(embedded_batches[int(k)], array)}")
+        if not np.array_equal(embedded_batches[int(k)], array):
+            print(f"Array {k} not equal")
