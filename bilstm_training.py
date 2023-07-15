@@ -1,8 +1,7 @@
 import logging
 import os
 import random
-from typing import Dict
-from typing import List, Tuple
+from typing import Dict, List, Tuple, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,17 +10,41 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.model_selection import train_test_split
+from torch import Tensor
 from torch.utils.data import DataLoader, TensorDataset
 from transformers import BertModel, BertTokenizer
 
 from BiLSTM import BiLSTMModel
 from convert_dataset import read_npz_file
-from variables import BATCH_SIZE, DEVICE, DATASET, INPUT_SIZE, SEQUENCE_LENGTH, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE, \
-    EPOCHS, LEARNING_RATE, CHKPT_INTERVAL
+from variables import (
+    BATCH_SIZE,
+    DEVICE,
+    DATASET,
+    INPUT_SIZE,
+    SEQUENCE_LENGTH,
+    HIDDEN_SIZE,
+    NUM_LAYERS,
+    OUTPUT_SIZE,
+    EPOCHS,
+    LEARNING_RATE,
+    CHKPT_INTERVAL,
+)
 
 # Disable the logging level for the transformers library
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
+
+def get_most_recent_file(directory: str) -> Optional[str]:
+    if not os.path.isdir(directory):
+        return None
+
+    files = [os.path.join(directory, f) for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+    files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+
+    if not files:
+        return None
+
+    return files[0]
 
 
 def load_txt_file_to_dataframe(dataset_description: str) -> pd.DataFrame:
@@ -49,7 +72,7 @@ def load_txt_file_to_dataframe(dataset_description: str) -> pd.DataFrame:
             columns=to_drop
         )
     elif dataset_description.lower().strip() == "match":
-        data_frame = pd.read_csv("Data/MultiNLI/multinli_1.0_dev_matched.txt", sep="\t", nrows=10).drop(columns=to_drop)
+        data_frame = pd.read_csv("Data/MultiNLI/multinli_1.0_dev_matched.txt", sep="\t").drop(columns=to_drop)
     elif dataset_description.lower().strip() == "mismatch":
         data_frame = pd.read_csv("Data/MultiNLI/multinli_1.0_dev_mismatched.txt", sep="\t").drop(columns=to_drop)
     else:
@@ -87,7 +110,7 @@ def create_batches(data: torch.Tensor) -> List[torch.Tensor]:
 def get_bert_embeddings(sentence1: str, sentence2: str) -> torch.Tensor:
     # Load pre-trained BERT model and tokenizer
     tokenizer: BertTokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    model: BertModel = BertModel.from_pretrained("bert-base-uncased")
+    bert_model: BertModel = BertModel.from_pretrained("bert-base-uncased")
 
     # Tokenize the sentences and obtain the input IDs and attention masks
     tokens: Dict[str, torch.Tensor] = tokenizer.encode_plus(
@@ -102,7 +125,7 @@ def get_bert_embeddings(sentence1: str, sentence2: str) -> torch.Tensor:
 
     # Obtain the BERT embeddings
     with torch.no_grad():
-        bert_outputs: Tuple[torch.Tensor] = model(input_ids, attention_mask=attention_mask)
+        bert_outputs: Tuple[torch.Tensor] = bert_model(input_ids, attention_mask=attention_mask)
         embeddings: torch.Tensor = bert_outputs.last_hidden_state  # Extract the last hidden state
 
     return embeddings
@@ -119,6 +142,217 @@ def count_files(directory: str) -> int:
     for _, _, files in os.walk(directory):
         file_count += len(files)
     return file_count
+
+
+def train_model(
+    model_number: int,
+    training_dataloader,
+    x_validation,
+    y_validation,
+    input_size,
+    hidden_size,
+    num_layers,
+    output_size,
+    epochs: int,
+    learning_rate: float,
+    chkpt_interval: int,
+    device: str,
+    path_to_load_model: str = "",
+):
+    # Initialize the BiLSTM model
+    bilstm: BiLSTMModel = BiLSTMModel(input_size, hidden_size, num_layers, output_size).to(device)
+
+    # Define loss function and optimizer
+    loss_function: nn.CrossEntropyLoss = nn.CrossEntropyLoss()
+    optimizer: optim.Adam = optim.Adam(bilstm.parameters(), lr=learning_rate)
+
+    # Initialize lists for training and validation loss
+    training_losses: List[float] = []
+    validation_losses: List[float] = []
+
+    # Load the pre-trained weights if available
+    if path_to_load_model != "":
+        checkpoint = torch.load(get_most_recent_file(path_to_load_model))
+
+        # Load the pre-trained weights
+        bilstm.load_state_dict(checkpoint["model_state_dict"])
+
+        # Load the optimizer state
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
+        # Load the loss and validation losses
+        training_losses = checkpoint["train_loss"]
+        validation_losses = checkpoint["val_loss"]
+
+        # Get the last epoch to resume training from that point
+        start_epoch = checkpoint["epoch"]
+    else:
+        start_epoch = 0
+
+    if start_epoch >= epochs:
+        epochs += start_epoch
+        # Training loop
+        for epoch in range(start_epoch, epochs):
+            bilstm.train()  # get to training
+            train_loss_sum: float = 0.0
+            train_samples: int = 0
+
+            # Iterate over the shuffled batches
+            for batch_x, batch_y in training_dataloader:
+                # Forward pass
+                predictions: torch.Tensor = bilstm(batch_x.to(device))
+                # Create a tensor of zeros with the same number of samples
+                zeros_tensor: torch.Tensor = torch.zeros(predictions.shape[0], 1).to(device)
+
+                # Concatenate the predictions tensor with the zeros tensor
+                predictions: torch.Tensor = torch.cat((predictions, zeros_tensor), dim=1).to(device)
+                batch_y: torch.Tensor = batch_y.squeeze().to(device)
+
+                # Calculate the training loss
+                loss: torch.Tensor = loss_function(predictions, batch_y)
+                train_loss_sum += loss.item() * len(batch_x)
+                train_samples += len(batch_x)
+
+                # Backpropagation
+                loss.backward()
+                optimizer.step()
+
+            training_losses.append(train_loss_sum / train_samples)  # record avg training loss
+
+            # Validation phase
+            bilstm.eval()
+            val_loss_sum: float = 0.0
+            val_samples: int = 0
+            with torch.no_grad():
+                # Forward pass on the validation set
+                val_predictions: torch.Tensor = bilstm(x_validation.to(device))
+                # Create a tensor of zeros with the same number of samples
+                zeros_tensor: torch.Tensor = torch.zeros(val_predictions.shape[0], 1).to(device)
+                # Concatenate the predictions tensor with the zeros tensor
+                val_predictions: torch.Tensor = torch.cat((val_predictions, zeros_tensor), dim=1).to(device)
+                # Calculate the validation loss
+                val_loss: torch.Tensor = loss_function(val_predictions, y_validation.squeeze().to(device))
+                val_loss_sum += val_loss.item() * len(x_validation)
+                val_samples += len(x_validation)
+
+            validation_losses.append(val_loss_sum / val_samples)  # record avg validation loss
+
+            # Print training and validation loss for each epoch
+            print(
+                f"Epoch {epoch + 1}/{epochs}: Train Loss: {training_losses[-1]:.4f}, Val Loss: {validation_losses[-1]:.4f}"
+            )
+
+            # Save checkpoint if we've reached the interval
+            if (epoch + 1) % chkpt_interval == 0:
+                # Define the checkpoint file path
+                checkpoint_path = f"Checkpoint/{model_number}/checkpoint_{epoch + 1}.pth"
+
+                # Save the checkpoint
+                checkpoint = {
+                    "epoch": epoch + 1,
+                    "model_state_dict": bilstm.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "train_loss": training_losses,
+                    "val_loss": validation_losses,
+                }
+                torch.save(checkpoint, checkpoint_path)
+    else:
+        # Training loop
+        for epoch in range(start_epoch, epochs):
+            bilstm.train()  # get to training
+            train_loss_sum: float = 0.0
+            train_samples: int = 0
+
+            # Iterate over the shuffled batches
+            for batch_x, batch_y in training_dataloader:
+                # Forward pass
+                predictions: torch.Tensor = bilstm(batch_x.to(device))
+                # Create a tensor of zeros with the same number of samples
+                zeros_tensor: torch.Tensor = torch.zeros(predictions.shape[0], 1).to(device)
+
+                # Concatenate the predictions tensor with the zeros tensor
+                predictions: torch.Tensor = torch.cat((predictions, zeros_tensor), dim=1).to(device)
+                batch_y: torch.Tensor = batch_y.squeeze().to(device)
+
+                # Calculate the training loss
+                loss: torch.Tensor = loss_function(predictions, batch_y)
+                train_loss_sum += loss.item() * len(batch_x)
+                train_samples += len(batch_x)
+
+                # Backpropagation
+                loss.backward()
+                optimizer.step()
+
+            training_losses.append(train_loss_sum / train_samples)  # record avg training loss
+
+            # Validation phase
+            bilstm.eval()
+            val_loss_sum: float = 0.0
+            val_samples: int = 0
+            with torch.no_grad():
+                # Forward pass on the validation set
+                val_predictions: torch.Tensor = bilstm(x_validation.to(device))
+                # Create a tensor of zeros with the same number of samples
+                zeros_tensor: torch.Tensor = torch.zeros(val_predictions.shape[0], 1).to(device)
+                # Concatenate the predictions tensor with the zeros tensor
+                val_predictions: torch.Tensor = torch.cat((val_predictions, zeros_tensor), dim=1).to(device)
+                # Calculate the validation loss
+                val_loss: torch.Tensor = loss_function(val_predictions, y_validation.squeeze().to(device))
+                val_loss_sum += val_loss.item() * len(x_validation)
+                val_samples += len(x_validation)
+
+            validation_losses.append(val_loss_sum / val_samples)  # record avg validation loss
+
+            # Print training and validation loss for each epoch
+            print(
+                f"Epoch {epoch + 1}/{EPOCHS}: Train Loss: {training_losses[-1]:.4f}, Val Loss: {validation_losses[-1]:.4f}"
+            )
+
+            # Save checkpoint if we've reached the interval
+            if (epoch + 1) % chkpt_interval == 0:
+                # Define the checkpoint file path
+                checkpoint_path = f"Checkpoint/{model_number}/checkpoint_{epoch + 1}.pth"
+
+                # Save the checkpoint
+                checkpoint = {
+                    "epoch": epoch + 1,
+                    "model_state_dict": bilstm.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "train_loss": training_losses,
+                    "val_loss": validation_losses,
+                }
+                torch.save(checkpoint, checkpoint_path)
+    return bilstm, training_losses, validation_losses, epochs
+
+
+def data_cleaning(dataset: str, device: str, batch_size: int) -> tuple[DataLoader, Tensor, Tensor]:
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe(dataset)  # get data from file for labels
+    file_data = read_npz_file(f"Data/MultiNLI/{dataset}_embeddings.npz")  # Read embeddings of data generated by BERT
+    data_3d = np.stack(list(file_data.values()), axis=0)  # reformat data as 3d array
+    data_2d = data_3d.reshape(data_3d.shape[0], -1)
+
+    # Make labels
+    labels: List[int] = [1 if x == "contradiction" else 0 for x in multinli_df["gold_label"]]
+
+    # Create training and dev sets
+    x_train, x_validation, y_train, y_validation = train_test_split(data_2d, labels, test_size=0.2)
+    # Convert x_train and x_val to tensors
+    x_train: torch.Tensor = (
+        torch.tensor(x_train).to(device).reshape(x_train.shape[0], data_3d.shape[1], data_3d.shape[2])
+    )
+    x_validation: torch.Tensor = torch.tensor(x_validation).to(device).reshape(x_validation.shape[0], data_3d.shape[1], data_3d.shape[2])
+
+    # Convert y_train and y_val to tensors
+    y_train: torch.Tensor = torch.tensor(y_train).to(device)
+    y_validation: torch.Tensor = torch.tensor(y_validation).to(device)
+
+    # Convert training data and labels to TensorDataset
+    train_dataset: TensorDataset = TensorDataset(x_train, y_train)
+
+    # Create a DataLoader with shuffled data
+    training_dataloader: DataLoader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+
+    return training_dataloader, x_validation, y_validation
 
 
 if __name__ == "__main__":
@@ -141,118 +375,33 @@ if __name__ == "__main__":
     if not os.path.exists(f"Checkpoint/{model_num}"):
         os.makedirs(f"Checkpoint/{model_num}")
 
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe(DATASET)  # get data from file for labels
-    data = read_npz_file(f"Data/MultiNLI/{DATASET}_embeddings.npz")  # Read embeddings of data generated by BERT
-    data_3d = np.stack(list(data.values()), axis=0)  # reformat data as 3d array
-    data_2d = data_3d.reshape(data_3d.shape[0], -1)
+    model_save_path: str = f"Models/model{model_num}.pth"
+    model_load_path: str = f"Checkpoint/{model_num - 1}"
 
-    # Make labels
-    labels: List[int] = [1 if x == "contradiction" else 0 for x in multinli_df["gold_label"]]
+    train_dataloader, x_val, y_val = data_cleaning(DATASET, DEVICE, BATCH_SIZE)
 
-    print(data_2d.shape)
-    print(len(labels))
-
-    # Create training and dev sets
-    x_train, x_val, y_train, y_val = train_test_split(data_2d, labels, test_size=0.2, random_state=42)
-    # Convert x_train and x_val to tensors
-    x_train: torch.Tensor = torch.tensor(x_train).to(DEVICE).reshape(x_train.shape[0], data_3d.shape[1], data_3d.shape[2])
-    x_val: torch.Tensor = torch.tensor(x_val).to(DEVICE).reshape(x_val.shape[0], data_3d.shape[1], data_3d.shape[2])
-
-    # Convert y_train and y_val to tensors
-    y_train: torch.Tensor = torch.tensor(y_train).to(DEVICE)
-    y_val: torch.Tensor = torch.tensor(y_val).to(DEVICE)
-
-    # Convert training data and labels to TensorDataset
-    train_dataset: TensorDataset = TensorDataset(x_train, y_train)
-
-    # Create a DataLoader with shuffled data
-    train_dataloader: DataLoader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-
-    # Initialize the BiLSTM model
-    model: BiLSTMModel = BiLSTMModel(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE).to(DEVICE)
-
-    # Define loss function and optimizer
-    loss_function: nn.CrossEntropyLoss = nn.CrossEntropyLoss()
-    optimizer: optim.Adam = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-
-    # Initialize lists for training and validation loss
-    train_losses: List[float] = []
-    val_losses: List[float] = []
-
-    # Training loop
-    for epoch in range(EPOCHS):
-        model.train()  # get to training
-        train_loss_sum: float = 0.0
-        train_samples: int = 0
-
-        # Iterate over the shuffled batches
-        for batch_x, batch_y in train_dataloader:
-            # Forward pass
-            predictions: torch.Tensor = model(batch_x.to(DEVICE))
-            print(batch_x.shape)
-            print(predictions.shape)
-            # Create a tensor of zeros with the same number of samples
-            zeros_tensor: torch.Tensor = torch.zeros(predictions.shape[0], 1).to(DEVICE)
-
-            # Concatenate the predictions tensor with the zeros tensor
-            predictions: torch.Tensor = torch.cat((predictions, zeros_tensor), dim=1).to(DEVICE)
-            batch_y: torch.Tensor = batch_y.squeeze().to(DEVICE)
-
-            # Calculate the training loss
-            loss: torch.Tensor = loss_function(
-                predictions, batch_y
-            )
-            train_loss_sum += loss.item() * len(batch_x)
-            train_samples += len(batch_x)
-
-            # Backpropagation
-            loss.backward()
-            optimizer.step()
-
-        train_losses.append(train_loss_sum / train_samples)  # record avg training loss
-
-        # Validation phase
-        model.eval()
-        val_loss_sum: float = 0.0
-        val_samples: int = 0
-        with torch.no_grad():
-            # Forward pass on the validation set
-            val_predictions: torch.Tensor = model(x_val.to(DEVICE))
-            # Create a tensor of zeros with the same number of samples
-            zeros_tensor: torch.Tensor = torch.zeros(val_predictions.shape[0], 1).to(DEVICE)
-            # Concatenate the predictions tensor with the zeros tensor
-            val_predictions: torch.Tensor = torch.cat((val_predictions, zeros_tensor), dim=1).to(DEVICE)
-            # Calculate the validation loss
-            val_loss: torch.Tensor = loss_function(val_predictions, y_val.squeeze().to(DEVICE))
-            val_loss_sum += val_loss.item() * len(x_val)
-            val_samples += len(x_val)
-
-        val_losses.append(val_loss_sum / val_samples)  # record avg validation loss
-
-        # Print training and validation loss for each epoch
-        print(f"Epoch {epoch + 1}/{EPOCHS}: Train Loss: {train_losses[-1]:.4f}, Val Loss: {val_losses[-1]:.4f}")
-
-        # Save checkpoint if we've reached the interval
-        if (epoch + 1) % CHKPT_INTERVAL == 0:
-            # Define the checkpoint file path
-            checkpoint_path = f"Checkpoint/checkpoint{model_num}_{epoch + 1}.pth"
-
-            # Save the checkpoint
-            checkpoint = {
-                "epoch": epoch + 1,
-                "model_state_dict": model.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "train_loss": train_losses[-1],
-                "val_loss": val_losses[-1],
-            }
-            torch.save(checkpoint, checkpoint_path)
+    model, train_losses, val_losses, x_range = train_model(
+        model_num,
+        train_dataloader,
+        x_val,
+        y_val,
+        INPUT_SIZE,
+        HIDDEN_SIZE,
+        NUM_LAYERS,
+        OUTPUT_SIZE,
+        EPOCHS,
+        LEARNING_RATE,
+        CHKPT_INTERVAL,
+        DEVICE,
+        path_to_load_model=model_load_path,
+    )
 
     # Save the entire model
-    torch.save(model, f"Models/model{model_num}.pth")
+    torch.save(model, model_save_path)
 
     # Plot the training and validation loss curves
-    plt.plot(range(1, EPOCHS + 1), train_losses, label="Training Loss")
-    plt.plot(range(1, EPOCHS + 1), val_losses, label="Validation Loss")
+    plt.plot(range(1, x_range + 1), train_losses, label="Training Loss")
+    plt.plot(range(1, x_range + 1), val_losses, label="Validation Loss")
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.title("Training and Validation Loss")
