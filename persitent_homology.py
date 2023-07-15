@@ -1,6 +1,8 @@
 import logging
 from typing import List, Optional, Tuple
+import concurrent.futures
 
+from tqdm import tqdm
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -77,26 +79,6 @@ def top_k_holes(ph_diagrams: List[np.ndarray], k: Optional[List[int]] = None) ->
     return top_holes
 
 
-def separate_ph(ph_diagrams):
-    dimensions = []
-    for dimension, diag_tuple in enumerate(ph_diagrams):
-        x_values: list[float] = []
-        widths: list[float] = []
-        # Iterate over each feature in the diagram
-        for j, (feature_birth, feature_death) in enumerate(diag_tuple):
-            x_values.append(feature_birth)
-            widths.append(feature_death - feature_birth)
-
-        plt.barh(x_values, widths, left=x_values, height=0.001)
-        # Set the axis labels
-        plt.xlabel("Duration")
-        plt.ylabel("Birth")
-
-        # Show the plot
-        plt.show()
-        dimensions.append([x_values, widths])
-
-
 def plot_ph_across_dimensions(ph_diagrams):
     fig, axes = plt.subplots(len(ph_diagrams), 1, figsize=(10, 8))
 
@@ -139,98 +121,114 @@ def plot_ph_across_dimensions(ph_diagrams):
 
 
 def persistent_homology_features(phrases: List[str]) -> List[List[np.ndarray]]:
-    features: list = []
-    for sentence in phrases:
+    features: List[List[np.ndarray]] = []
+
+    def process_phrase(sentence: str) -> List[np.ndarray]:
         embedding = [get_bert_embeddings(s) for s in sentence]
-
-        # Convert the list of BERT embeddings to a numpy array
         all_embeddings = np.array(embedding).T
-
-        # Compute persistent homology using ripser
         ph = ripser(all_embeddings, maxdim=1)
         ph_diagrams = ph["dgms"]
+        phrase_holes = top_k_holes(ph_diagrams)
+        return phrase_holes
 
-        phrase_holes: list = top_k_holes(ph_diagrams)
-        for number, dimension in enumerate(phrase_holes):
-            print(f"Dimension {number} Len: {len(dimension)}")
-            print(f"Dimension {number} shape: {dimension.shape}")
-        print()
-        features.append(phrase_holes)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        phrase_futures = [executor.submit(process_phrase, sentence) for sentence in phrases]
+
+        with tqdm(total=len(phrase_futures), desc="Processing phrases") as pbar:
+            for future in concurrent.futures.as_completed(phrase_futures):
+                phrase_holes: List[np.ndarray] = future.result()
+                features.append(phrase_holes)
+                pbar.update(1)
+
     return features
 
 
-# sentences = [
-#     "The sky is blue.",
-#     "I love eating pizza.",
-#     "She plays the piano beautifully.",
-#     "The cat is sleeping.",
-#     "I enjoy reading books.",
-#     "He runs every morning.",
-#     "The flowers are blooming in the garden.",
-#     "They went for a walk in the park.",
-#     "The movie was fantastic.",
-#     "We had a great time at the beach.",
-#     "She smiled and waved at me.",
-#     "The rain is pouring outside.",
-#     "He is studying for his exams.",
-#     "The coffee tastes delicious.",
-#     "I'm going to the gym later.",
-#     "They are planning a trip to Europe.",
-#     "She wrote a poem for her friend.",
-#     "He likes to watch football on weekends.",
-#     "The concert was amazing.",
-#     "We had a delicious dinner at the restaurant.",
-# ]
+if __name__ == '__main__':
+    # sentences = ["Billy loves cake", "Josh hates cake"]
+    sentences = [
+        "The sky is blue.",
+        "I love eating pizza.",
+        "She plays the piano beautifully.",
+        "The cat is sleeping.",
+        "I enjoy reading books.",
+        "He runs every morning.",
+        "The flowers are blooming in the garden.",
+        "They went for a walk in the park.",
+        "The movie was fantastic.",
+        "We had a great time at the beach.",
+        "She smiled and waved at me.",
+        "The rain is pouring outside.",
+        "He is studying for his exams.",
+        "The coffee tastes delicious.",
+        "I'm going to the gym later.",
+        "They are planning a trip to Europe.",
+        "She wrote a poem for her friend.",
+        "He likes to watch football on weekends.",
+        "The concert was amazing.",
+        "We had a delicious dinner at the restaurant.",
+        "Billy loves cake",
+        "Josh hates cake",
+    ]
 
-sentences = ["Billy loves cake", "Josh hates cake"]
+    ph_features: list = persistent_homology_features(phrases=sentences)  # (sentence, dimension, k embedding)
+    print(len(sentences))
+    print(len(ph_features))
+    print(sentences[0])
+    print(len(ph_features[0]))  # 2 (num dimension)
+    print(len(ph_features[0][0]))  # index 0: 260 features
+    print(len(ph_features[0][1]))  # index 1: 50 features
+    # for i, ph in enumerate(ph_features):
+    #     print(type(ph))
+    #     print(sentences[i])
+    #     for j, p in enumerate(ph):
+    #         print(f"\t{type(p)}")
+    #         print(f"\t{p.shape}")
 
-ph_features: list = persistent_homology_features(phrases=sentences)
-
-# data: pd.DataFrame = pd.read_csv("Data/contrast-dataset.csv")
-# sentences = data["Phrase"].values
-#
-# for phrase in sentences:
-#     e = [get_bert_embeddings(s) for s in phrase]
-#
-#     # Convert the list of BERT embeddings to a numpy array
-#     embeddings = np.array(e).T
-#
-#     # Compute persistent homology using ripser
-#     result = ripser(embeddings, maxdim=1)
-#     diagrams = result["dgms"]
-#
-#     k_holes: list = top_k_holes(diagrams)
-#     for dim in k_holes:
-#         print(f"Dim Len: {len(dim)}")
-#         print(f"Dim shape: {dim.shape}")
-#         for hole in dim:
-#             hole_dim, index, birth, death, persist = hole
-#             # print(f"Dimension: {hole_dim}, Hole Index: {index}, Birth: {birth}, Persistence: {persist}")
-#             # print([hole[i] for i in [0, 2, 3]])
-#     print()
-#     # plot_ph_across_dimensions(diagrams)
-#
-#     # print(diagrams)
-#
-#     # hole_durations = []  # List to store persistence durations
-#     #
-#     # for feature in diagrams:
-#     #     for element in feature:
-#     #         if any(e == float('inf') for e in element):
-#     #             continue  # Skip if any element is infinity
-#     #         else:
-#     #             birth = element[0]
-#     #             death = element[1]
-#     #             duration = death - birth
-#     #             hole_durations.append(duration)
-#     #
-#     # # Print the persistence durations of the holes
-#     # for i, duration in enumerate(hole_durations):
-#     #     print(f"Hole {i+1}: Persistence Duration = {duration}")
-#
-#     # Create a figure with subplots
-#
-#     """
-#     Get longest lasting feature
-#     print and figure out shape
-#     """
+    # data: pd.DataFrame = pd.read_csv("Data/contrast-dataset.csv")
+    # sentences = data["Phrase"].values
+    #
+    # for phrase in sentences:
+    #     e = [get_bert_embeddings(s) for s in phrase]
+    #
+    #     # Convert the list of BERT embeddings to a numpy array
+    #     embeddings = np.array(e).T
+    #
+    #     # Compute persistent homology using ripser
+    #     result = ripser(embeddings, maxdim=1)
+    #     diagrams = result["dgms"]
+    #
+    #     k_holes: list = top_k_holes(diagrams)
+    #     for dim in k_holes:
+    #         print(f"Dim Len: {len(dim)}")
+    #         print(f"Dim shape: {dim.shape}")
+    #         for hole in dim:
+    #             hole_dim, index, birth, death, persist = hole
+    #             # print(f"Dimension: {hole_dim}, Hole Index: {index}, Birth: {birth}, Persistence: {persist}")
+    #             # print([hole[i] for i in [0, 2, 3]])
+    #     print()
+    #     # plot_ph_across_dimensions(diagrams)
+    #
+    #     # print(diagrams)
+    #
+    #     # hole_durations = []  # List to store persistence durations
+    #     #
+    #     # for feature in diagrams:
+    #     #     for element in feature:
+    #     #         if any(e == float('inf') for e in element):
+    #     #             continue  # Skip if any element is infinity
+    #     #         else:
+    #     #             birth = element[0]
+    #     #             death = element[1]
+    #     #             duration = death - birth
+    #     #             hole_durations.append(duration)
+    #     #
+    #     # # Print the persistence durations of the holes
+    #     # for i, duration in enumerate(hole_durations):
+    #     #     print(f"Hole {i+1}: Persistence Duration = {duration}")
+    #
+    #     # Create a figure with subplots
+    #
+    #     """
+    #     Get longest lasting feature
+    #     print and figure out shape
+    #     """
