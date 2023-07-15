@@ -9,25 +9,10 @@ import torch
 from tqdm import tqdm
 from transformers import BertModel, BertTokenizer
 
+from variables import BATCH_SIZE, DEVICE, DATASET, SEQUENCE_LENGTH
 
 # Disable the logging level for the transformers library
 logging.getLogger("transformers").setLevel(logging.ERROR)
-
-# Define hyperparameters
-SEQUENCE_LENGTH: int = 128
-DATASET: str = "train"
-if DATASET == 'train':
-    BATCH_SIZE: int = 1024
-else:
-    BATCH_SIZE: int = 128
-
-# Check if GPU is available
-if torch.cuda.is_available():
-    DEVICE = torch.device("cuda")
-    print("GPU is available. PyTorch is using GPU:", torch.cuda.get_device_name(DEVICE))
-else:
-    DEVICE = torch.device('cpu')
-    print("GPU is not available. PyTorch is using CPU.")
 
 
 def load_txt_file_to_dataframe(dataset_description: str) -> pd.DataFrame:
@@ -162,10 +147,10 @@ def get_start(npz_dir: str = f"Data/NPZ/{DATASET.capitalize()}") -> int:
 
 
 if __name__ == "__main__":
-    # combine_npz_files()
-    # retrieved = read_npz_file("Data/MultiNLI/matched_embeddings.npz")
-    # for k, array in retrieved.items():
-    #     print(f"Array with key '{k}': {array.shape}")
+    if torch.cuda.is_available():
+        print("GPU is available. PyTorch is using GPU:", torch.cuda.get_device_name(DEVICE))
+    else:
+        print("GPU is not available. PyTorch is using CPU.")
 
     for directory in ["Data/NPZ", "Data/MultiNLI", f"Data/NPZ/{DATASET.capitalize()}"]:
         if not os.path.exists(directory):
