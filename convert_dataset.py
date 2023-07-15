@@ -15,9 +15,11 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 
 # Define hyperparameters
 SEQUENCE_LENGTH: int = 128
-# BATCH_SIZE: int = 9984
-BATCH_SIZE: int = 128
-DATASET: str = "mismatch"
+DATASET: str = "train"
+if DATASET == 'train':
+    BATCH_SIZE: int = 1024
+else:
+    BATCH_SIZE: int = 128
 
 # Check if GPU is available
 if torch.cuda.is_available():
