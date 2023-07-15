@@ -1,6 +1,5 @@
 import concurrent.futures
 import logging
-import math
 from typing import List
 
 import numpy as np
@@ -10,26 +9,15 @@ from tqdm import tqdm
 
 from BiLSTM import BiLSTMModel
 from bilstm_training import load_txt_file_to_dataframe, get_bert_embeddings
+from variables import DEVICE, INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE
 
 # Disable the logging level for the transformers library
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
-INPUT_SIZE: int = 768
-SEQUENCE_LENGTH: int = 128
-HIDDEN_SIZE: int = 64
-NUM_LAYERS: int = 2
-OUTPUT_SIZE: int = 1
-EPOCHS: int = 250
-BATCH_SIZE: int = 10
-LEARNING_RATE: float = 0.001
-CHKPT_INTERVAL: int = int(math.ceil(EPOCHS / 10))
-
 if torch.cuda.is_available():
-    device = torch.device("cuda")
-    print("GPU is available. PyTorch is using GPU:", torch.cuda.get_device_name(device))
+    print("GPU is available. PyTorch is using GPU:", torch.cuda.get_device_name(DEVICE))
 else:
     print("GPU is not available. PyTorch is using CPU.")
-
 
 multinli_df: pd.DataFrame = load_txt_file_to_dataframe("match")  # all
 
@@ -65,12 +53,12 @@ for i in range(len(testA)):
 # Create training and dev sets
 test_x: torch.Tensor = torch.stack([testX[i] for i in range(len(testX))]).view(len(testX), 128, 768)  # reshape to 3d
 
-model = BiLSTMModel(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE).to(device)
-model.load_state_dict(torch.load("Models/model3.pth", map_location=device).state_dict())
+model = BiLSTMModel(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE).to(DEVICE)
+model.load_state_dict(torch.load("Models/model3.pth", map_location=DEVICE).state_dict())
 model.eval()
 
 with torch.no_grad():
-    output = model(test_x.to(device))
+    output = model(test_x.to(DEVICE))
     max_pooling_output, _ = torch.max(output, dim=1)
     print(max_pooling_output)
     avg_pooling_output = torch.mean(output, dim=1)
