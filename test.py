@@ -16,7 +16,7 @@ logging.getLogger("transformers").setLevel(logging.ERROR)
 # Define hyperparameters
 SEQUENCE_LENGTH: int = 128
 DATASET: str = "train"
-if DATASET == 'train':
+if DATASET == "train":
     BATCH_SIZE: int = 1024
 else:
     BATCH_SIZE: int = 128
@@ -25,7 +25,7 @@ else:
 if torch.cuda.is_available():
     DEVICE = torch.device("cuda")
 else:
-    DEVICE = torch.device('cpu')
+    DEVICE = torch.device("cpu")
 
 
 def load_txt_file_to_dataframe(dataset_description: str) -> pd.DataFrame:
@@ -82,7 +82,9 @@ def parallel_get_bert_embeddings(batches) -> np.ndarray:
 
                     # Save embeddings from each batch with corresponding IDs as keys
                     batch_output_file = f"Data/NPZ/{DATASET.capitalize()}/batch_{i}.npz"
-                    np.savez_compressed(batch_output_file, **{str(identity): emb for identity, emb in zip(ids, results)})
+                    np.savez_compressed(
+                        batch_output_file, **{str(identity): emb for identity, emb in zip(ids, results)}
+                    )
                 pbar.update(1)
 
     return np.array(embeddings)

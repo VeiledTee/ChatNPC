@@ -69,7 +69,9 @@ def parallel_get_bert_embeddings(batches) -> np.ndarray:
 
                     # Save embeddings from each batch with corresponding IDs as keys
                     batch_output_file = f"Data/NPZ/{DATASET.capitalize()}/batch_{i}.npz"
-                    np.savez_compressed(batch_output_file, **{str(identity): emb for identity, emb in zip(ids, results)})
+                    np.savez_compressed(
+                        batch_output_file, **{str(identity): emb for identity, emb in zip(ids, results)}
+                    )
                 pbar.update(1)
 
     return np.array(embeddings)

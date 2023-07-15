@@ -15,7 +15,7 @@ if torch.cuda.is_available():
     DEVICE = torch.device("cuda")
     print("GPU is available. PyTorch is using GPU:", torch.cuda.get_device_name(DEVICE))
 else:
-    DEVICE = torch.device('cpu')
+    DEVICE = torch.device("cpu")
     print("GPU is not available. PyTorch is using CPU.")
 
 # Disable the logging level for the transformers library
@@ -51,11 +51,15 @@ def top_k_holes(ph_diagrams: List[np.ndarray], k: Optional[List[int]] = None) ->
     if k is None:
         k = [260, 50]
     if len(k) > len(ph_diagrams):
-        print(Warning(
-            f"You provided more k values than dimensions. There are {len(ph_diagrams)} dimensions but {len(k)} k values. Only the first {len(ph_diagrams)} k values will be used"))
+        print(
+            Warning(
+                f"You provided more k values than dimensions. There are {len(ph_diagrams)} dimensions but {len(k)} k values. Only the first {len(ph_diagrams)} k values will be used"
+            )
+        )
     elif len(k) < len(ph_diagrams):
         raise ValueError(
-            f"Less k values than there are dimensions. You provided {len(k)} k values for {len(ph_diagrams)} dimensions. Ensure there is a k value for every dimension.")
+            f"Less k values than there are dimensions. You provided {len(k)} k values for {len(ph_diagrams)} dimensions. Ensure there is a k value for every dimension."
+        )
 
     top_holes: List[np.ndarray] = []
     # Iterate over each dimension
@@ -73,7 +77,7 @@ def top_k_holes(ph_diagrams: List[np.ndarray], k: Optional[List[int]] = None) ->
         holes.sort(key=lambda x: x[4], reverse=True)
 
         # Select the top k holes and add to list
-        top_holes.append(np.array(holes[:k[dimension]]))
+        top_holes.append(np.array(holes[: k[dimension]]))
 
     # return list of top k holes in each dimension
     return top_holes
@@ -143,7 +147,7 @@ def persistent_homology_features(phrases: List[str]) -> List[List[np.ndarray]]:
     return features
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # sentences = ["Billy loves cake", "Josh hates cake"]
     sentences = [
         "The sky is blue.",

@@ -54,7 +54,7 @@ for i in range(len(testA)):
 test_x: torch.Tensor = torch.stack([testX[i] for i in range(len(testX))]).view(len(testX), 128, 768)  # reshape to 3d
 
 model = BiLSTMModel(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE).to(DEVICE)
-model.load_state_dict(torch.load("Models/model3.pth", map_location=DEVICE).state_dict())
+model.load_state_dict(torch.load("Models/model0.pth", map_location=DEVICE).state_dict())
 model.eval()
 
 with torch.no_grad():
