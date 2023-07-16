@@ -35,6 +35,7 @@ PROBLEMS
 	- fact or opinion
 	- confidence score
 - negation
+- data storage for efficient training
 
 1. determine if talking about same thing
 2. determine if contrasting
