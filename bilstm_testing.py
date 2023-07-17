@@ -50,7 +50,7 @@ if __name__ == "__main__":
     else:
         print("GPU is not available. PyTorch is using CPU.")
 
-    model_load_path: str = f"Models/model2.pth"
+    model_load_path: str = f"Models/mismatch_match.pth"
 
     test_dataloader, test_x, test_y = clean_test_data(TESTSET, DEVICE, BATCH_SIZE)
 
