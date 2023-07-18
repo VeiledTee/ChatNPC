@@ -117,10 +117,12 @@ def group_rows(dataframe):
 
 
 def combine_npz_files(output_file: str, npz_dir: str = f"Data/NPZ/{DATASET.capitalize()}"):
-    npz_files = [file for file in os.listdir(npz_dir) if file.endswith(".npz")]
+    npz_files = [f"{npz_dir}/{file}" for file in os.listdir(npz_dir) if file.endswith(".npz")]
+    sorted_file_list = sorted(npz_files, key=os.path.getmtime)
     combined_data = {}
-    for file in npz_files:
-        file_data = read_npz_file(f"{npz_dir}/{file}")
+    for file in sorted_file_list:
+        print(file)
+        file_data = read_npz_file(f"{file}")
         for key, value in file_data.items():
             combined_data[key] = value
     np.savez_compressed(output_file, **combined_data)
@@ -180,25 +182,25 @@ if __name__ == "__main__":
     for directory in ["Data/NPZ", "Data/MultiNLI", f"Data/NPZ/{DATASET.capitalize()}"]:
         if not os.path.exists(directory):
             os.makedirs(directory)
-    # multinli_df: pd.DataFrame = load_txt_file_to_dataframe(DATASET)
-    # print(f"\nRow count: {len(multinli_df)}")
-    # data_batches = group_rows(multinli_df)
-    # print(f"Num Batches: {len(data_batches)}")
-    # embedded_batches = parallel_get_bert_embeddings(data_batches)
-    # print(f"Embedding count: {len(embedded_batches)}")
-    # print(f"Embedding shape: {embedded_batches.shape}")
-    # combine_npz_files(output_file=f"Data/MultiNLI/{DATASET}_embeddings.npz")
-    # retrieved = read_npz_file(f"Data/MultiNLI/{DATASET}_embeddings.npz")
-    # for k, array in retrieved.items():
-    #     if not np.array_equal(embedded_batches[int(k)], array):
-    #         print(f"Array {k} not equal")
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe(DATASET)
+    print(f"\nRow count: {len(multinli_df)}")
+    data_batches = group_rows(multinli_df)
+    print(f"Num Batches: {len(data_batches)}")
+    embedded_batches = parallel_get_bert_embeddings(data_batches)
+    print(f"Embedding count: {len(embedded_batches)}")
+    print(f"Embedding shape: {embedded_batches.shape}")
+    combine_npz_files(output_file=f"Data/MultiNLI/{DATASET}_embeddings.npz")
+    retrieved = read_npz_file(f"Data/MultiNLI/{DATASET}_embeddings.npz")
+    for k, array in retrieved.items():
+        if not np.array_equal(embedded_batches[int(k)], array):
+            print(f"Array {k} not equal")
     # delete_npz_files()
     # retrieved = read_npz_file(f"Data/NPZ/{DATASET}/batch_383.npz")
     # for k, array in retrieved.items():
     #     print(k)
-        # if not np.array_equal(embedded_batches[int(k)], array):
-        #     print(f"Array {k} not equal")
-    data_directory = "Data/NPZ/Train"
-    data_generated = read_npz_files(data_directory)
-    for data in data_generated:
-        print(data.shape)
+    #     if not np.array_equal(embedded_batches[int(k)], array):
+    #       print(f"Array {k} not equal")
+    # data_directory = "Data/NPZ/Train"
+    # data_generated = read_npz_files(data_directory)
+    # for data in data_generated:
+    #     print(data.shape)

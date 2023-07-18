@@ -10,10 +10,10 @@ SEQUENCE_LENGTH: int = 128
 HIDDEN_SIZE: int = 64
 NUM_LAYERS: int = 2
 OUTPUT_SIZE: int = 1
-EPOCHS: int = 50
+EPOCHS: int = 10
 LEARNING_RATE: float = 0.001
 CHKPT_INTERVAL: int = int(math.ceil(EPOCHS / 10))
-TESTSET = 'match'
+TESTSET = 'mismatch'
 if DATASET == "train":
     BATCH_SIZE: int = 1024
 else:
