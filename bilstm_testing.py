@@ -50,7 +50,9 @@ if __name__ == "__main__":
     else:
         print("GPU is not available. PyTorch is using CPU.")
 
-    model_load_path: str = f"Models/mismatch_match.pth"
+    DEVICE = 'cpu'
+
+    model_load_path: str = f"Models/train.pth"
 
     test_dataloader, test_x, test_y = clean_test_data(TESTSET, DEVICE, BATCH_SIZE)
 
@@ -70,6 +72,9 @@ if __name__ == "__main__":
 
     print(f"Actual:      {np.array(test_y)}")
     print(f"Predictions: {output_np}")
+
+    print(f"Actual sum:     {sum(np.array(test_y))}")
+    print(f"Prediction sum: {sum(output_np)}")
 
     accuracy = np.mean(np.array(test_y) == output_np)
     score = accuracy.item()

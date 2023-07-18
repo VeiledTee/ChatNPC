@@ -1,31 +1,50 @@
-import concurrent.futures
+import io
 import logging
 import os
-from typing import List
+import random
+from typing import Dict, List, Tuple, Optional, Any
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-from tqdm import tqdm
+import torch.nn as nn
+import torch.optim as optim
+from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, TensorDataset
 from transformers import BertModel, BertTokenizer
 
+from BiLSTM import BiLSTMModel
+from convert_dataset import read_npz_file
+from variables import (
+    BATCH_SIZE,
+    DEVICE,
+    DATASET,
+    INPUT_SIZE,
+    SEQUENCE_LENGTH,
+    HIDDEN_SIZE,
+    NUM_LAYERS,
+    OUTPUT_SIZE,
+    EPOCHS,
+    LEARNING_RATE,
+    CHKPT_INTERVAL,
+)
 
 # Disable the logging level for the transformers library
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
-# Define hyperparameters
-SEQUENCE_LENGTH: int = 128
-DATASET: str = "train"
-if DATASET == "train":
-    BATCH_SIZE: int = 1024
-else:
-    BATCH_SIZE: int = 128
 
-# Check if GPU is available
-if torch.cuda.is_available():
-    DEVICE = torch.device("cuda")
-else:
-    DEVICE = torch.device("cpu")
+def get_most_recent_file(directory: str) -> Optional[str]:
+    if not os.path.isdir(directory):
+        return None
+
+    files = [os.path.join(directory, f) for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
+    files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+
+    if not files:
+        return None
+
+    return files[0]
 
 
 def load_txt_file_to_dataframe(dataset_description: str) -> pd.DataFrame:
@@ -63,80 +82,336 @@ def load_txt_file_to_dataframe(dataset_description: str) -> pd.DataFrame:
     return data_frame
 
 
-def parallel_get_bert_embeddings(batches) -> np.ndarray:
-    embeddings: list = []
-    start: int = get_start()
-    print(f"Starting at batch: {start}")
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        total_batches: int = len(batches)
-        with tqdm(total=total_batches, desc="Processing batches") as pbar:
-            for i, batch in enumerate(batches):
-                if i >= start:
-                    futures: list = []
-                    ids: List[int] = batch[3]
-                    for b in range(len(batch[0])):
-                        future = executor.submit(get_bert_embeddings, batch[0][b], batch[1][b])
-                        futures.append(future)
-                    results = np.array([future.result() for future in futures]).squeeze()
-                    embeddings.extend(results)
+def create_train_dev_sets(data: list, dev_ratio: float) -> Tuple[List[int], List[int]]:
+    """
+    Create a dev set and training set from a list of data.
 
-                    # Save embeddings from each batch with corresponding IDs as keys
-                    batch_output_file = f"Data/NPZ/{DATASET.capitalize()}/batch_{i}.npz"
-                    np.savez_compressed(
-                        batch_output_file, **{str(identity): emb for identity, emb in zip(ids, results)}
-                    )
-                pbar.update(1)
+    :param data: The list of data to split.
+    :param dev_ratio: The ratio of data to be allocated for the dev set.
+    :return: A tuple containing the indexes of the dev set and training set.
+    """
+    data_size = len(data)
+    indices = list(range(data_size))
+    random.shuffle(indices)  # Shuffle the indices randomly
 
-    return np.array(embeddings)
+    dev_size = int(data_size * dev_ratio)  # Calculate the dev set size
+
+    dev_indices = indices[:dev_size]  # Extract dev set indices from the beginning of the shuffled indices
+    train_indices = indices[dev_size:]  # Extract training set indices from the remaining shuffled indices
+
+    return train_indices, dev_indices
 
 
-def get_bert_embeddings(sentence1: str, sentence2: str) -> np.ndarray:
+def create_batches(data: torch.Tensor) -> List[torch.Tensor]:
+    # Split the data into batches
+    return torch.split(data, BATCH_SIZE, dim=0)
+
+
+def get_bert_embeddings(sentence1: str, sentence2: str) -> torch.Tensor:
     # Load pre-trained BERT model and tokenizer
-    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    model = BertModel.from_pretrained("bert-base-uncased")
-
-    # Move model to the specified device
-    model.to(DEVICE)
+    tokenizer: BertTokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    bert_model: BertModel = BertModel.from_pretrained("bert-base-uncased")
 
     # Tokenize the sentences and obtain the input IDs and attention masks
-    encoding = tokenizer.encode_plus(
-        sentence1, sentence2, add_special_tokens=True, padding="longest", truncation=True, return_tensors="pt"
+    tokens: Dict[str, torch.Tensor] = tokenizer.encode_plus(
+        sentence1, sentence2, add_special_tokens=True, padding="longest", truncation=True
     )
-    input_ids = encoding["input_ids"].to(DEVICE)
-    attention_mask = encoding["attention_mask"].to(DEVICE)
+    input_ids: torch.Tensor = torch.tensor(tokens["input_ids"]).unsqueeze(0)  # Add batch dimension
+    attention_mask: torch.Tensor = torch.tensor(tokens["attention_mask"]).unsqueeze(0)  # Add batch dimension
 
     # Pad or truncate the input IDs and attention masks to the maximum sequence length
     input_ids = torch.nn.functional.pad(input_ids, (0, SEQUENCE_LENGTH - input_ids.size(1)))
     attention_mask = torch.nn.functional.pad(attention_mask, (0, SEQUENCE_LENGTH - attention_mask.size(1)))
 
-    # Obtain the BERT embeddings and convert to NumPy array on CPU
+    # Obtain the BERT embeddings
     with torch.no_grad():
-        outputs = model(input_ids, attention_mask=attention_mask)
-        embeddings = outputs.last_hidden_state.cpu().numpy()
+        bert_outputs: Tuple[torch.Tensor] = bert_model(input_ids, attention_mask=attention_mask)
+        embeddings: torch.Tensor = bert_outputs.last_hidden_state  # Extract the last hidden state
 
     return embeddings
 
 
-def group_rows(dataframe):
-    grouped_data = []
-    for i in range(0, len(dataframe), BATCH_SIZE):
-        batch = dataframe.iloc[i : i + BATCH_SIZE]
-        sentenceA: List[str] = [x for x in batch["sentence1"]]
-        sentenceB: List[str] = [x for x in batch["sentence2"]]
-        labels: List[int] = [1 if x == "contradiction" else 0 for x in batch["gold_label"]]
-        ids: List[int] = list(batch.index)
-        grouped_data.append([sentenceA, sentenceB, labels, ids])
-    return grouped_data
+def count_files(directory: str) -> int:
+    """
+    Count the number of files in a directory.
+
+    :param directory: The path to the directory.
+    :return: The number of files in the directory.
+    """
+    file_count = 0
+    for _, _, files in os.walk(directory):
+        file_count += len(files)
+    return file_count
 
 
-def combine_npz_files(output_file: str, npz_dir: str = f"Data/NPZ/{DATASET.capitalize()}"):
-    npz_files = [file for file in os.listdir(npz_dir) if file.endswith(".npz")]
-    combined_data = {}
-    for file in npz_files:
-        file_data = read_npz_file(f"{npz_dir}/{file}")
-        for key, value in file_data.items():
-            combined_data[key] = value
-    np.savez_compressed(output_file, **combined_data)
+def train_model(
+    model_number: int,
+    training_dataloader,
+    x_validation,
+    y_validation,
+    input_size,
+    hidden_size,
+    num_layers,
+    output_size,
+    epochs: int,
+    learning_rate: float,
+    chkpt_interval: int,
+    device: str,
+    path_to_load_model: str = "",
+):
+    # Initialize the BiLSTM model
+    bilstm: BiLSTMModel = BiLSTMModel(input_size, hidden_size, num_layers, output_size).to(device)
+
+    # Define loss function and optimizer
+    loss_function: nn.CrossEntropyLoss = nn.CrossEntropyLoss()
+    optimizer: optim.Adam = optim.Adam(bilstm.parameters(), lr=learning_rate)
+
+    # Initialize lists for training and validation loss
+    training_losses: List[float] = []
+    validation_losses: List[float] = []
+
+    # Load the pre-trained weights if available
+    if path_to_load_model != "":
+        try:
+            checkpoint = torch.load(get_most_recent_file(path_to_load_model))
+        except AttributeError:
+            # Read the file into memory
+            with open(path_to_load_model, 'rb') as f:
+                model_data = f.read()
+
+            # Load the model from memory using torch.load with a BytesIO buffer
+            checkpoint = torch.load(io.BytesIO(model_data))
+
+        print(f'Loaded {path_to_load_model} successfully!')
+        if type(checkpoint) == BiLSTMModel:
+            bilstm = checkpoint
+            # Load optimizer
+            optimizer: optim.Adam = optim.Adam(bilstm.parameters(), lr=LEARNING_RATE)
+
+            # Training loss, validation loss, set start
+            training_losses = []
+            validation_losses = []
+            start_epoch = 0
+        else:
+            # Load the pre-trained weights
+            bilstm.load_state_dict(checkpoint["model_state_dict"])
+
+            # Load the optimizer state
+            optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
+            # Load the loss and validation losses
+            training_losses = checkpoint["train_loss"]
+            validation_losses = checkpoint["val_loss"]
+
+            # Get the last epoch to resume training from that point
+            start_epoch = checkpoint["epoch"]
+    else:
+        start_epoch = 0
+
+    if start_epoch >= epochs:
+        epochs += start_epoch
+        # Training loop
+        for epoch in range(start_epoch, epochs):
+            bilstm.train()  # get to training
+            train_loss_sum: float = 0.0
+            train_samples: int = 0
+
+            # Iterate over the shuffled batches
+            for batch_x, batch_y in training_dataloader:
+                # Forward pass
+                predictions: torch.Tensor = bilstm(batch_x.to(device))
+                # Create a tensor of zeros with the same number of samples
+                zeros_tensor: torch.Tensor = torch.zeros(predictions.shape[0], 1).to(device)
+
+                # Concatenate the predictions tensor with the zeros tensor
+                predictions: torch.Tensor = torch.cat((predictions, zeros_tensor), dim=1).to(device)
+                batch_y: torch.Tensor = batch_y.squeeze().to(device)
+
+                # Calculate the training loss
+                loss: torch.Tensor = loss_function(predictions, batch_y)
+                train_loss_sum += loss.item() * len(batch_x)
+                train_samples += len(batch_x)
+
+                # Backpropagation
+                loss.backward()
+                optimizer.step()
+
+            training_losses.append(train_loss_sum / train_samples)  # record avg training loss
+
+            # Validation phase
+            bilstm.eval()
+            val_loss_sum: float = 0.0
+            val_samples: int = 0
+            with torch.no_grad():
+                # Forward pass on the validation set
+                val_predictions: torch.Tensor = bilstm(x_validation.to(device))
+                # Create a tensor of zeros with the same number of samples
+                zeros_tensor: torch.Tensor = torch.zeros(val_predictions.shape[0], 1).to(device)
+                # Concatenate the predictions tensor with the zeros tensor
+                val_predictions: torch.Tensor = torch.cat((val_predictions, zeros_tensor), dim=1).to(device)
+                # Calculate the validation loss
+                val_loss: torch.Tensor = loss_function(val_predictions, y_validation.squeeze().to(device))
+                val_loss_sum += val_loss.item() * len(x_validation)
+                val_samples += len(x_validation)
+
+            validation_losses.append(val_loss_sum / val_samples)  # record avg validation loss
+
+            # Print training and validation loss for each epoch
+            print(
+                f"Epoch {epoch + 1}/{epochs}: Train Loss: {training_losses[-1]:.4f}, Val Loss: {validation_losses[-1]:.4f}"
+            )
+
+            # Save checkpoint if we've reached the interval
+            if (epoch + 1) % chkpt_interval == 0:
+                # Define the checkpoint file path
+                checkpoint_path = f"Checkpoint/{model_number}/checkpoint_{epoch + 1}.pth"
+
+                # Save the checkpoint
+                checkpoint = {
+                    "epoch": epoch + 1,
+                    "model_state_dict": bilstm.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "train_loss": training_losses,
+                    "val_loss": validation_losses,
+                }
+                torch.save(checkpoint, checkpoint_path)
+    else:
+        # Training loop
+        for epoch in range(start_epoch, epochs):
+            bilstm.train()  # get to training
+            train_loss_sum: float = 0.0
+            train_samples: int = 0
+
+            # Iterate over the shuffled batches
+            for batch_x, batch_y in training_dataloader:
+                # Forward pass
+                predictions: torch.Tensor = bilstm(batch_x.to(device))
+                # Create a tensor of zeros with the same number of samples
+                zeros_tensor: torch.Tensor = torch.zeros(predictions.shape[0], 1).to(device)
+
+                # Concatenate the predictions tensor with the zeros tensor
+                predictions: torch.Tensor = torch.cat((predictions, zeros_tensor), dim=1).to(device)
+                batch_y: torch.Tensor = batch_y.squeeze().to(device)
+
+                # Calculate the training loss
+                loss: torch.Tensor = loss_function(predictions, batch_y)
+                train_loss_sum += loss.item() * len(batch_x)
+                train_samples += len(batch_x)
+
+                # Backpropagation
+                loss.backward()
+                optimizer.step()
+
+            training_losses.append(train_loss_sum / train_samples)  # record avg training loss
+
+            # Validation phase
+            bilstm.eval()
+            val_loss_sum: float = 0.0
+            val_samples: int = 0
+            with torch.no_grad():
+                # Forward pass on the validation set
+                val_predictions: torch.Tensor = bilstm(x_validation.to(device))
+                # Create a tensor of zeros with the same number of samples
+                zeros_tensor: torch.Tensor = torch.zeros(val_predictions.shape[0], 1).to(device)
+                # Concatenate the predictions tensor with the zeros tensor
+                val_predictions: torch.Tensor = torch.cat((val_predictions, zeros_tensor), dim=1).to(device)
+                # Calculate the validation loss
+                val_loss: torch.Tensor = loss_function(val_predictions, y_validation.squeeze().to(device))
+                val_loss_sum += val_loss.item() * len(x_validation)
+                val_samples += len(x_validation)
+
+            validation_losses.append(val_loss_sum / val_samples)  # record avg validation loss
+
+            # Print training and validation loss for each epoch
+            print(
+                f"Epoch {epoch + 1}/{EPOCHS}: Train Loss: {training_losses[-1]:.4f}, Val Loss: {validation_losses[-1]:.4f}"
+            )
+
+            # Save checkpoint if we've reached the interval
+            if (epoch + 1) % chkpt_interval == 0:
+                # Define the checkpoint file path
+                checkpoint_path = f"Checkpoint/{model_number}/checkpoint_{epoch + 1}.pth"
+
+                # Save the checkpoint
+                checkpoint = {
+                    "epoch": epoch + 1,
+                    "model_state_dict": bilstm.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "train_loss": training_losses,
+                    "val_loss": validation_losses,
+                }
+                torch.save(checkpoint, checkpoint_path)
+    return bilstm, training_losses, validation_losses, epochs
+
+
+def read_npz_files(npz_dir):
+    if npz_dir == 'Data/MultiNLI/train_embeddings.npz':
+        npz_dir = "Data/NPZ/Train"
+        file_list = []
+        for file_name in os.listdir(npz_dir):
+            if file_name.endswith(".npz"):
+                file_path = os.path.join(npz_dir, file_name)
+                file_list.append(file_path)
+
+        # Sort the file list by creation time
+        sorted_file_list = sorted(file_list, key=os.path.getmtime)
+        print(len(sorted_file_list))
+
+        def data_generator():
+            for filepath in sorted_file_list:
+                print(filepath)
+                loaded_data = np.load(filepath)
+
+                for key in loaded_data.files:
+                    yield loaded_data[key]
+
+        return data_generator()
+    else:
+        return read_npz_file(npz_dir)
+
+
+def clean_train_data(dataset: str, device: str, batch_size: int) -> Tuple[DataLoader, DataLoader]:
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe(dataset)  # get data from file for labels
+
+    # Make labels
+    labels: List[int] = [1 if x == "contradiction" else 0 for x in multinli_df["gold_label"]]
+
+    data_generator = read_npz_files(f"Data/MultiNLI/{dataset}_embeddings.npz")  # Get data generator
+
+    # Create a placeholder for the first batch
+    x_batch, y_batch = None, None
+
+    def generate_batch():
+        nonlocal x_batch, y_batch
+
+        # Load data from the generator until there's no more data
+        try:
+            data = next(data_generator)
+        except StopIteration:
+            return None
+
+        # Process the loaded data
+        x_data = data
+        y_data = labels[len(x_data)]
+
+        x_batch = torch.tensor(x_data).to(device)
+        y_batch = torch.tensor(y_data).to(device)
+
+        return x_batch, y_batch
+
+    # Generate the first batch
+    x_batch, y_batch = generate_batch()
+
+    def batch_generator():
+        while x_batch is not None:
+            yield x_batch, y_batch
+            x_batch, y_batch = generate_batch()
+
+    print(len(x_batch), len(y_batch))
+    train_dataset = TensorDataset(x_batch, y_batch)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+
+    return batch_generator(), train_dataloader
 
 
 def read_npz_file(file_path):
@@ -149,41 +424,176 @@ def read_npz_file(file_path):
     return data
 
 
-def delete_npz_files(npz_dir: str = f"Data/NPZ/{DATASET.capitalize()}"):
-    for file in os.listdir(npz_dir):
-        if file.endswith(".npz"):
-            file_path = os.path.join(npz_dir, file)
-            os.remove(file_path)
-
-
-def get_start(npz_dir: str = f"Data/NPZ/{DATASET.capitalize()}") -> int:
-    npz_files = [file for file in os.listdir(npz_dir) if file.endswith(".npz")]  # retrieve npz files
-    return len(npz_files)  # return largest completed batch
-
-
 if __name__ == "__main__":
+    # Check if GPU is available
     if torch.cuda.is_available():
         print("GPU is available. PyTorch is using GPU:", torch.cuda.get_device_name(DEVICE))
     else:
         print("GPU is not available. PyTorch is using CPU.")
-    # combine_npz_files()
-    # retrieved = read_npz_file("Data/MultiNLI/match_embeddings.npz")
-    # for k, array in retrieved.items():
-    #     print(f"Array with key '{k}': {array.shape}")
 
-    for directory in ["Data/NPZ", "Data/MultiNLI", f"Data/NPZ/{DATASET.capitalize()}"]:
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe(DATASET)
-    print(f"\nRow count: {len(multinli_df)}")
-    data_batches = group_rows(multinli_df)
-    print(f"Num Batches: {len(data_batches)}")
-    embedded_batches = parallel_get_bert_embeddings(data_batches)
-    print(f"Embedding count: {len(embedded_batches)}")
-    print(f"Embedding shape: {embedded_batches.shape}")
-    combine_npz_files(output_file=f"Data/MultiNLI/{DATASET}_embeddings.npz")
-    retrieved = read_npz_file(f"Data/MultiNLI/{DATASET}_embeddings.npz")
-    for k, array in retrieved.items():
-        if not np.array_equal(embedded_batches[int(k)], array):
-            print(f"Array {k} not equal")
-    # delete_npz_files()
+    # Create the "Models" folder if it doesn't exist
+    if not os.path.exists("Models"):
+        os.makedirs("Models")
+    # Create the "Models" folder if it doesn't exist
+    if not os.path.exists("Figures"):
+        os.makedirs("Figures")
+
+    model_num: int = count_files("Models")
+
+    # Create the "Checkpoint" folder if it doesn't exist
+    if not os.path.exists(f"Checkpoint/{model_num}"):
+        os.makedirs(f"Checkpoint/{model_num}")
+
+    model_save_path: str = f"Models/train.pth"
+    model_load_path: str = f""  # train model anew
+    # model_load_path: str = f"Checkpoint/{model_num - 1}"  # load checkpoint
+    # model_load_path: str = f"Models/match.pth"  # load other model and continue training
+
+    print(f"Training model to save to {model_save_path}")
+
+    # batch_gen, train_dataloader = clean_train_data(DATASET, DEVICE, BATCH_SIZE)
+
+    multinli_df: pd.DataFrame = load_txt_file_to_dataframe(DATASET)  # get data from file for labels
+
+    # Make labels
+    multinli_labels: List[int] = [1 if x == "contradiction" else 0 for x in multinli_df["gold_label"]]
+
+    bilstm: BiLSTMModel = BiLSTMModel(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE).to(DEVICE)
+    loss_function: nn.BCEWithLogitsLoss = nn.BCEWithLogitsLoss()
+    # loss_function: nn.CrossEntropyLoss = nn.CrossEntropyLoss()
+    optimizer: optim.Adam = optim.Adam(bilstm.parameters(), lr=LEARNING_RATE)
+
+    npz_dir = "Data/NPZ/Train"
+    file_list = []
+    for file_name in os.listdir(npz_dir):
+        if file_name.endswith(".npz"):
+            file_path = os.path.join(npz_dir, file_name)
+            file_list.append(file_path)
+
+    # Sort the file list by creation time
+    sorted_file_list = sorted(file_list, key=os.path.getmtime)
+
+    # for batch_x, batch_y in batch_gen():
+    #     # Training loop
+
+    train_losses = []
+
+    for epoch in range(0, EPOCHS):
+        bilstm.train()  # get to training
+        train_loss_sum: float = 0.0
+        train_samples: int = 0
+
+        batch_count = 0
+
+        # Iterate over the shuffled batches
+        for data_path in sorted_file_list:
+            data = read_npz_file(data_path)
+            # print(list(data.keys())[0], list(data.keys())[-1])
+
+            batch_x = np.stack(list(data.values()))
+
+            min_index = int(batch_count * BATCH_SIZE)
+            max_index = min(int(min_index + BATCH_SIZE), len(multinli_labels))
+            # if max_index - min_index == 1023:
+            #     max_index += 1
+            # if max_index - min_index == 1025:
+            #     max_index -= 1
+            # print(f"Labels: {max_index - min_index} | Should be: {batch_x.shape[0]}")
+            # if max_index - min_index == 1023:
+            #     print(f"{data_path} | 1023")
+            #     max_index += 1
+            #     count += 1
+            #     # print(f"Num mismatched files: {count}")
+            # elif max_index - min_index == 1025:
+            #     print(f"{data_path} | 1025")
+            #     max_index -= 1
+            #     count += 1
+            #     # print(f"Num mismatched files: {count}")
+            # elif max_index - min_index != 1024:
+            # print(f"Min: {min_index} | Max: {max_index}")
+            # print(f"{data_path} | {max_index - min_index} | {len(multinli_labels[min_index:max_index])}")
+            # elif max_index - min_iex == 1024:
+            #     print(f"{data_path} | Equal")
+            labels = multinli_labels[min_index:max_index]
+            batch_y = np.array(labels)
+            # print(batch_y.shape)
+
+            # Convert NumPy arrays to Torch tensors if needed
+            batch_x = torch.from_numpy(batch_x).to(DEVICE)
+            batch_y = torch.from_numpy(batch_y).squeeze().to(DEVICE).float()
+
+            # print(f"X: {batch_x.shape}")
+            # print(f"Y: {batch_y.shape}")
+
+            # Forward pass
+            predictions: torch.Tensor = bilstm(batch_x)
+            predictions = predictions.squeeze()
+
+            # Calculate the training loss
+            loss: torch.Tensor = loss_function(predictions, batch_y)
+            train_loss_sum += loss.item() * len(batch_x)
+            train_samples += len(batch_x)
+
+            # Backpropagation
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            # Delete the loaded data to free up memory
+            del data, batch_x, batch_y, predictions, loss
+            batch_count += 1
+
+        train_losses.append(train_loss_sum / train_samples)  # record avg training loss
+        print(train_losses)
+
+        print(
+            f"Epoch {epoch + 1}/{EPOCHS}: Train Loss: {train_losses[-1]:.4f}"
+        )
+
+        # Save checkpoint if we've reached the interval
+        if (epoch + 1) % CHKPT_INTERVAL == 0:
+            # Define the checkpoint file path
+            checkpoint_path = f"Checkpoint/{model_num}/checkpoint_{epoch + 1}.pth"
+
+            # Save the checkpoint
+            checkpoint = {
+                "epoch": epoch + 1,
+                "model_state_dict": bilstm.state_dict(),
+                "optimizer_state_dict": optimizer.state_dict(),
+                "train_loss": train_losses,
+            }
+            torch.save(checkpoint, checkpoint_path)
+            print("Checkpoint saved")
+
+    # print("Data loaded")
+    #
+    # # model, train_losses, val_losses, x_range = train_model(
+    # #     model_num,
+    # #     train_dataloader,
+    # #     x_val,
+    # #     y_val,
+    # #     INPUT_SIZE,
+    # #     HIDDEN_SIZE,
+    # #     NUM_LAYERS,
+    # #     OUTPUT_SIZE,
+    # #     EPOCHS,
+    # #     LEARNING_RATE,
+    # #     CHKPT_INTERVAL,
+    # #     DEVICE,
+    # #     path_to_load_model=model_load_path,
+    # # )
+
+    # Save the entire model
+    torch.save(bilstm, model_save_path)
+    print(f"Model saved to {model_save_path}")
+    print(train_losses)
+
+    # Plot the training and validation loss curves
+    plt.plot(range(1, EPOCHS + 1), train_losses, label="Training Loss")
+    # plt.plot(range(1, x_range + 1), val_losses, label="Validation Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Training and Validation Loss")
+    plt.legend()
+    plt.savefig(f"Figures/fig_{model_num}.svg", format="svg")
+    plt.close()

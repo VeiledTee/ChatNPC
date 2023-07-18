@@ -143,6 +143,29 @@ def delete_npz_files(npz_dir: str = f"Data/NPZ/{DATASET.capitalize()}"):
             os.remove(file_path)
 
 
+def read_npz_files(npz_dir):
+    file_list = []
+
+    for file_name in os.listdir(npz_dir):
+        if file_name.endswith(".npz"):
+            file_path = os.path.join(npz_dir, file_name)
+            file_list.append(file_path)
+
+    # Sort the file list by creation time
+    sorted_file_list = sorted(file_list, key=os.path.getmtime)
+    print(len(sorted_file_list))
+
+    def data_generator():
+        for filepath in sorted_file_list:
+            print(filepath)
+            loaded_data = np.load(filepath)
+
+            for key in loaded_data.files:
+                yield loaded_data[key]
+
+    return data_generator()
+
+
 def get_start(npz_dir: str = f"Data/NPZ/{DATASET.capitalize()}") -> int:
     npz_files = [file for file in os.listdir(npz_dir) if file.endswith(".npz")]  # retrieve npz files
     return len(npz_files)  # return largest completed batch
@@ -157,16 +180,25 @@ if __name__ == "__main__":
     for directory in ["Data/NPZ", "Data/MultiNLI", f"Data/NPZ/{DATASET.capitalize()}"]:
         if not os.path.exists(directory):
             os.makedirs(directory)
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe(DATASET)
-    print(f"\nRow count: {len(multinli_df)}")
-    data_batches = group_rows(multinli_df)
-    print(f"Num Batches: {len(data_batches)}")
-    embedded_batches = parallel_get_bert_embeddings(data_batches)
-    print(f"Embedding count: {len(embedded_batches)}")
-    print(f"Embedding shape: {embedded_batches.shape}")
-    combine_npz_files(output_file=f"Data/MultiNLI/{DATASET}_embeddings.npz")
-    retrieved = read_npz_file(f"Data/MultiNLI/{DATASET}_embeddings.npz")
-    for k, array in retrieved.items():
-        if not np.array_equal(embedded_batches[int(k)], array):
-            print(f"Array {k} not equal")
+    # multinli_df: pd.DataFrame = load_txt_file_to_dataframe(DATASET)
+    # print(f"\nRow count: {len(multinli_df)}")
+    # data_batches = group_rows(multinli_df)
+    # print(f"Num Batches: {len(data_batches)}")
+    # embedded_batches = parallel_get_bert_embeddings(data_batches)
+    # print(f"Embedding count: {len(embedded_batches)}")
+    # print(f"Embedding shape: {embedded_batches.shape}")
+    # combine_npz_files(output_file=f"Data/MultiNLI/{DATASET}_embeddings.npz")
+    # retrieved = read_npz_file(f"Data/MultiNLI/{DATASET}_embeddings.npz")
+    # for k, array in retrieved.items():
+    #     if not np.array_equal(embedded_batches[int(k)], array):
+    #         print(f"Array {k} not equal")
     # delete_npz_files()
+    # retrieved = read_npz_file(f"Data/NPZ/{DATASET}/batch_383.npz")
+    # for k, array in retrieved.items():
+    #     print(k)
+        # if not np.array_equal(embedded_batches[int(k)], array):
+        #     print(f"Array {k} not equal")
+    data_directory = "Data/NPZ/Train"
+    data_generated = read_npz_files(data_directory)
+    for data in data_generated:
+        print(data.shape)
