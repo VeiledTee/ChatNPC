@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from BiLSTM import BiLSTMModel
 from bilstm_training import load_txt_file_to_dataframe
-from convert_dataset import read_npz_file
+from convert_dataset import read_npz_file, get_bert_embeddings
 from variables import (
     BATCH_SIZE,
     DEVICE,
@@ -50,11 +50,19 @@ if __name__ == "__main__":
     else:
         print("GPU is not available. PyTorch is using CPU.")
 
-    DEVICE = 'cpu'
+    # DEVICE = 'cpu'
 
     model_load_path: str = f"Models/train.pth"
+    test_sentences = [["Billy loves cake",
+                       "Billy hates cake"], ['The sky is clear today.', "What a beautiful sunny day!"],
+                      ["Josh doesn't like pizza.", "Josh loves eating pizza!"]]
+    test_labels = [1, 0, 1]
 
-    test_dataloader, test_x, test_y = clean_test_data(TESTSET, DEVICE, BATCH_SIZE)
+    if test_sentences:
+        test_x = torch.tensor(np.array([get_bert_embeddings(s[0], s[1]) for s in test_sentences])).squeeze()
+        test_y = torch.tensor(test_labels)
+    else:
+        test_dataloader, test_x, test_y = clean_test_data(TESTSET, DEVICE, BATCH_SIZE)
 
     model = BiLSTMModel(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE).to(DEVICE)
     model.load_state_dict(torch.load(model_load_path, map_location=DEVICE).state_dict())

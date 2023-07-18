@@ -445,7 +445,7 @@ if __name__ == "__main__":
     if not os.path.exists(f"Checkpoint/{model_num}"):
         os.makedirs(f"Checkpoint/{model_num}")
 
-    model_save_path: str = f"Models/train_mismatch.pth"
+    model_save_path: str = f"Models/{DATASET}_{TESTSET}.pth"
     model_load_path: str = f""  # train model anew
     # model_load_path: str = f"Checkpoint/{model_num - 1}"  # load checkpoint
     # model_load_path: str = f"Models/match.pth"  # load other model and continue training
@@ -456,13 +456,18 @@ if __name__ == "__main__":
 
     # batch_gen, train_dataloader = clean_train_data(DATASET, DEVICE, BATCH_SIZE)
 
+    class_counts = torch.tensor([261799/392702, 130903/392702])
+    total_samples = class_counts.sum()
+    class_weights = total_samples / class_counts
+    pos_weight = class_weights[1]
+
     multinli_df: pd.DataFrame = load_txt_file_to_dataframe(DATASET)  # get data from file for labels
 
     # Make labels
     multinli_labels: List[int] = [1 if x == "contradiction" else 0 for x in multinli_df["gold_label"]]
 
     bilstm: BiLSTMModel = BiLSTMModel(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE).to(DEVICE)
-    loss_function: nn.BCEWithLogitsLoss = nn.BCEWithLogitsLoss()
+    loss_function: nn.BCEWithLogitsLoss = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(3.0))
     # loss_function: nn.CrossEntropyLoss = nn.CrossEntropyLoss()
     optimizer: optim.Adam = optim.Adam(bilstm.parameters(), lr=LEARNING_RATE)
 
@@ -494,7 +499,7 @@ if __name__ == "__main__":
     # print(x_data.shape)
     # Convert x_data and y_data to tensors
     x_validation: torch.Tensor = torch.tensor(x_data).to(DEVICE).reshape(x_data.shape[0], x_data.shape[1], x_data.shape[2])
-    y_validation: torch.Tensor = torch.tensor(np.array(y_data)).to(DEVICE)
+    y_validation: torch.Tensor = torch.tensor(np.array(y_data)).float().to(DEVICE)
 
     print("Validation set ready")
 
@@ -528,12 +533,20 @@ if __name__ == "__main__":
             batch_x = torch.from_numpy(batch_x).to(DEVICE)
             batch_y = torch.from_numpy(batch_y).squeeze().to(DEVICE).float()
 
+            # Apply class weights to the target tensor
+            weighted_batch_y = batch_y.to(DEVICE)
+            weighted_batch_y[weighted_batch_y == 1] *= pos_weight
+
             # Forward pass
             predictions: torch.Tensor = bilstm(batch_x)
             predictions = predictions.squeeze()
 
+            # print(predictions.shape)
+            # print(batch_y.shape)
+            # print(weighted_batch_y.shape)
+
             # Calculate the training loss
-            loss: torch.Tensor = loss_function(predictions, batch_y)
+            loss: torch.Tensor = loss_function(predictions, weighted_batch_y)
             train_loss_sum += loss.item() * len(batch_x)
             train_samples += len(batch_x)
 
@@ -556,13 +569,17 @@ if __name__ == "__main__":
         with torch.no_grad():
             # Forward pass on the validation set
             val_predictions: torch.Tensor = bilstm(x_validation.to(DEVICE))
-            print(val_predictions.shape, y_validation.shape)
+            # Apply class weights to the target tensor
+            weighted_validation_y = y_validation.to(DEVICE)
+            # print(weighted_validation_y)
+            weighted_validation_y[weighted_validation_y == 1] *= pos_weight
+            # print(val_predictions.squeeze().shape, y_validation.squeeze().shape)
             # # Create a tensor of zeros with the same number of samples
             # zeros_tensor: torch.Tensor = torch.zeros(val_predictions.shape[0], 1).to(DEVICE)
             # # Concatenate the predictions tensor with the zeros tensor
             # val_predictions: torch.Tensor = torch.cat((val_predictions, zeros_tensor), dim=1).to(DEVICE)
             # Calculate the validation loss
-            val_loss: torch.Tensor = loss_function(val_predictions, y_validation.squeeze().to(DEVICE))
+            val_loss: torch.Tensor = loss_function(val_predictions.squeeze(), weighted_validation_y.squeeze().to(DEVICE))
             val_loss_sum += val_loss.item() * len(x_validation)
             val_samples += len(x_validation)
 
