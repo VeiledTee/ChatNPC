@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     # DEVICE = 'cpu'
 
-    model_load_path: str = f"Models/train.pth"
+    model_load_path: str = f"Models/train_match.pth"
     test_sentences = [["Billy loves cake",
                        "Billy hates cake"], ['The sky is clear today.', "What a beautiful sunny day!"],
                       ["Josh doesn't like pizza.", "Josh loves eating pizza!"]]
