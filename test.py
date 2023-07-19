@@ -177,13 +177,13 @@ def train_model(
             checkpoint = torch.load(get_most_recent_file(path_to_load_model))
         except AttributeError:
             # Read the file into memory
-            with open(path_to_load_model, 'rb') as f:
+            with open(path_to_load_model, "rb") as f:
                 model_data = f.read()
 
             # Load the model from memory using torch.load with a BytesIO buffer
             checkpoint = torch.load(io.BytesIO(model_data))
 
-        print(f'Loaded {path_to_load_model} successfully!')
+        print(f"Loaded {path_to_load_model} successfully!")
         if type(checkpoint) == BiLSTMModel:
             bilstm = checkpoint
             # Load optimizer
@@ -346,7 +346,7 @@ def train_model(
 
 
 def read_npz_files(npz_dir):
-    if npz_dir == 'Data/MultiNLI/train_embeddings.npz':
+    if npz_dir == "Data/MultiNLI/train_embeddings.npz":
         npz_dir = "Data/NPZ/Train"
         file_list = []
         for file_name in os.listdir(npz_dir):
@@ -450,13 +450,13 @@ if __name__ == "__main__":
     # model_load_path: str = f"Checkpoint/{model_num - 1}"  # load checkpoint
     # model_load_path: str = f"Models/match.pth"  # load other model and continue training
 
-    DEVICE = 'cpu'
+    DEVICE = "cpu"
 
     print(f"Training model to save to {model_save_path}")
 
     # batch_gen, train_dataloader = clean_train_data(DATASET, DEVICE, BATCH_SIZE)
 
-    class_counts = torch.tensor([261799/392702, 130903/392702])
+    class_counts = torch.tensor([261799 / 392702, 130903 / 392702])
     total_samples = class_counts.sum()
     class_weights = total_samples / class_counts
     pos_weight = class_weights[1]
@@ -498,7 +498,9 @@ if __name__ == "__main__":
     x_data = np.array(x_data)
     # print(x_data.shape)
     # Convert x_data and y_data to tensors
-    x_validation: torch.Tensor = torch.tensor(x_data).to(DEVICE).reshape(x_data.shape[0], x_data.shape[1], x_data.shape[2])
+    x_validation: torch.Tensor = (
+        torch.tensor(x_data).to(DEVICE).reshape(x_data.shape[0], x_data.shape[1], x_data.shape[2])
+    )
     y_validation: torch.Tensor = torch.tensor(np.array(y_data)).float().to(DEVICE)
 
     print("Validation set ready")
@@ -579,7 +581,9 @@ if __name__ == "__main__":
             # # Concatenate the predictions tensor with the zeros tensor
             # val_predictions: torch.Tensor = torch.cat((val_predictions, zeros_tensor), dim=1).to(DEVICE)
             # Calculate the validation loss
-            val_loss: torch.Tensor = loss_function(val_predictions.squeeze(), weighted_validation_y.squeeze().to(DEVICE))
+            val_loss: torch.Tensor = loss_function(
+                val_predictions.squeeze(), weighted_validation_y.squeeze().to(DEVICE)
+            )
             val_loss_sum += val_loss.item() * len(x_validation)
             val_samples += len(x_validation)
 

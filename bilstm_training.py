@@ -176,13 +176,13 @@ def train_model(
             checkpoint = torch.load(get_most_recent_file(path_to_load_model))
         except AttributeError:
             # Read the file into memory
-            with open(path_to_load_model, 'rb') as f:
+            with open(path_to_load_model, "rb") as f:
                 model_data = f.read()
 
             # Load the model from memory using torch.load with a BytesIO buffer
             checkpoint = torch.load(io.BytesIO(model_data))
 
-        print(f'Loaded {path_to_load_model} successfully!')
+        print(f"Loaded {path_to_load_model} successfully!")
         if type(checkpoint) == BiLSTMModel:
             bilstm = checkpoint
             # Load optimizer
@@ -345,7 +345,7 @@ def train_model(
 
 
 def read_npz_files(npz_dir):
-    if npz_dir == 'Data/MultiNLI/train_embeddings.npz':
+    if npz_dir == "Data/MultiNLI/train_embeddings.npz":
         npz_dir = "Data/NPZ/Train"
         file_list = []
         for file_name in os.listdir(npz_dir):
@@ -398,7 +398,6 @@ def clean_train_data(dataset: str, device: str, batch_size: int) -> tuple[DataLo
     train_dataloader: DataLoader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
     return train_dataloader, x_val, y_val
-
 
 
 if __name__ == "__main__":

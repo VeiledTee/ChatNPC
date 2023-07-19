@@ -13,7 +13,7 @@ OUTPUT_SIZE: int = 1
 EPOCHS: int = 10
 LEARNING_RATE: float = 0.001
 CHKPT_INTERVAL: int = int(math.ceil(EPOCHS / 10))
-TESTSET = 'mismatch'
+TESTSET = "mismatch"
 if DATASET == "train":
     BATCH_SIZE: int = 1024
 else:
