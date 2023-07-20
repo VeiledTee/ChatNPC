@@ -91,3 +91,74 @@ Hallucinating example
 can you provide me references for an author that discusses AI in dialogue systems
 chat online -> Hallucinated a book that exists but incorrect authors
 after asking it to verify actual book
+-------------------------------
++++ 	Linguistics Papers	+++
++ Contradticiton Detection in Financial Reports +
+	- Additional pre-training (part-of-speech tagging) to enhance semantic capabilties (spaCy framework)
+	- XLM-RoBERTa (most general model) performs best when pretrained for POS tagging and fine tuned on SNLI and finCD datasets
+	- Architecture: 
+		* encoder + feed-forward network
+	- pre-training on finacial docs may not help with contradiction detection
+	- future work, include more info as context for transformer
+	
++ Factual Inconsistency Classification +
+	- 4 model pipeline
+		* Input: Claim, Context
+		* Claim, Context > M1 > Inconsistent claim triples <S, R, T>, inconsistnet context span
+		* Claim, Context, Inconsistent claim triples <S, R, T>, inconsistent context span > M2 > Inconsistency type, Inconsistent claim component
+		* Inconsistent context span, inconsistnet claim component > M3 > coarse Inconsistent entity type
+		* Inconsistent context span, inconsistnet claim component, coarse Inconsistent entity type > M4 > Fine-grained inconsistent entity-type
+		
++ Contradiction-Specific Word Embeddings +
+	- Contradiction occurs hwen sentencews are unliekly to be correct at the same time
+	- PROBLEM: Contradicting words and sentences are very close in vector space
+	- CONTRIBUTION: Data constructino method to generate large-scale corpus for contradiction specific word embeddings (CWE)
+	- CONTRIBUTION: Neural net for CWE
+	- CONTRIBUTION: apply CWE in smeantic relation representation to detect contradiction (+6.11% above SotA)
+	- CWE Learning Model:
+		* 5 layers: lookup > linear > tanh > sum > linear
+		* Input: pair of sentences
+		* solve classificatino problem through ranking objective function
+	- 
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
