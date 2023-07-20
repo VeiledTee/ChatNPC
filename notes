@@ -1,6 +1,6 @@
 - bullet point
 * to do
-
+------------------------------------------------------------------------------------------------------
 NOTES:
 - use vector database for efficient storage and retrieval of data
 - for testing model:
@@ -12,7 +12,7 @@ NOTES:
 - dynamic ID
 * test different embeddings (all-mpnet-base-v2 vs all-MiniLM-L6-v2)
 
------------------------------------
+------------------------------------------------------------------------------------------------------
 - semantic role labeling
 	- go from phrase to topic
 - 4-5 more topics
@@ -41,8 +41,7 @@ PROBLEMS
 1. determine if talking about same thing
 2. determine if contrasting
 3. do something (confidence score, etc.)
------------------------------------
-Paper flow:
+------------------------------------------------------------------------------------------------------
 Intro
     Introduce project and motivation
 Related Works
@@ -86,13 +85,18 @@ Building the Dialogue System
         Relational Database
         Vector Database
 
--------------------------------
+------------------------------------------------------------------------------------------------------
 Hallucinating example
 can you provide me references for an author that discusses AI in dialogue systems
 chat online -> Hallucinated a book that exists but incorrect authors
 after asking it to verify actual book
--------------------------------
+------------------------------------------------------------------------------------------------------
 +++ 	Linguistics Papers	+++
+MAIN IDEAS: 
+	+ Contradiction: two sentences that are unlikely/cannot appear at the same time
+	+ Context embeddings put contradicting terms close together in vector space
+	+ Embed sentences as a pair -> want to preserve the ideas from sentences so combine into one embedding
+
 + Contradticiton Detection in Financial Reports +
 	- Additional pre-training (part-of-speech tagging) to enhance semantic capabilties (spaCy framework)
 	- XLM-RoBERTa (most general model) performs best when pretrained for POS tagging and fine tuned on SNLI and finCD datasets
@@ -119,7 +123,45 @@ after asking it to verify actual book
 		* 5 layers: lookup > linear > tanh > sum > linear
 		* Input: pair of sentences
 		* solve classificatino problem through ranking objective function
-	- 
+	- Classifier:
+		* 6 layers: lookup (embedding) > convolution > max pool > tanh > composition > softmax
+		* left side: full sentences as input, looks at sementic relation between them
+		* right side: learns from unaligned phrases (obtained by removing overlappign words from sentences)
+		* 3 features added to softmax input > negation (odd # of neg. words deemed to be an indicator, word order (difference in word order between overlapping words in sentence pairs), and unaligned word order (avg # unaligned words after removing overlapping words, w large value roughly indicated entailment)
+	- Outperforms other models
+	
+	
++ Sarcasm Recognition +
+	- Uses prompt template
+		* given x='best pizza ever!', x_p = x it is [MASK].
+		* Verbalizer maps from label word set to label space
+		* P(y | x_p) takes class y and calculates the probability given x_p 
+		* model predicts [MASK] is + if p(V_pos) > p(V_neg), and - if p(V_neg) > p(V_pos)
+	- Clash prompt: mimic actual intention
+		* 5 different examples (x Actually [MASK], x In reality it was [MASK], x, As a matter of fact, it was [MASK], x To tell you the truth, it was [MASK], x In fact, it was [MASK])
+		* fact-related phrases to express (in)consistency with facts
+	- Question prompt: telling the model the tasj is to ID sarcasm by asking a question
+		* More direct than clash prompts
+		* 3 examples (x Are you kidding? [MASK], x Are you sarastic? [MASK], x Are you ironic? [MASK])
+	- Goal of verbalizer was to determine label words to replace mask, then how to map label words to corresponding labels
+		* Step 1: Label word searching
+			- Find [MASK] appropriate words 
+			- For question prompt, "Yes" or "No" is sufficient
+			- For clash prompt, 3 stages
+				* determine seed words based on stats info
+				* retrieve candidate words using knowledge based on seed words
+				* denoise and obtain final label words based on rules
+		* Step 2: Verbalizer mapping
+			- Map predicted probability of label words to final label y
+			- question prompt: only one label in each class
+			- clash prompt: avg of label words based on label word searching process as class probability
+	
+		
+
++  +
+
+
++  +
 	
 
 
