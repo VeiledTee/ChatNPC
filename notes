@@ -155,8 +155,6 @@ https://aclanthology.org/2023.eacl-main.25.pdf
 			- Map predicted probability of label words to final label y
 			- question prompt: only one label in each class
 			- clash prompt: avg of label words based on label word searching process as class probability
-	
-		
 
 + Transformer guided Chaining +
 https://aclanthology.org/2023.findings-acl.588.pdf
@@ -187,10 +185,23 @@ https://aclanthology.org/2022.findings-acl.219.pdf
 	- minimizes similarity between target response and self-contradiction negative example
 	- maximizes similarity between target and semantic-aligned positive example
 
-
-
-
-
++ Contradiction detection for rumours +
+https://aclanthology.org/W16-5004.pdf
+	- Data: Tweets and twitter threads
+	- Contradiction at text similarity only, not semantic
+	- Recognizing textual Entailment (RTE) framework
+	- distinguish between two contradiction types: 
+		* Independent Contradictions: contradictory relation between independent posts, two tweets contain different info about same target that can't simultaneously be true
+		* Disagreeing Replies: contradictory relation between claim-orienting tweet anf a direct reply, where the reply expresses disagreement with the claim-introducing tweet
+	- Both types tackled as three-way RTE task on pairs of tweets
+	- RTE:
+		* entailment, contradiction, or neutral/unknown
+		* http://hltfbk.github.io/Excitement-Open-Platform/
+	- Text similarity features:
+		* Vocab overlap: used cosine similarity and f1 score for content word stem types, 4 features (cosine, cosine_pos, f_score, f_score_pos -> Part-Of-Speech btw)
+		* Local overlap: overlap of stemmed word tokens found using Smith-Waterman algorithm
+	- Classifiers: Nearest centroids and random forest
+	- Using text similarity can account for varying sequences of tokens ("the cat chased the mouse" and "the mouse was chased by the cat" both say the same thing in different ways
 
 
 
