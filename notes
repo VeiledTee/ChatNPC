@@ -130,8 +130,8 @@ MAIN IDEAS:
 		* 3 features added to softmax input > negation (odd # of neg. words deemed to be an indicator, word order (difference in word order between overlapping words in sentence pairs), and unaligned word order (avg # unaligned words after removing overlapping words, w large value roughly indicated entailment)
 	- Outperforms other models
 	
-	
 + Sarcasm Recognition +
+https://aclanthology.org/2023.eacl-main.25.pdf
 	- Uses prompt template
 		* given x='best pizza ever!', x_p = x it is [MASK].
 		* Verbalizer maps from label word set to label space
@@ -158,11 +158,46 @@ MAIN IDEAS:
 	
 		
 
-+  +
++ Transformer guided Chaining +
+https://aclanthology.org/2023.findings-acl.588.pdf
+	- OBSERVATION: 84.5% accuracy with minimalist transformer, requires 1-step inference to be carefully trained
+	- OBSERVATION: Inferred reasoning chains are 78% correct but can be over twice the lengths of optimal chains
+	- OBSERVATION: First Order Logic (FOL) with simple conjunctions and existenial quantifiers are easier to handle, equivalence is more difficult
+	- FOL contradiction definition: P !entail H (and) P entail !H
+	- Logic model
+		* Consider Forward Chaining algorithm
+		* Use a transformer to do fact unification and rule inference
+		* Second transformer to verify given hypothesisagainst known facts
+		* Rule Inference
+			- given current known facts and a rule, check if matches exist and infer new facts from knowledge (intermediate facts)
+			- T5 transformer was used 
+		* Fact Checking
+			- verifies given hypothesis against known facts
+		* Assemble Chain
+			- Store rule and intermediate facts each time a rule is satisfied
+			- If hypothesis is verified, stored rules and facts are assembled to form a reasoning chain
+
++ Mitigating contradictions based on contrastive learning +
+https://aclanthology.org/2022.findings-acl.219.pdf
+	- OBSERVATION: MCCL (Mitigate Contradiction via Contrastive Learning) contrasts target response with negative pairs
+	- Contrastive learning: learn features of a dataset without labels by determining which data points are similar or different
+		* Train model to learn response represantation by contrasting positive pairs with negative pairs
+		* straightforward approach: treat randomly selected responses from different conversations as semantic negative examples 
+		* helps model identify which features make output positive or negative
+	- minimizes similarity between target response and self-contradiction negative example
+	- maximizes similarity between target and semantic-aligned positive example
 
 
-+  +
-	
+
+
+
+
+
+
+
+
+
+
 
 
 

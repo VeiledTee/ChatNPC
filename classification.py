@@ -7,12 +7,19 @@ from sklearn.metrics import accuracy_score, classification_report
 from bilstm_training import load_txt_file_to_dataframe
 
 # Load the Sentence-BERT model
-model = SentenceTransformer('paraphrase-MiniLM-L6-v2')  # You can choose a different model if you prefer
-multinli_train = load_txt_file_to_dataframe('train')
-multinli_match = load_txt_file_to_dataframe('match')
-multinli_mismatch = load_txt_file_to_dataframe('mismatch')
+model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
 
-multinli_df = pd.concat([multinli_train, multinli_match, multinli_mismatch], ignore_index=True)
+dataset_descriptors = ['match', 'mismatch']
+dataframes = []
+
+for descriptor in dataset_descriptors:
+    print(descriptor)
+    df = load_txt_file_to_dataframe(descriptor)
+    dataframes.append(df)
+
+# Concatenate all the dataframes into a final dataframe
+multinli_df = pd.concat(dataframes, ignore_index=True)
+
 
 pair_x = [s.strip() for s in multinli_df['sentence1']]
 pair_y = [s.strip() for s in multinli_df['sentence2']]
@@ -91,7 +98,7 @@ print(len(labels))
 # y_test = test_labels
 
 # Split the data into training and test sets, and get the indices
-X_train, X_test, y_train, y_test = train_test_split(embeddings, labels, test_size=0.2)
+X_train, X_test, y_train, y_test = train_test_split(embeddings, labels, test_size=0.2, random_state=42)
 
 # Train the SVM classifier
 svm_classifier = SVC(kernel='linear', C=1.0)
