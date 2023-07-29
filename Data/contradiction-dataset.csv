@@ -1,4 +1,4 @@
-Sentence1,Sentence2,Contradiction
+sentence1,sentence2,gold_label
 The sun is shining.,It's nighttime.,Contradiction
 She is studying for her exams.,She is watching TV.,Contradiction
 The cat is black.,The cat is white.,Contradiction
