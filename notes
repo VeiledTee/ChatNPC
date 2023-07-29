@@ -140,7 +140,7 @@ https://aclanthology.org/2023.eacl-main.25.pdf
 	- Clash prompt: mimic actual intention
 		* 5 different examples (x Actually [MASK], x In reality it was [MASK], x, As a matter of fact, it was [MASK], x To tell you the truth, it was [MASK], x In fact, it was [MASK])
 		* fact-related phrases to express (in)consistency with facts
-	- Question prompt: telling the model the tasj is to ID sarcasm by asking a question
+	- Question prompt: telling the model the task is to ID sarcasm by asking a question
 		* More direct than clash prompts
 		* 3 examples (x Are you kidding? [MASK], x Are you sarastic? [MASK], x Are you ironic? [MASK])
 	- Goal of verbalizer was to determine label words to replace mask, then how to map label words to corresponding labels
