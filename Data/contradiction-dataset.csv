@@ -1,0 +1,535 @@
+Sentence1,Sentence2,Contradiction
+The sun is shining.,It's nighttime.,Contradiction
+She is studying for her exams.,She is watching TV.,Contradiction
+The cat is black.,The cat is white.,Contradiction
+He loves to swim.,He is afraid of water.,Contradiction
+The book is on the table.,The book is in the drawer.,Non-contradiction
+I enjoy eating pizza.,I hate Italian food.,Non-contradiction
+They are going to the beach.,They are packing their winter clothes.,Contradiction
+She plays the piano.,She plays the violin.,Non-contradiction
+The meeting starts at 9 AM.,The meeting starts at 11 AM.,Non-contradiction
+He won the race.,He came in last place.,Contradiction
+It's freezing outside.,It's summer and hot.,Contradiction
+He works as a doctor.,He works as a lawyer.,Non-contradiction
+The sky is blue.,The sky is red.,Contradiction
+The movie was exciting.,The movie was boring.,Contradiction
+She is allergic to peanuts.,She eats peanut butter sandwiches daily.,Contradiction
+He is wearing a green shirt.,He is wearing a blue shirt.,Non-contradiction
+I want to travel the world.,I want to stay home forever.,Contradiction
+The store opens at 8 AM.,The store closes at 9 PM.,Non-contradiction
+She is a talented singer.,She can't carry a tune.,Contradiction
+I have three siblings.,I am an only child.,Contradiction
+He is drinking coffee.,He is drinking tea.,Non-contradiction
+They are celebrating their anniversary.,They just got divorced.,Contradiction
+The Earth is flat.,The Earth is round.,Contradiction
+She lives in Paris.,She lives in Rome.,Non-contradiction
+He is a vegetarian.,He loves eating steak.,Contradiction
+The computer crashed.,The computer is working fine.,Contradiction
+She ran a marathon.,She hates running.,Contradiction
+I finished the project ahead of schedule.,I missed the deadline.,Contradiction
+He is a talented actor.,He can't remember his lines.,Contradiction
+I have two dogs.,I have one cat.,Non-contradiction
+The flowers are blooming.,The trees are bare.,Contradiction
+He is an excellent dancer.,He has two left feet.,Contradiction
+I prefer tea over coffee.,I prefer coffee over tea.,Contradiction
+The concert starts at 7 PM.,The concert starts at 8 PM.,Non-contradiction
+She is a famous author.,She has never written a book.,Contradiction
+He is always punctual.,He is always late.,Contradiction
+The restaurant serves delicious food.,The restaurant serves terrible food.,Contradiction
+I love going to the beach.,I hate the sand and the sun.,Contradiction
+She is a doctor.,She is a nurse.,Non-contradiction
+He is a great chef.,He can't cook at all.,Contradiction
+The building is tall.,The building is short.,Contradiction
+He is a skilled painter.,He can't draw a straight line.,Contradiction
+I play the guitar.,I play the drums.,Non-contradiction
+She is a talented dancer.,She has no sense of rhythm.,Contradiction
+I want to buy a car.,I want to sell my car.,Contradiction
+He is a successful entrepreneur.,He has had multiple business failures.,Contradiction
+The dress is red.,The dress is blue.,Contradiction
+I love spicy food.,I can't handle any spice.,Contradiction
+She is a famous actress.,She has never been in a movie.,Contradiction
+He is a responsible driver.,He is always getting speeding tickets.,Contradiction
+The party was fantastic.,The party was a total disaster.,Contradiction
+I have a lot of free time.,I am always busy with no free time.,Contradiction
+She is a great swimmer.,She is afraid of water.,Contradiction
+I always tell the truth.,I am a compulsive liar.,Contradiction
+He is an optimist.,He is a pessimist.,Non-contradiction
+The smartphone is small.,The smartphone is large.,Contradiction
+I love winter.,I hate the cold weather.,Contradiction
+She is a fitness enthusiast.,She never exercises.,Contradiction
+He is a computer programmer.,He is terrible with technology.,Contradiction
+I enjoy reading books.,I don't like reading at all.,Contradiction
+The coffee is too hot.,The coffee is too cold.,Contradiction
+She is a skilled photographer.,All her photos are blurry.,Contradiction
+He is a responsible parent.,He neglects his children.,Contradiction
+The test was easy.,The test was difficult.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented actress.,She can't remember her lines.,Contradiction
+I love spicy food.,I can't eat anything spicy.,Contradiction
+He is a fast runner.,He always comes last in races.,Contradiction
+The movie was hilarious.,The movie was sad and depressing.,Contradiction
+She is an expert pianist.,She can't play any instrument.,Contradiction
+I have a lot of friends.,I have no friends.,Contradiction
+He is a skilled basketball player.,He can't make a basket.,Contradiction
+The restaurant serves delicious desserts.,The restaurant doesn't offer any desserts.,Contradiction
+I love summer.,I hate the heat.,Contradiction
+She is a successful CEO.,She has never held a leadership position.,Contradiction
+He is a well-known author.,He has never written a book.,Contradiction
+The car is brand new.,The car is old and rusty.,Contradiction
+I am a morning person.,I hate waking up early.,Contradiction
+She is a talented painter.,She can't draw at all.,Contradiction
+I want to travel the world.,I want to stay at home forever.,Contradiction
+He is a talented singer.,He can't carry a tune.,Contradiction
+The laptop is fast.,The laptop is slow and laggy.,Contradiction
+I enjoy hiking in the mountains.,I hate outdoor activities.,Contradiction
+She is a successful entrepreneur.,She has never started a business.,Contradiction
+He is an excellent cook.,He burns everything he cooks.,Contradiction
+The weather is sunny and warm.,The weather is rainy and cold.,Contradiction
+I have a lot of energy.,I am always tired and lethargic.,Contradiction
+She is a great basketball player.,She can't make a basket.,Contradiction
+I love reading mystery novels.,I don't like reading at all.,Contradiction
+He is a responsible student.,He skips classes regularly.,Contradiction
+The music is too loud.,The music is too quiet.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented chef.,She can't cook at all.,Contradiction
+I want to buy a house.,I want to rent forever.,Contradiction
+He is a successful businessman.,He has declared bankruptcy multiple times.,Contradiction
+The dress is red.,The dress is blue.,Contradiction
+I love spicy food.,I can't handle any spice.,Contradiction
+She is a famous actress.,She has never been in a movie.,Contradiction
+He is a responsible driver.,He is always getting speeding tickets.,Contradiction
+The party was fantastic.,The party was a total disaster.,Contradiction
+I have a lot of free time.,I am always busy with no free time.,Contradiction
+She is a great swimmer.,She is afraid of water.,Contradiction
+I always tell the truth.,I am a compulsive liar.,Contradiction
+He is an optimist.,He is a pessimist.,Non-contradiction
+The smartphone is small.,The smartphone is large.,Contradiction
+I love winter.,I hate the cold weather.,Contradiction
+She is a fitness enthusiast.,She never exercises.,Contradiction
+He is a computer programmer.,He is terrible with technology.,Contradiction
+I enjoy reading books.,I don't like reading at all.,Contradiction
+The coffee is too hot.,The coffee is too cold.,Contradiction
+She is a skilled photographer.,All her photos are blurry.,Contradiction
+He is a responsible parent.,He neglects his children.,Contradiction
+The test was easy.,The test was difficult.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented actress.,She can't remember her lines.,Contradiction
+I love spicy food.,I can't eat anything spicy.,Contradiction
+He is a fast runner.,He always comes last in races.,Contradiction
+The movie was hilarious.,The movie was sad and depressing.,Contradiction
+She is an expert pianist.,She can't play any instrument.,Contradiction
+I have a lot of friends.,I have no friends.,Contradiction
+He is a skilled basketball player.,He can't make a basket.,Contradiction
+The restaurant serves delicious desserts.,The restaurant doesn't offer any desserts.,Contradiction
+I love summer.,I hate the heat.,Contradiction
+She is a successful CEO.,She has never held a leadership position.,Contradiction
+He is a well-known author.,He has never written a book.,Contradiction
+The car is brand new.,The car is old and rusty.,Contradiction
+I am a morning person.,I hate waking up early.,Contradiction
+She is a talented painter.,She can't draw at all.,Contradiction
+I want to travel the world.,I want to stay at home forever.,Contradiction
+He is a talented singer.,He can't carry a tune.,Contradiction
+The laptop is fast.,The laptop is slow and laggy.,Contradiction
+I enjoy hiking in the mountains.,I hate outdoor activities.,Contradiction
+She is a successful entrepreneur.,She has never started a business.,Contradiction
+He is an excellent cook.,He burns everything he cooks.,Contradiction
+The weather is sunny and warm.,The weather is rainy and cold.,Contradiction
+I have a lot of energy.,I am always tired and lethargic.,Contradiction
+She is a great basketball player.,She can't make a basket.,Contradiction
+I love reading mystery novels.,I don't like reading at all.,Contradiction
+He is a responsible student.,He skips classes regularly.,Contradiction
+The music is too loud.,The music is too quiet.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented chef.,She can't cook at all.,Contradiction
+I want to buy a house.,I want to rent forever.,Contradiction
+He is a successful businessman.,He has declared bankruptcy multiple times.,Contradiction
+The dress is red.,The dress is blue.,Contradiction
+I love spicy food.,I can't handle any spice.,Contradiction
+She is a famous actress.,She has never been in a movie.,Contradiction
+He is a responsible driver.,He is always getting speeding tickets.,Contradiction
+The party was fantastic.,The party was a total disaster.,Contradiction
+I have a lot of free time.,I am always busy with no free time.,Contradiction
+She is a great swimmer.,She is afraid of water.,Contradiction
+I always tell the truth.,I am a compulsive liar.,Contradiction
+He is an optimist.,He is a pessimist.,Non-contradiction
+The smartphone is small.,The smartphone is large.,Contradiction
+I love winter.,I hate the cold weather.,Contradiction
+She is a fitness enthusiast.,She never exercises.,Contradiction
+He is a computer programmer.,He is terrible with technology.,Contradiction
+I enjoy reading books.,I don't like reading at all.,Contradiction
+The coffee is too hot.,The coffee is too cold.,Contradiction
+She is a skilled photographer.,All her photos are blurry.,Contradiction
+He is a responsible parent.,He neglects his children.,Contradiction
+The test was easy.,The test was difficult.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented actress.,She can't remember her lines.,Contradiction
+I love spicy food.,I can't eat anything spicy.,Contradiction
+He is a fast runner.,He always comes last in races.,Contradiction
+The movie was hilarious.,The movie was sad and depressing.,Contradiction
+She is an expert pianist.,She can't play any instrument.,Contradiction
+I have a lot of friends.,I have no friends.,Contradiction
+He is a skilled basketball player.,He can't make a basket.,Contradiction
+The restaurant serves delicious desserts.,The restaurant doesn't offer any desserts.,Contradiction
+I love summer.,I hate the heat.,Contradiction
+She is a successful CEO.,She has never held a leadership position.,Contradiction
+He is a well-known author.,He has never written a book.,Contradiction
+The car is brand new.,The car is old and rusty.,Contradiction
+I am a morning person.,I hate waking up early.,Contradiction
+She is a talented painter.,She can't draw at all.,Contradiction
+I want to travel the world.,I want to stay at home forever.,Contradiction
+He is a talented singer.,He can't carry a tune.,Contradiction
+The laptop is fast.,The laptop is slow and laggy.,Contradiction
+I enjoy hiking in the mountains.,I hate outdoor activities.,Contradiction
+She is a successful entrepreneur.,She has never started a business.,Contradiction
+He is an excellent cook.,He burns everything he cooks.,Contradiction
+The weather is sunny and warm.,The weather is rainy and cold.,Contradiction
+I have a lot of energy.,I am always tired and lethargic.,Contradiction
+She is a great basketball player.,She can't make a basket.,Contradiction
+I love reading mystery novels.,I don't like reading at all.,Contradiction
+He is a responsible student.,He skips classes regularly.,Contradiction
+The music is too loud.,The music is too quiet.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented chef.,She can't cook at all.,Contradiction
+I want to buy a house.,I want to rent forever.,Contradiction
+He is a successful businessman.,He has declared bankruptcy multiple times.,Contradiction
+The dress is red.,The dress is blue.,Contradiction
+I love spicy food.,I can't handle any spice.,Contradiction
+She is a famous actress.,She has never been in a movie.,Contradiction
+He is a responsible driver.,He is always getting speeding tickets.,Contradiction
+The party was fantastic.,The party was a total disaster.,Contradiction
+I have a lot of free time.,I am always busy with no free time.,Contradiction
+She is a great swimmer.,She is afraid of water.,Contradiction
+I always tell the truth.,I am a compulsive liar.,Contradiction
+He is an optimist.,He is a pessimist.,Non-contradiction
+The smartphone is small.,The smartphone is large.,Contradiction
+I love winter.,I hate the cold weather.,Contradiction
+She is a fitness enthusiast.,She never exercises.,Contradiction
+He is a computer programmer.,He is terrible with technology.,Contradiction
+I enjoy reading books.,I don't like reading at all.,Contradiction
+The coffee is too hot.,The coffee is too cold.,Contradiction
+She is a skilled photographer.,All her photos are blurry.,Contradiction
+He is a responsible parent.,He neglects his children.,Contradiction
+The test was easy.,The test was difficult.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented actress.,She can't remember her lines.,Contradiction
+I love spicy food.,I can't eat anything spicy.,Contradiction
+He is a fast runner.,He always comes last in races.,Contradiction
+The movie was hilarious.,The movie was sad and depressing.,Contradiction
+She is an expert pianist.,She can't play any instrument.,Contradiction
+I have a lot of friends.,I have no friends.,Contradiction
+He is a skilled basketball player.,He can't make a basket.,Contradiction
+The restaurant serves delicious desserts.,The restaurant doesn't offer any desserts.,Contradiction
+I love summer.,I hate the heat.,Contradiction
+She is a successful CEO.,She has never held a leadership position.,Contradiction
+He is a well-known author.,He has never written a book.,Contradiction
+The car is brand new.,The car is old and rusty.,Contradiction
+I am a morning person.,I hate waking up early.,Contradiction
+She is a talented painter.,She can't draw at all.,Contradiction
+I want to travel the world.,I want to stay at home forever.,Contradiction
+He is a talented singer.,He can't carry a tune.,Contradiction
+The laptop is fast.,The laptop is slow and laggy.,Contradiction
+I enjoy hiking in the mountains.,I hate outdoor activities.,Contradiction
+She is a successful entrepreneur.,She has never started a business.,Contradiction
+He is an excellent cook.,He burns everything he cooks.,Contradiction
+The weather is sunny and warm.,The weather is rainy and cold.,Contradiction
+I have a lot of energy.,I am always tired and lethargic.,Contradiction
+She is a great basketball player.,She can't make a basket.,Contradiction
+I love reading mystery novels.,I don't like reading at all.,Contradiction
+He is a responsible student.,He skips classes regularly.,Contradiction
+The music is too loud.,The music is too quiet.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented chef.,She can't cook at all.,Contradiction
+I want to buy a house.,I want to rent forever.,Contradiction
+He is a successful businessman.,He has declared bankruptcy multiple times.,Contradiction
+The dress is red.,The dress is blue.,Contradiction
+I love spicy food.,I can't handle any spice.,Contradiction
+She is a famous actress.,She has never been in a movie.,Contradiction
+He is a responsible driver.,He is always getting speeding tickets.,Contradiction
+The party was fantastic.,The party was a total disaster.,Contradiction
+I have a lot of free time.,I am always busy with no free time.,Contradiction
+She is a great swimmer.,She is afraid of water.,Contradiction
+I always tell the truth.,I am a compulsive liar.,Contradiction
+He is an optimist.,He is a pessimist.,Non-contradiction
+The smartphone is small.,The smartphone is large.,Contradiction
+I love winter.,I hate the cold weather.,Contradiction
+She is a fitness enthusiast.,She never exercises.,Contradiction
+He is a computer programmer.,He is terrible with technology.,Contradiction
+I enjoy reading books.,I don't like reading at all.,Contradiction
+The coffee is too hot.,The coffee is too cold.,Contradiction
+She is a skilled photographer.,All her photos are blurry.,Contradiction
+He is a responsible parent.,He neglects his children.,Contradiction
+The test was easy.,The test was difficult.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented actress.,She can't remember her lines.,Contradiction
+I love spicy food.,I can't eat anything spicy.,Contradiction
+He is a fast runner.,He always comes last in races.,Contradiction
+The movie was hilarious.,The movie was sad and depressing.,Contradiction
+She is an expert pianist.,She can't play any instrument.,Contradiction
+I have a lot of friends.,I have no friends.,Contradiction
+He is a skilled basketball player.,He can't make a basket.,Contradiction
+The restaurant serves delicious desserts.,The restaurant doesn't offer any desserts.,Contradiction
+I love summer.,I hate the heat.,Contradiction
+She is a successful CEO.,She has never held a leadership position.,Contradiction
+He is a well-known author.,He has never written a book.,Contradiction
+The car is brand new.,The car is old and rusty.,Contradiction
+I am a morning person.,I hate waking up early.,Contradiction
+She is a talented painter.,She can't draw at all.,Contradiction
+I want to travel the world.,I want to stay at home forever.,Contradiction
+He is a talented singer.,He can't carry a tune.,Contradiction
+The laptop is fast.,The laptop is slow and laggy.,Contradiction
+I enjoy hiking in the mountains.,I hate outdoor activities.,Contradiction
+She is a successful entrepreneur.,She has never started a business.,Contradiction
+He is an excellent cook.,He burns everything he cooks.,Contradiction
+The weather is sunny and warm.,The weather is rainy and cold.,Contradiction
+I have a lot of energy.,I am always tired and lethargic.,Contradiction
+She is a great basketball player.,She can't make a basket.,Contradiction
+I love reading mystery novels.,I don't like reading at all.,Contradiction
+He is a responsible student.,He skips classes regularly.,Contradiction
+The music is too loud.,The music is too quiet.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented chef.,She can't cook at all.,Contradiction
+I want to buy a house.,I want to rent forever.,Contradiction
+He is a successful businessman.,He has declared bankruptcy multiple times.,Contradiction
+The dress is red.,The dress is blue.,Contradiction
+I love spicy food.,I can't handle any spice.,Contradiction
+She is a famous actress.,She has never been in a movie.,Contradiction
+He is a responsible driver.,He is always getting speeding tickets.,Contradiction
+The party was fantastic.,The party was a total disaster.,Contradiction
+I have a lot of free time.,I am always busy with no free time.,Contradiction
+She is a great swimmer.,She is afraid of water.,Contradiction
+I always tell the truth.,I am a compulsive liar.,Contradiction
+He is an optimist.,He is a pessimist.,Non-contradiction
+The smartphone is small.,The smartphone is large.,Contradiction
+I love winter.,I hate the cold weather.,Contradiction
+She is a fitness enthusiast.,She never exercises.,Contradiction
+He is a computer programmer.,He is terrible with technology.,Contradiction
+I enjoy reading books.,I don't like reading at all.,Contradiction
+The coffee is too hot.,The coffee is too cold.,Contradiction
+She is a skilled photographer.,All her photos are blurry.,Contradiction
+He is a responsible parent.,He neglects his children.,Contradiction
+The test was easy.,The test was difficult.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented actress.,She can't remember her lines.,Contradiction
+I love spicy food.,I can't eat anything spicy.,Contradiction
+He is a fast runner.,He always comes last in races.,Contradiction
+The movie was hilarious.,The movie was sad and depressing.,Contradiction
+She is an expert pianist.,She can't play any instrument.,Contradiction
+I have a lot of friends.,I have no friends.,Contradiction
+He is a skilled basketball player.,He can't make a basket.,Contradiction
+The restaurant serves delicious desserts.,The restaurant doesn't offer any desserts.,Contradiction
+I love summer.,I hate the heat.,Contradiction
+She is a successful CEO.,She has never held a leadership position.,Contradiction
+He is a well-known author.,He has never written a book.,Contradiction
+The car is brand new.,The car is old and rusty.,Contradiction
+I am a morning person.,I hate waking up early.,Contradiction
+She is a talented painter.,She can't draw at all.,Contradiction
+I want to travel the world.,I want to stay at home forever.,Contradiction
+He is a talented singer.,He can't carry a tune.,Contradiction
+The laptop is fast.,The laptop is slow and laggy.,Contradiction
+I enjoy hiking in the mountains.,I hate outdoor activities.,Contradiction
+She is a successful entrepreneur.,She has never started a business.,Contradiction
+He is an excellent cook.,He burns everything he cooks.,Contradiction
+The weather is sunny and warm.,The weather is rainy and cold.,Contradiction
+I have a lot of energy.,I am always tired and lethargic.,Contradiction
+She is a great basketball player.,She can't make a basket.,Contradiction
+I love reading mystery novels.,I don't like reading at all.,Contradiction
+He is a responsible student.,He skips classes regularly.,Contradiction
+The music is too loud.,The music is too quiet.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented chef.,She can't cook at all.,Contradiction
+I want to buy a house.,I want to rent forever.,Contradiction
+He is a successful businessman.,He has declared bankruptcy multiple times.,Contradiction
+The dress is red.,The dress is blue.,Contradiction
+I love spicy food.,I can't handle any spice.,Contradiction
+She is a famous actress.,She has never been in a movie.,Contradiction
+He is a responsible driver.,He is always getting speeding tickets.,Contradiction
+The party was fantastic.,The party was a total disaster.,Contradiction
+I have a lot of free time.,I am always busy with no free time.,Contradiction
+She is a great swimmer.,She is afraid of water.,Contradiction
+I always tell the truth.,I am a compulsive liar.,Contradiction
+He is an optimist.,He is a pessimist.,Non-contradiction
+The smartphone is small.,The smartphone is large.,Contradiction
+I love winter.,I hate the cold weather.,Contradiction
+She is a fitness enthusiast.,She never exercises.,Contradiction
+He is a computer programmer.,He is terrible with technology.,Contradiction
+I enjoy reading books.,I don't like reading at all.,Contradiction
+The coffee is too hot.,The coffee is too cold.,Contradiction
+She is a skilled photographer.,All her photos are blurry.,Contradiction
+He is a responsible parent.,He neglects his children.,Contradiction
+The test was easy.,The test was difficult.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented actress.,She can't remember her lines.,Contradiction
+I love spicy food.,I can't eat anything spicy.,Contradiction
+He is a fast runner.,He always comes last in races.,Contradiction
+The movie was hilarious.,The movie was sad and depressing.,Contradiction
+She is an expert pianist.,She can't play any instrument.,Contradiction
+I have a lot of friends.,I have no friends.,Contradiction
+He is a skilled basketball player.,He can't make a basket.,Contradiction
+The restaurant serves delicious desserts.,The restaurant doesn't offer any desserts.,Contradiction
+I love summer.,I hate the heat.,Contradiction
+She is a successful CEO.,She has never held a leadership position.,Contradiction
+He is a well-known author.,He has never written a book.,Contradiction
+The car is brand new.,The car is old and rusty.,Contradiction
+I am a morning person.,I hate waking up early.,Contradiction
+She is a talented painter.,She can't draw at all.,Contradiction
+I want to travel the world.,I want to stay at home forever.,Contradiction
+He is a talented singer.,He can't carry a tune.,Contradiction
+The laptop is fast.,The laptop is slow and laggy.,Contradiction
+I enjoy hiking in the mountains.,I hate outdoor activities.,Contradiction
+She is a successful entrepreneur.,She has never started a business.,Contradiction
+He is an excellent cook.,He burns everything he cooks.,Contradiction
+The weather is sunny and warm.,The weather is rainy and cold.,Contradiction
+I have a lot of energy.,I am always tired and lethargic.,Contradiction
+She is a great basketball player.,She can't make a basket.,Contradiction
+I love reading mystery novels.,I don't like reading at all.,Contradiction
+He is a responsible student.,He skips classes regularly.,Contradiction
+The music is too loud.,The music is too quiet.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented chef.,She can't cook at all.,Contradiction
+I want to buy a house.,I want to rent forever.,Contradiction
+He is a successful businessman.,He has declared bankruptcy multiple times.,Contradiction
+The dress is red.,The dress is blue.,Contradiction
+I love spicy food.,I can't handle any spice.,Contradiction
+She is a famous actress.,She has never been in a movie.,Contradiction
+He is a responsible driver.,He is always getting speeding tickets.,Contradiction
+The party was fantastic.,The party was a total disaster.,Contradiction
+I have a lot of free time.,I am always busy with no free time.,Contradiction
+She is a great swimmer.,She is afraid of water.,Contradiction
+I always tell the truth.,I am a compulsive liar.,Contradiction
+He is an optimist.,He is a pessimist.,Non-contradiction
+The smartphone is small.,The smartphone is large.,Contradiction
+I love winter.,I hate the cold weather.,Contradiction
+She is a fitness enthusiast.,She never exercises.,Contradiction
+He is a computer programmer.,He is terrible with technology.,Contradiction
+I enjoy reading books.,I don't like reading at all.,Contradiction
+The coffee is too hot.,The coffee is too cold.,Contradiction
+She is a skilled photographer.,All her photos are blurry.,Contradiction
+He is a responsible parent.,He neglects his children.,Contradiction
+The test was easy.,The test was difficult.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented actress.,She can't remember her lines.,Contradiction
+I love spicy food.,I can't eat anything spicy.,Contradiction
+He is a fast runner.,He always comes last in races.,Contradiction
+The movie was hilarious.,The movie was sad and depressing.,Contradiction
+She is an expert pianist.,She can't play any instrument.,Contradiction
+I have a lot of friends.,I have no friends.,Contradiction
+He is a skilled basketball player.,He can't make a basket.,Contradiction
+The restaurant serves delicious desserts.,The restaurant doesn't offer any desserts.,Contradiction
+I love summer.,I hate the heat.,Contradiction
+She is a successful CEO.,She has never held a leadership position.,Contradiction
+He is a well-known author.,He has never written a book.,Contradiction
+The car is brand new.,The car is old and rusty.,Contradiction
+I am a morning person.,I hate waking up early.,Contradiction
+She is a talented painter.,She can't draw at all.,Contradiction
+I want to travel the world.,I want to stay at home forever.,Contradiction
+He is a talented singer.,He can't carry a tune.,Contradiction
+The laptop is fast.,The laptop is slow and laggy.,Contradiction
+I enjoy hiking in the mountains.,I hate outdoor activities.,Contradiction
+She is a successful entrepreneur.,She has never started a business.,Contradiction
+He is an excellent cook.,He burns everything he cooks.,Contradiction
+The weather is sunny and warm.,The weather is rainy and cold.,Contradiction
+I have a lot of energy.,I am always tired and lethargic.,Contradiction
+She is a great basketball player.,She can't make a basket.,Contradiction
+I love reading mystery novels.,I don't like reading at all.,Contradiction
+He is a responsible student.,He skips classes regularly.,Contradiction
+The music is too loud.,The music is too quiet.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented chef.,She can't cook at all.,Contradiction
+I want to buy a house.,I want to rent forever.,Contradiction
+He is a successful businessman.,He has declared bankruptcy multiple times.,Contradiction
+The dress is red.,The dress is blue.,Contradiction
+I love spicy food.,I can't handle any spice.,Contradiction
+She is a famous actress.,She has never been in a movie.,Contradiction
+He is a responsible driver.,He is always getting speeding tickets.,Contradiction
+The party was fantastic.,The party was a total disaster.,Contradiction
+I have a lot of free time.,I am always busy with no free time.,Contradiction
+She is a great swimmer.,She is afraid of water.,Contradiction
+I always tell the truth.,I am a compulsive liar.,Contradiction
+He is an optimist.,He is a pessimist.,Non-contradiction
+The smartphone is small.,The smartphone is large.,Contradiction
+I love winter.,I hate the cold weather.,Contradiction
+She is a fitness enthusiast.,She never exercises.,Contradiction
+He is a computer programmer.,He is terrible with technology.,Contradiction
+I enjoy reading books.,I don't like reading at all.,Contradiction
+The coffee is too hot.,The coffee is too cold.,Contradiction
+She is a skilled photographer.,All her photos are blurry.,Contradiction
+He is a responsible parent.,He neglects his children.,Contradiction
+The test was easy.,The test was difficult.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented actress.,She can't remember her lines.,Contradiction
+I love spicy food.,I can't eat anything spicy.,Contradiction
+He is a fast runner.,He always comes last in races.,Contradiction
+The movie was hilarious.,The movie was sad and depressing.,Contradiction
+She is an expert pianist.,She can't play any instrument.,Contradiction
+I have a lot of friends.,I have no friends.,Contradiction
+He is a skilled basketball player.,He can't make a basket.,Contradiction
+The restaurant serves delicious desserts.,The restaurant doesn't offer any desserts.,Contradiction
+I love summer.,I hate the heat.,Contradiction
+She is a successful CEO.,She has never held a leadership position.,Contradiction
+He is a well-known author.,He has never written a book.,Contradiction
+The car is brand new.,The car is old and rusty.,Contradiction
+I am a morning person.,I hate waking up early.,Contradiction
+She is a talented painter.,She can't draw at all.,Contradiction
+I want to travel the world.,I want to stay at home forever.,Contradiction
+He is a talented singer.,He can't carry a tune.,Contradiction
+The laptop is fast.,The laptop is slow and laggy.,Contradiction
+I enjoy hiking in the mountains.,I hate outdoor activities.,Contradiction
+She is a successful entrepreneur.,She has never started a business.,Contradiction
+He is an excellent cook.,He burns everything he cooks.,Contradiction
+The weather is sunny and warm.,The weather is rainy and cold.,Contradiction
+I have a lot of energy.,I am always tired and lethargic.,Contradiction
+She is a great basketball player.,She can't make a basket.,Contradiction
+I love reading mystery novels.,I don't like reading at all.,Contradiction
+He is a responsible student.,He skips classes regularly.,Contradiction
+The music is too loud.,The music is too quiet.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented chef.,She can't cook at all.,Contradiction
+I want to buy a house.,I want to rent forever.,Contradiction
+He is a successful businessman.,He has declared bankruptcy multiple times.,Contradiction
+The dress is red.,The dress is blue.,Contradiction
+I love spicy food.,I can't handle any spice.,Contradiction
+She is a famous actress.,She has never been in a movie.,Contradiction
+He is a responsible driver.,He is always getting speeding tickets.,Contradiction
+The party was fantastic.,The party was a total disaster.,Contradiction
+I have a lot of free time.,I am always busy with no free time.,Contradiction
+She is a great swimmer.,She is afraid of water.,Contradiction
+I always tell the truth.,I am a compulsive liar.,Contradiction
+He is an optimist.,He is a pessimist.,Non-contradiction
+The smartphone is small.,The smartphone is large.,Contradiction
+I love winter.,I hate the cold weather.,Contradiction
+She is a fitness enthusiast.,She never exercises.,Contradiction
+He is a computer programmer.,He is terrible with technology.,Contradiction
+I enjoy reading books.,I don't like reading at all.,Contradiction
+The coffee is too hot.,The coffee is too cold.,Contradiction
+She is a skilled photographer.,All her photos are blurry.,Contradiction
+He is a responsible parent.,He neglects his children.,Contradiction
+The test was easy.,The test was difficult.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented actress.,She can't remember her lines.,Contradiction
+I love spicy food.,I can't eat anything spicy.,Contradiction
+He is a fast runner.,He always comes last in races.,Contradiction
+The movie was hilarious.,The movie was sad and depressing.,Contradiction
+She is an expert pianist.,She can't play any instrument.,Contradiction
+I have a lot of friends.,I have no friends.,Contradiction
+He is a skilled basketball player.,He can't make a basket.,Contradiction
+The restaurant serves delicious desserts.,The restaurant doesn't offer any desserts.,Contradiction
+I love summer.,I hate the heat.,Contradiction
+She is a successful CEO.,She has never held a leadership position.,Contradiction
+He is a well-known author.,He has never written a book.,Contradiction
+The car is brand new.,The car is old and rusty.,Contradiction
+I am a morning person.,I hate waking up early.,Contradiction
+She is a talented painter.,She can't draw at all.,Contradiction
+I want to travel the world.,I want to stay at home forever.,Contradiction
+He is a talented singer.,He can't carry a tune.,Contradiction
+The laptop is fast.,The laptop is slow and laggy.,Contradiction
+I enjoy hiking in the mountains.,I hate outdoor activities.,Contradiction
+She is a successful entrepreneur.,She has never started a business.,Contradiction
+He is an excellent cook.,He burns everything he cooks.,Contradiction
+The weather is sunny and warm.,The weather is rainy and cold.,Contradiction
+I have a lot of energy.,I am always tired and lethargic.,Contradiction
+She is a great basketball player.,She can't make a basket.,Contradiction
+I love reading mystery novels.,I don't like reading at all.,Contradiction
+He is a responsible student.,He skips classes regularly.,Contradiction
+The music is too loud.,The music is too quiet.,Contradiction
+I am a morning person.,I am a night owl.,Contradiction
+She is a talented chef.,She can't cook.,Contradiction
