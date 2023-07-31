@@ -3,21 +3,30 @@ import torch.nn as nn
 
 
 class BiLSTMModel(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, output_size):
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, num_layers, output_dim, dropout):
         super(BiLSTMModel, self).__init__()
-        self.hidden_size = hidden_size
-        self.num_layers = num_layers
-        self.bilstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, bidirectional=True)
-        self.fc = nn.Linear(hidden_size * 2, output_size)  # *2 for bidirectional
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=num_layers, bidirectional=True, batch_first=True)
+        self.fc = nn.Linear(hidden_dim * 2, output_dim)
+        self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x):
-        h0 = torch.zeros(self.num_layers * 2, x.size(0), self.hidden_size).to(x.device)  # *2 for bidirectional
-        c0 = torch.zeros(self.num_layers * 2, x.size(0), self.hidden_size).to(x.device)  # *2 for bidirectional
+    def attention(self, lstm_output, attention_mask):
+        # Compute attention scores
+        attention_scores = torch.bmm(lstm_output.float(), attention_mask.unsqueeze(2)).squeeze(2)
 
-        out, _ = self.bilstm(x, (h0, c0))
+        # Apply softmax to get attention weights
+        attention_weights = torch.softmax(attention_scores, dim=1)
 
-        # Extract the last hidden state from both directions
-        out = torch.cat((out[:, -1, : self.hidden_size], out[:, 0, self.hidden_size :]), dim=1)
+        # Calculate the weighted sum using attention weights
+        attention_output = torch.bmm(lstm_output.transpose(1, 2), attention_weights.unsqueeze(2)).squeeze(2)
 
-        out = self.fc(out)
-        return out
+        return attention_output
+
+    def forward(self, text, text_attention_mask):
+        embedded = self.dropout(self.embedding(text))
+        lstm_output, _ = self.lstm(embedded)
+
+        # Apply attention mechanism
+        attention_output = self.attention(lstm_output, text_attention_mask)
+
+        return self.fc(attention_output)
