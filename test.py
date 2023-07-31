@@ -1,3 +1,4 @@
+import matplotlib
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -12,8 +13,12 @@ SEED = 1234
 torch.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 
+matplotlib.use('TkAgg')
+
+
 # Load the preprocessed data
-data = pd.read_csv('Data/match.csv')
+data = pd.concat([pd.read_csv('Data/match.csv'), pd.read_csv('Data/mismatch.csv')])
+test_data = pd.read_csv('Data/contradiction-dataset.csv')
 
 # Define the BERT tokenizer
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
@@ -48,6 +53,24 @@ class CustomDataset(Dataset):
         }
 
 
+class BiLSTMModel(nn.Module):
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, dropout):
+        super(BiLSTMModel, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, bidirectional=True)
+        self.fc = nn.Linear(hidden_dim * 2, output_dim)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, input_ids, attention_mask):
+        embedded = self.dropout(self.embedding(input_ids))
+        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, torch.sum(attention_mask, dim=1),
+                                                            batch_first=True, enforce_sorted=False)
+        packed_output, (hidden, cell) = self.lstm(packed_embedded)
+        output, output_lengths = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True)
+        hidden = self.dropout(torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1))
+        return self.fc(hidden)
+
+
 # Create the custom dataset
 dataset = CustomDataset(data, tokenizer, max_length=64)
 
@@ -59,26 +82,9 @@ train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size,
 
 train_iterator = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
 val_iterator = DataLoader(val_dataset, batch_size=BATCH_SIZE)
+test_iterator = DataLoader(test_data, batch_size=BATCH_SIZE)
 
-
-class BiLSTMModel(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, dropout):
-        super(BiLSTMModel, self).__init__()
-        self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, bidirectional=True)
-        self.fc = nn.Linear(hidden_dim * 2, output_dim)
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, input_ids, attention_mask):
-        embedded = self.dropout(self.embedding(input_ids))
-        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, torch.sum(attention_mask, dim=1), batch_first=True, enforce_sorted=False)
-        packed_output, (hidden, cell) = self.lstm(packed_embedded)
-        output, output_lengths = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True)
-        hidden = self.dropout(torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1))
-        return self.fc(hidden)
-
-
-# Set the hyperparameters
+# hyperparameters
 vocab_size = tokenizer.vocab_size
 embedding_dim = 100
 hidden_dim = 256
@@ -143,6 +149,43 @@ def evaluate(model, iterator, criterion):
     return epoch_loss / len(iterator), epoch_acc / len(iterator)
 
 
+# Define a function to evaluate the model on the test data
+def model_test(model, iterator, criterion):
+    model.eval()  # Set the model to evaluation mode
+
+    test_loss = 0.0
+    correct_preds = 0
+    all_preds = []
+    all_labels = []
+
+    with torch.no_grad():
+        for batch in iterator:
+            input_ids = batch['sentence1']
+            attention_mask = batch['premise_attention_mask']
+            labels = batch['gold_label']
+
+            predictions = model(input_ids, attention_mask)
+            loss = criterion(predictions, labels.float())
+            test_loss += loss.item()
+
+            rounded_preds = torch.round(torch.sigmoid(predictions))
+            correct_preds += (rounded_preds == labels).sum().item()
+
+            all_preds.extend(rounded_preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+
+    test_loss /= len(iterator)
+    test_accuracy = correct_preds / (len(iterator.dataset) * 1.0)
+    test_f1 = f1_score(all_labels, all_preds)
+
+    return test_loss, test_accuracy, test_f1
+
+
+def calculate_f1(predictions, y):
+    rounded_preds = torch.round(torch.sigmoid(predictions))
+    return f1_score(y.cpu().numpy(), rounded_preds.cpu().numpy())
+
+
 # Train the model
 N_EPOCHS = 10
 train_losses = []
@@ -152,25 +195,25 @@ valid_losses = []
 valid_accuracies = []
 valid_f1_scores = []
 
-
-def calculate_f1(predictions, y):
-    rounded_preds = torch.round(torch.sigmoid(predictions))
-    return f1_score(y.cpu().numpy(), rounded_preds.cpu().numpy())
-
-
-# Train the model and collect loss, accuracy, and F1 score values
 for epoch in range(N_EPOCHS):
     print(f'Epoch: {epoch + 1:02}')
     train_loss, train_acc = train(model, train_iterator, optimizer, criterion)
     with torch.no_grad():
-        train_preds = torch.cat([model(batch['premise'], batch['premise_length']) for batch in train_iterator])
-    train_f1 = calculate_f1(train_preds, torch.cat([batch['label'] for batch in train_iterator]))
+        train_preds = torch.cat(
+            [model(batch['sentence1'], batch['premise_attention_mask']) for batch in train_iterator])
+    train_f1 = calculate_f1(train_preds, torch.cat([batch['gold_label'] for batch in train_iterator]))
+
+    # Print the model's predictions
+    train_predictions_rounded = torch.round(torch.sigmoid(train_preds))
+    for i in range(len(train_iterator.dataset)):
+        print(f'Example {i + 1}: Prediction: {train_predictions_rounded[i]}, Ground Truth: {batch["gold_label"][i]}')
+
     print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc * 100:.2f}% | Train F1: {train_f1:.3f}')
 
     valid_loss, valid_acc = evaluate(model, val_iterator, criterion)
     with torch.no_grad():
-        valid_preds = torch.cat([model(batch['premise'], batch['premise_length']) for batch in val_iterator])
-    valid_f1 = calculate_f1(valid_preds, torch.cat([batch['label'] for batch in val_iterator]))
+        valid_preds = torch.cat([model(batch['sentence1'], batch['premise_attention_mask']) for batch in val_iterator])
+    valid_f1 = calculate_f1(valid_preds, torch.cat([batch['gold_label'] for batch in val_iterator]))
     print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc * 100:.2f}% | Val. F1: {valid_f1:.3f}')
 
     # Append the loss, accuracy, and F1 score values to the lists
@@ -180,6 +223,13 @@ for epoch in range(N_EPOCHS):
     valid_losses.append(valid_loss)
     valid_accuracies.append(valid_acc)
     valid_f1_scores.append(valid_f1)
+
+# Test the trained model on the test data
+test_loss, test_accuracy, test_f1 = model_test(model, test_iterator, criterion)
+
+# Print the test results
+print(f'Test Loss: {test_loss:.3f} | Test Acc: {test_accuracy * 100:.2f}% | Test F1: {test_f1:.3f}')
+
 plt.figure(figsize=(12, 8))
 
 # Plot training and validation accuracy
