@@ -149,7 +149,6 @@ def evaluate(model, iterator, criterion):
     return epoch_loss / len(iterator), epoch_acc / len(iterator)
 
 
-# Define a function to evaluate the model on the test data
 def model_test(model, iterator, criterion):
     model.eval()  # Set the model to evaluation mode
 
@@ -187,7 +186,7 @@ def calculate_f1(predictions, y):
 
 
 # Train the model
-N_EPOCHS = 10
+N_EPOCHS = 2
 train_losses = []
 train_accuracies = []
 train_f1_scores = []
@@ -202,12 +201,6 @@ for epoch in range(N_EPOCHS):
         train_preds = torch.cat(
             [model(batch['sentence1'], batch['premise_attention_mask']) for batch in train_iterator])
     train_f1 = calculate_f1(train_preds, torch.cat([batch['gold_label'] for batch in train_iterator]))
-
-    # Print the model's predictions
-    train_predictions_rounded = torch.round(torch.sigmoid(train_preds))
-    for i in range(len(train_iterator.dataset)):
-        print(f'Example {i + 1}: Prediction: {train_predictions_rounded[i]}, Ground Truth: {batch["gold_label"][i]}')
-
     print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc * 100:.2f}% | Train F1: {train_f1:.3f}')
 
     valid_loss, valid_acc = evaluate(model, val_iterator, criterion)
@@ -216,7 +209,6 @@ for epoch in range(N_EPOCHS):
     valid_f1 = calculate_f1(valid_preds, torch.cat([batch['gold_label'] for batch in val_iterator]))
     print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc * 100:.2f}% | Val. F1: {valid_f1:.3f}')
 
-    # Append the loss, accuracy, and F1 score values to the lists
     train_losses.append(train_loss)
     train_accuracies.append(train_acc)
     train_f1_scores.append(train_f1)
@@ -224,10 +216,7 @@ for epoch in range(N_EPOCHS):
     valid_accuracies.append(valid_acc)
     valid_f1_scores.append(valid_f1)
 
-# Test the trained model on the test data
 test_loss, test_accuracy, test_f1 = model_test(model, test_iterator, criterion)
-
-# Print the test results
 print(f'Test Loss: {test_loss:.3f} | Test Acc: {test_accuracy * 100:.2f}% | Test F1: {test_f1:.3f}')
 
 plt.figure(figsize=(12, 8))
