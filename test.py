@@ -8,25 +8,9 @@ from transformers import BertTokenizer
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 
-# Set a random seed for reproducibility
-SEED = 1234
-torch.manual_seed(SEED)
-torch.backends.cudnn.deterministic = True
 
-matplotlib.use('TkAgg')
-
-
-# Load the preprocessed data
-data = pd.concat([pd.read_csv('Data/match.csv'), pd.read_csv('Data/mismatch.csv')])
-test_data = pd.read_csv('Data/contradiction-dataset.csv')
-
-# Define the BERT tokenizer
-tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-
-
-# Define the custom dataset class
 class CustomDataset(Dataset):
-    def __init__(self, dataframe, tokenizer, max_length):
+    def __init__(self, dataframe, tokenizer, max_length=128):
         self.data = dataframe
         self.tokenizer = tokenizer
         self.max_length = max_length
@@ -54,56 +38,30 @@ class CustomDataset(Dataset):
 
 
 class BiLSTMModel(nn.Module):
-    def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, dropout):
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, dropout, num_layers):
         super(BiLSTMModel, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, bidirectional=True)
+        self.lstm_layers = nn.ModuleList([nn.LSTM(embedding_dim if i == 0 else hidden_dim * 2, hidden_dim,
+                                                  bidirectional=True, batch_first=True)
+                                          for i in range(num_layers)])
         self.fc = nn.Linear(hidden_dim * 2, output_dim)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, input_ids, attention_mask):
         embedded = self.dropout(self.embedding(input_ids))
-        packed_embedded = nn.utils.rnn.pack_padded_sequence(embedded, torch.sum(attention_mask, dim=1),
-                                                            batch_first=True, enforce_sorted=False)
-        packed_output, (hidden, cell) = self.lstm(packed_embedded)
-        output, output_lengths = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True)
+
+        lstm_input = embedded
+        for lstm_layer in self.lstm_layers:
+            packed_embedded = nn.utils.rnn.pack_padded_sequence(lstm_input, torch.sum(attention_mask, dim=1),
+                                                                batch_first=True, enforce_sorted=False)
+            packed_output, (hidden, cell) = lstm_layer(packed_embedded)
+            lstm_output, output_lengths = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True)
+            lstm_input = lstm_output
+
         hidden = self.dropout(torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1))
         return self.fc(hidden)
 
 
-# Create the custom dataset
-dataset = CustomDataset(data, tokenizer, max_length=64)
-
-# Define batch size and create DataLoader
-BATCH_SIZE = 32
-train_size = int(0.8 * len(dataset))
-val_size = len(dataset) - train_size
-train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
-
-train_iterator = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-val_iterator = DataLoader(val_dataset, batch_size=BATCH_SIZE)
-test_iterator = DataLoader(test_data, batch_size=BATCH_SIZE)
-
-# hyperparameters
-vocab_size = tokenizer.vocab_size
-embedding_dim = 100
-hidden_dim = 256
-output_dim = 1
-dropout = 0.5
-
-# Initialize the model and move it to the GPU if available
-model = BiLSTMModel(vocab_size, embedding_dim, hidden_dim, output_dim, dropout)
-device = torch.device('cpu')
-model = model.to(device)
-
-print("Model on CPU")
-
-# Define the loss and optimizer
-criterion = nn.BCEWithLogitsLoss()
-optimizer = optim.Adam(model.parameters())
-
-
-# Function to calculate accuracy
 def binary_accuracy(preds, y):
     rounded_preds = torch.round(torch.sigmoid(preds))
     correct = (rounded_preds == y).float()
@@ -111,7 +69,6 @@ def binary_accuracy(preds, y):
     return acc
 
 
-# Function to train the model
 def train(model, iterator, optimizer, criterion):
     model.train()
     epoch_loss = 0
@@ -131,7 +88,6 @@ def train(model, iterator, optimizer, criterion):
     return epoch_loss / len(iterator), epoch_acc / len(iterator)
 
 
-# Function to evaluate the model
 def evaluate(model, iterator, criterion):
     model.eval()
     epoch_loss = 0
@@ -153,7 +109,6 @@ def model_test(model, iterator, criterion):
     model.eval()  # Set the model to evaluation mode
 
     test_loss = 0.0
-    correct_preds = 0
     all_preds = []
     all_labels = []
 
@@ -164,26 +119,89 @@ def model_test(model, iterator, criterion):
             labels = batch['gold_label']
 
             predictions = model(input_ids, attention_mask)
-            loss = criterion(predictions, labels.float())
+            loss = criterion(predictions.squeeze(), labels.float().squeeze())
             test_loss += loss.item()
 
             rounded_preds = torch.round(torch.sigmoid(predictions))
-            correct_preds += (rounded_preds == labels).sum().item()
-
             all_preds.extend(rounded_preds.cpu().numpy())
             all_labels.extend(labels.cpu().numpy())
 
     test_loss /= len(iterator)
-    test_accuracy = correct_preds / (len(iterator.dataset) * 1.0)
+    test_accuracy = binary_accuracy(torch.tensor(all_preds), torch.tensor(all_labels))
+
     test_f1 = f1_score(all_labels, all_preds)
 
     return test_loss, test_accuracy, test_f1
 
 
 def calculate_f1(predictions, y):
-    rounded_preds = torch.round(torch.sigmoid(predictions))
-    return f1_score(y.cpu().numpy(), rounded_preds.cpu().numpy())
+    # Round the predictions to obtain binary values (0 or 1)
+    rounded_preds = torch.round(torch.sigmoid(predictions)).cpu().numpy()
+    y_true = y.cpu().numpy()
+    print(f"Predicted Sum: {rounded_preds.sum()}")
+    print(f"True Sum:      {sum(y_true)}")
 
+    # Calculate true positives, false positives, and false negatives
+    tp = ((rounded_preds == 1) & (y_true == 1)).sum()
+    fp = ((rounded_preds == 1) & (y_true == 0)).sum()
+    fn = ((rounded_preds == 0) & (y_true == 1)).sum()
+
+    # Calculate precision, recall, and F1 score
+    precision = tp / (tp + fp + 1e-8)
+    recall = tp / (tp + fn + 1e-8)
+    f1 = 2 * (precision * recall) / (precision + recall + 1e-8)
+
+    return f1
+
+
+# # Set a random seed for reproducibility
+# SEED = 1234
+# torch.manual_seed(SEED)
+# torch.backends.cudnn.deterministic = True
+
+matplotlib.use('TkAgg')
+
+# Load the preprocessed data
+# data = pd.concat([pd.read_csv('Data/match.csv'), pd.read_csv('Data/mismatch.csv')])
+data = pd.read_csv('Data/match.csv')
+# data = pd.read_csv('Data/contradiction-dataset.csv')
+test_data = pd.read_csv('Data/contradiction-dataset.csv')
+
+# Define the BERT tokenizer
+tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+
+# Create the custom dataset
+dataset = CustomDataset(data, tokenizer, max_length=128)
+test_dataset = CustomDataset(test_data, tokenizer, max_length=128)
+
+# Define batch size and create DataLoader
+BATCH_SIZE = 32
+train_size = int(0.8 * len(dataset))
+val_size = len(dataset) - train_size
+train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
+
+train_iterator = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+val_iterator = DataLoader(val_dataset, batch_size=BATCH_SIZE)
+test_iterator = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+
+# hyperparameters
+vocab_size = tokenizer.vocab_size
+embedding_dim = 512
+hidden_dim = 256
+output_dim = 1
+dropout = 0.5
+num_layers = 16
+
+# Initialize the model and move it to the GPU if available
+model = BiLSTMModel(vocab_size=vocab_size, embedding_dim=embedding_dim, hidden_dim=hidden_dim, output_dim=output_dim, dropout=dropout, num_layers=num_layers)
+device = torch.device('cpu')
+model = model.to(device)
+
+print("Model on CPU")
+
+# Define the loss and optimizer
+criterion = nn.BCEWithLogitsLoss()
+optimizer = optim.Adam(model.parameters())
 
 # Train the model
 N_EPOCHS = 2
@@ -195,11 +213,11 @@ valid_accuracies = []
 valid_f1_scores = []
 
 for epoch in range(N_EPOCHS):
-    print(f'Epoch: {epoch + 1:02}')
     train_loss, train_acc = train(model, train_iterator, optimizer, criterion)
     with torch.no_grad():
         train_preds = torch.cat(
             [model(batch['sentence1'], batch['premise_attention_mask']) for batch in train_iterator])
+    print(f'Epoch: {epoch + 1:02}')
     train_f1 = calculate_f1(train_preds, torch.cat([batch['gold_label'] for batch in train_iterator]))
     print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc * 100:.2f}% | Train F1: {train_f1:.3f}')
 
@@ -216,7 +234,10 @@ for epoch in range(N_EPOCHS):
     valid_accuracies.append(valid_acc)
     valid_f1_scores.append(valid_f1)
 
-test_loss, test_accuracy, test_f1 = model_test(model, test_iterator, criterion)
+test_loss, test_accuracy = evaluate(model, test_iterator, criterion)
+with torch.no_grad():
+    test_preds = torch.cat([model(batch['sentence1'], batch['premise_attention_mask']) for batch in test_iterator])
+test_f1 = calculate_f1(test_preds, torch.cat([batch['gold_label'] for batch in test_iterator]))
 print(f'Test Loss: {test_loss:.3f} | Test Acc: {test_accuracy * 100:.2f}% | Test F1: {test_f1:.3f}')
 
 plt.figure(figsize=(12, 8))
