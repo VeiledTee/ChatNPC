@@ -1,12 +1,23 @@
+from typing import Dict, Tuple
+
 import matplotlib
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from matplotlib import pyplot as plt
 from sklearn.metrics import f1_score
-from transformers import BertTokenizer
+import pandas as pd
+import torch
+from transformers import BertTokenizer, BertModel
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
+import torch
+import torch.nn as nn
+import numpy as np
+# from bilstm_training import get_bert_embeddings
+import logging
+
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
 
 class CustomDataset(Dataset):
@@ -48,6 +59,8 @@ class BiLSTMModel(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, input_ids, attention_mask):
+        print("Dimensionality of word embeddings:",
+              self.embedding.embedding_dim)  # Print the dimensionality of word embeddings
         embedded = self.dropout(self.embedding(input_ids))
 
         lstm_input = embedded
@@ -134,12 +147,14 @@ def model_test(model, iterator, criterion):
     return test_loss, test_accuracy, test_f1
 
 
-def calculate_f1(predictions, y):
+def calculate_f1(predictions, true):
     # Round the predictions to obtain binary values (0 or 1)
+    print(predictions)
     rounded_preds = torch.round(torch.sigmoid(predictions)).cpu().numpy()
-    y_true = y.cpu().numpy()
-    print(f"Predicted Sum: {rounded_preds.sum()}")
-    print(f"True Sum:      {sum(y_true)}")
+    y_true = true.cpu().numpy()
+    print(f"Length Predictions: {len(y_true)}")
+    print(f"Predicted Sum:      {rounded_preds.sum()}")
+    print(f"True Sum:           {sum(y_true)}")
 
     # Calculate true positives, false positives, and false negatives
     tp = ((rounded_preds == 1) & (y_true == 1)).sum()
@@ -154,120 +169,265 @@ def calculate_f1(predictions, y):
     return f1
 
 
-# # Set a random seed for reproducibility
-# SEED = 1234
-# torch.manual_seed(SEED)
-# torch.backends.cudnn.deterministic = True
-
-matplotlib.use('TkAgg')
-
-# Load the preprocessed data
-# data = pd.concat([pd.read_csv('Data/match.csv'), pd.read_csv('Data/mismatch.csv')])
-data = pd.read_csv('Data/match.csv')
+# # # # Set a random seed for reproducibility
+# # SEED = 1234
+# # torch.manual_seed(SEED)
+# # torch.backends.cudnn.deterministic = True
+#
+# matplotlib.use('TkAgg')
+#
+# # Load the preprocessed data
+# # data = pd.concat([pd.read_csv('Data/match.csv'), pd.read_csv('Data/mismatch.csv')])
+# # data = pd.read_csv('Data/match.csv')
 # data = pd.read_csv('Data/contradiction-dataset.csv')
-test_data = pd.read_csv('Data/contradiction-dataset.csv')
+# test_data = pd.read_csv('Data/contradiction-dataset.csv')
+#
+# # Define the BERT tokenizer
+# tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+#
+# # Create the custom dataset
+# dataset = CustomDataset(data, tokenizer, max_length=128)
+# test_dataset = CustomDataset(test_data, tokenizer, max_length=128)
+#
+# # Define batch size and create DataLoader
+# BATCH_SIZE = 32
+# train_size = int(0.8 * len(dataset))
+# val_size = len(dataset) - train_size
+# train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
+#
+# train_iterator = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+# val_iterator = DataLoader(val_dataset, batch_size=BATCH_SIZE)
+# test_iterator = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+#
+# # hyperparameters
+# vocab_size = tokenizer.vocab_size
+# embedding_dim = 512
+# hidden_dim = 256
+# output_dim = 1
+# dropout = 0
+# num_layers = 128
+#
+# # Initialize the model and move it to the GPU if available
+# model = BiLSTMModel(vocab_size=vocab_size, embedding_dim=embedding_dim, hidden_dim=hidden_dim, output_dim=output_dim, dropout=dropout, num_layers=num_layers)
+# device = torch.device('cpu')
+# model = model.to(device)
+#
+# print("Model on CPU")
+#
+# # Define the loss and optimizer
+# criterion = nn.BCEWithLogitsLoss()
+# optimizer = optim.Adam(model.parameters())
+#
+# # Train the model
+# N_EPOCHS = 10
+# train_losses = []
+# train_accuracies = []
+# train_f1_scores = []
+# valid_losses = []
+# valid_accuracies = []
+# valid_f1_scores = []
+#
+# for epoch in range(N_EPOCHS):
+#     train_loss, train_acc = train(model, train_iterator, optimizer, criterion)
+#     with torch.no_grad():
+#         train_preds = torch.cat(
+#             [model(batch['sentence1'], batch['premise_attention_mask']) for batch in train_iterator])
+#     print(f'Epoch: {epoch + 1:02}')
+#     train_f1 = calculate_f1(train_preds, torch.cat([batch['gold_label'] for batch in train_iterator]))
+#     print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc * 100:.2f}% | Train F1: {train_f1:.3f}')
+#
+#     valid_loss, valid_acc = evaluate(model, val_iterator, criterion)
+#     with torch.no_grad():
+#         valid_preds = torch.cat([model(batch['sentence1'], batch['premise_attention_mask']) for batch in val_iterator])
+#     valid_f1 = calculate_f1(valid_preds, torch.cat([batch['gold_label'] for batch in val_iterator]))
+#     print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc * 100:.2f}% | Val. F1: {valid_f1:.3f}')
+#
+#     train_losses.append(train_loss)
+#     train_accuracies.append(train_acc)
+#     train_f1_scores.append(train_f1)
+#     valid_losses.append(valid_loss)
+#     valid_accuracies.append(valid_acc)
+#     valid_f1_scores.append(valid_f1)
+#
+# test_loss, test_accuracy = evaluate(model, test_iterator, criterion)
+# with torch.no_grad():
+#     test_preds = torch.cat([model(batch['sentence1'], batch['premise_attention_mask']) for batch in test_iterator])
+# test_f1 = calculate_f1(test_preds, torch.cat([batch['gold_label'] for batch in test_iterator]))
+# print(f'Test Loss: {test_loss:.3f} | Test Acc: {test_accuracy * 100:.2f}% | Test F1: {test_f1:.3f}')
+#
+# plt.figure(figsize=(12, 8))
+#
+# # Plot training and validation accuracy
+# plt.subplot(3, 1, 1)
+# plt.plot(range(1, N_EPOCHS+1), train_accuracies, label='Training Accuracy')
+# plt.plot(range(1, N_EPOCHS+1), valid_accuracies, label='Validation Accuracy')
+# plt.xlabel('Epoch')
+# plt.ylabel('Accuracy')
+# plt.title('Training and Validation Accuracy')
+# plt.legend()
+#
+# # Plot training and validation loss
+# plt.subplot(3, 1, 2)
+# plt.plot(range(1, N_EPOCHS+1), train_losses, label='Training Loss')
+# plt.plot(range(1, N_EPOCHS+1), valid_losses, label='Validation Loss')
+# plt.xlabel('Epoch')
+# plt.ylabel('Loss')
+# plt.title('Training and Validation Loss')
+# plt.legend()
+#
+# # Plot training and validation F1 score
+# plt.subplot(3, 1, 3)
+# plt.plot(range(1, N_EPOCHS+1), train_f1_scores, label='Training F1 Score')
+# plt.plot(range(1, N_EPOCHS+1), valid_f1_scores, label='Validation F1 Score')
+# plt.xlabel('Epoch')
+# plt.ylabel('F1 Score')
+# plt.title('Training and Validation F1 Score')
+# plt.legend()
+#
+# plt.tight_layout()
+# plt.show()
+def apply_get_bert_embeddings(row):
+    return get_bert_embeddings(row['sentence1'], row['sentence2']).squeeze()
 
-# Define the BERT tokenizer
-tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
-# Create the custom dataset
-dataset = CustomDataset(data, tokenizer, max_length=128)
-test_dataset = CustomDataset(test_data, tokenizer, max_length=128)
+def get_bert_embeddings(sentence1: str, sentence2: str) -> torch.Tensor:
+    # Load pre-trained BERT model and tokenizer
+    tokenizer: BertTokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    bert_model: BertModel = BertModel.from_pretrained("bert-base-uncased")
 
-# Define batch size and create DataLoader
-BATCH_SIZE = 32
-train_size = int(0.8 * len(dataset))
-val_size = len(dataset) - train_size
-train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
+    # Tokenize the sentences and obtain the input IDs and attention masks
+    tokens: Dict[str, torch.Tensor] = tokenizer.encode_plus(
+        sentence1, sentence2, add_special_tokens=True, padding="longest", truncation=True
+    )
+    input_ids: torch.Tensor = torch.tensor(tokens["input_ids"]).unsqueeze(0)  # Add batch dimension
+    attention_mask: torch.Tensor = torch.tensor(tokens["attention_mask"]).unsqueeze(0)  # Add batch dimension
 
-train_iterator = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-val_iterator = DataLoader(val_dataset, batch_size=BATCH_SIZE)
-test_iterator = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    # Pad or truncate the input IDs and attention masks to the maximum sequence length
+    input_ids = torch.nn.functional.pad(input_ids, (0, 64 - input_ids.size(1)))
+    attention_mask = torch.nn.functional.pad(attention_mask, (0, 64 - attention_mask.size(1)))
 
-# hyperparameters
-vocab_size = tokenizer.vocab_size
-embedding_dim = 512
-hidden_dim = 256
-output_dim = 1
-dropout = 0.5
-num_layers = 16
+    # Obtain the BERT embeddings
+    with torch.no_grad():
+        bert_outputs: Tuple[torch.Tensor] = bert_model(input_ids, attention_mask=attention_mask)
+        embeddings: torch.Tensor = bert_outputs.last_hidden_state  # Extract the last hidden state
 
-# Initialize the model and move it to the GPU if available
-model = BiLSTMModel(vocab_size=vocab_size, embedding_dim=embedding_dim, hidden_dim=hidden_dim, output_dim=output_dim, dropout=dropout, num_layers=num_layers)
+    return embeddings
+
+
+class SentenceClassifier(nn.Module):
+    def __init__(self, input_dim=768, hidden_dim=None, output_dim=1, dropout_prob=0.0):
+        super(SentenceClassifier, self).__init__()
+        if hidden_dim is None:
+            hidden_dim = [256, 128, 64]
+        self.n = len(hidden_dim)
+        self.layers = nn.ModuleList()
+        prev_dim = input_dim
+        for dim in hidden_dim:
+            self.layers.append(nn.Linear(prev_dim, dim))
+            self.layers.append(nn.ReLU())
+            self.layers.append(nn.Dropout(dropout_prob))
+            prev_dim = dim
+
+        # Add a convolutional layer
+        self.conv_layer = nn.Conv1d(in_channels=prev_dim, out_channels=32, kernel_size=3, padding=1)
+        self.maxpool_layer = nn.MaxPool1d(kernel_size=2)
+
+        # Add global average pooling layer to collapse
+        self.pooling_layer = nn.AdaptiveAvgPool1d(1)
+
+        self.output_layer = nn.Linear(32, output_dim)
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+
+        # Apply convolutional and pooling layers
+        x = x.permute(0, 2, 1)  # Permute to (batch_size, channels, sequence_length)
+        x = self.conv_layer(x)
+        x = self.maxpool_layer(x)
+        x = x.permute(0, 2, 1)  # Permute back to (batch_size, sequence_length, channels)
+
+        # Apply global average pooling to collapse
+        x = self.pooling_layer(x).squeeze(-1)
+
+        return torch.sigmoid(self.output_layer(x))
+
+
+n = 30
+t = 5
+num_epochs = 10
+batch_size = 256
+
+train_df = pd.read_csv("Data/match.csv").head(n)
+test_df = pd.read_csv("Data/match.csv").head(t)
+train_df['label'] = np.where(train_df['gold_label'] == 'contradiction', 1, 0)  # label cleaning
+test_df['label'] = np.where(test_df['gold_label'] == 'contradiction', 1, 0)  # label cleaning
+
+train_df['embeddings'] = train_df.apply(apply_get_bert_embeddings, axis=1)
+test_df['embeddings'] = test_df.apply(apply_get_bert_embeddings, axis=1)
+
+# Sample BERT embeddings (replace this with the actual embeddings from get_bert_embeddings function)
+train_bert_embeddings = torch.stack(list(train_df['embeddings']), dim=0)
+test_bert_embeddings = torch.stack(list(test_df['embeddings']), dim=0)
+# Initialize the model
+model = SentenceClassifier()
 device = torch.device('cpu')
 model = model.to(device)
 
 print("Model on CPU")
 
-# Define the loss and optimizer
+# Define the loss function (binary cross-entropy loss)
 criterion = nn.BCEWithLogitsLoss()
-optimizer = optim.Adam(model.parameters())
 
-# Train the model
-N_EPOCHS = 2
-train_losses = []
-train_accuracies = []
-train_f1_scores = []
-valid_losses = []
-valid_accuracies = []
-valid_f1_scores = []
+# Define the optimizer (e.g., Adam optimizer)
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-for epoch in range(N_EPOCHS):
-    train_loss, train_acc = train(model, train_iterator, optimizer, criterion)
-    with torch.no_grad():
-        train_preds = torch.cat(
-            [model(batch['sentence1'], batch['premise_attention_mask']) for batch in train_iterator])
-    print(f'Epoch: {epoch + 1:02}')
-    train_f1 = calculate_f1(train_preds, torch.cat([batch['gold_label'] for batch in train_iterator]))
-    print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc * 100:.2f}% | Train F1: {train_f1:.3f}')
+for epoch in range(num_epochs):
+    model.train()  # Set the model to training mode
+    running_loss = 0.0
 
-    valid_loss, valid_acc = evaluate(model, val_iterator, criterion)
-    with torch.no_grad():
-        valid_preds = torch.cat([model(batch['sentence1'], batch['premise_attention_mask']) for batch in val_iterator])
-    valid_f1 = calculate_f1(valid_preds, torch.cat([batch['gold_label'] for batch in val_iterator]))
-    print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc * 100:.2f}% | Val. F1: {valid_f1:.3f}')
+    for i in range(0, len(train_df), batch_size):
+        # Prepare the batch
+        batch_embeddings = train_bert_embeddings[i:i+batch_size]
 
-    train_losses.append(train_loss)
-    train_accuracies.append(train_acc)
-    train_f1_scores.append(train_f1)
-    valid_losses.append(valid_loss)
-    valid_accuracies.append(valid_acc)
-    valid_f1_scores.append(valid_f1)
+        # Get the corresponding labels for this batch
+        batch_labels = train_df['label'].iloc[i:i + batch_size].values
+        batch_labels = torch.tensor(batch_labels.astype(float),  dtype=torch.float32).view(-1, 1)
 
-test_loss, test_accuracy = evaluate(model, test_iterator, criterion)
+        # Zero gradients
+        optimizer.zero_grad()
+
+        # Forward pass
+        outputs = model(batch_embeddings)
+
+        # Compute the loss
+        loss = criterion(outputs, batch_labels)
+
+        # Backpropagation
+        loss.backward()
+
+        # Optimize (update model parameters)
+        optimizer.step()
+
+        # Update running loss
+        running_loss += loss.item()
+
+    # Print the average loss for this epoch
+    average_loss = running_loss / (len(train_df) / batch_size)
+    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {average_loss:.4f}")
+
+# After training, you can use the model for predictions
 with torch.no_grad():
-    test_preds = torch.cat([model(batch['sentence1'], batch['premise_attention_mask']) for batch in test_iterator])
-test_f1 = calculate_f1(test_preds, torch.cat([batch['gold_label'] for batch in test_iterator]))
-print(f'Test Loss: {test_loss:.3f} | Test Acc: {test_accuracy * 100:.2f}% | Test F1: {test_f1:.3f}')
-
-plt.figure(figsize=(12, 8))
-
-# Plot training and validation accuracy
-plt.subplot(3, 1, 1)
-plt.plot(range(1, N_EPOCHS+1), train_accuracies, label='Training Accuracy')
-plt.plot(range(1, N_EPOCHS+1), valid_accuracies, label='Validation Accuracy')
-plt.xlabel('Epoch')
-plt.ylabel('Accuracy')
-plt.title('Training and Validation Accuracy')
-plt.legend()
-
-# Plot training and validation loss
-plt.subplot(3, 1, 2)
-plt.plot(range(1, N_EPOCHS+1), train_losses, label='Training Loss')
-plt.plot(range(1, N_EPOCHS+1), valid_losses, label='Validation Loss')
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.title('Training and Validation Loss')
-plt.legend()
-
-# Plot training and validation F1 score
-plt.subplot(3, 1, 3)
-plt.plot(range(1, N_EPOCHS+1), train_f1_scores, label='Training F1 Score')
-plt.plot(range(1, N_EPOCHS+1), valid_f1_scores, label='Validation F1 Score')
-plt.xlabel('Epoch')
-plt.ylabel('F1 Score')
-plt.title('Training and Validation F1 Score')
-plt.legend()
-
-plt.tight_layout()
-plt.show()
+    model.eval()  # Set the model to evaluation mode
+    output = model(test_bert_embeddings)
+    rounded_outputs = [int(round(output[i].item())) for i in range(len(output))]
+    correct = 0
+    for i in range(len(output)):
+        # print(f"Actual: {test_df.iloc[i]['label']} | Predicted: {round(output[i].item())}")
+        if int(test_df.iloc[i]['label']) == int(round(output[i].item())):
+            correct += 1
+print(f"Accuracy: {correct / len(output)}")
+print(list(test_df['label']))
+print(output)
+print(rounded_outputs)
+print(f"F1: {f1_score(list(test_df['label']), rounded_outputs)}")
