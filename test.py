@@ -14,6 +14,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch
 import torch.nn as nn
 import numpy as np
+
 # from bilstm_training import get_bert_embeddings
 import logging
 
@@ -30,21 +31,23 @@ class CustomDataset(Dataset):
         return len(self.data)
 
     def __getitem__(self, idx):
-        premise = self.data['sentence1'].iloc[idx]
-        hypothesis = self.data['sentence2'].iloc[idx]
-        label = 1 if self.data['gold_label'].iloc[idx].lower() == 'contradiction' else 0
+        premise = self.data["sentence1"].iloc[idx]
+        hypothesis = self.data["sentence2"].iloc[idx]
+        label = 1 if self.data["gold_label"].iloc[idx].lower() == "contradiction" else 0
 
-        premise_encoded = self.tokenizer(premise, add_special_tokens=True, truncation=True, padding='max_length',
-                                         max_length=self.max_length)
-        hypothesis_encoded = self.tokenizer(hypothesis, add_special_tokens=True, truncation=True, padding='max_length',
-                                            max_length=self.max_length)
+        premise_encoded = self.tokenizer(
+            premise, add_special_tokens=True, truncation=True, padding="max_length", max_length=self.max_length
+        )
+        hypothesis_encoded = self.tokenizer(
+            hypothesis, add_special_tokens=True, truncation=True, padding="max_length", max_length=self.max_length
+        )
 
         return {
-            'sentence1': torch.tensor(premise_encoded['input_ids'], dtype=torch.long),
-            'premise_attention_mask': torch.tensor(premise_encoded['attention_mask'], dtype=torch.long),
-            'sentence2': torch.tensor(hypothesis_encoded['input_ids'], dtype=torch.long),
-            'sentence2_attention_mask': torch.tensor(hypothesis_encoded['attention_mask'], dtype=torch.long),
-            'gold_label': torch.tensor(label, dtype=torch.float)
+            "sentence1": torch.tensor(premise_encoded["input_ids"], dtype=torch.long),
+            "premise_attention_mask": torch.tensor(premise_encoded["attention_mask"], dtype=torch.long),
+            "sentence2": torch.tensor(hypothesis_encoded["input_ids"], dtype=torch.long),
+            "sentence2_attention_mask": torch.tensor(hypothesis_encoded["attention_mask"], dtype=torch.long),
+            "gold_label": torch.tensor(label, dtype=torch.float),
         }
 
 
@@ -52,21 +55,26 @@ class BiLSTMModel(nn.Module):
     def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, dropout, num_layers):
         super(BiLSTMModel, self).__init__()
         self.embedding = nn.Embedding(vocab_size, embedding_dim)
-        self.lstm_layers = nn.ModuleList([nn.LSTM(embedding_dim if i == 0 else hidden_dim * 2, hidden_dim,
-                                                  bidirectional=True, batch_first=True)
-                                          for i in range(num_layers)])
+        self.lstm_layers = nn.ModuleList(
+            [
+                nn.LSTM(embedding_dim if i == 0 else hidden_dim * 2, hidden_dim, bidirectional=True, batch_first=True)
+                for i in range(num_layers)
+            ]
+        )
         self.fc = nn.Linear(hidden_dim * 2, output_dim)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, input_ids, attention_mask):
-        print("Dimensionality of word embeddings:",
-              self.embedding.embedding_dim)  # Print the dimensionality of word embeddings
+        print(
+            "Dimensionality of word embeddings:", self.embedding.embedding_dim
+        )  # Print the dimensionality of word embeddings
         embedded = self.dropout(self.embedding(input_ids))
 
         lstm_input = embedded
         for lstm_layer in self.lstm_layers:
-            packed_embedded = nn.utils.rnn.pack_padded_sequence(lstm_input, torch.sum(attention_mask, dim=1),
-                                                                batch_first=True, enforce_sorted=False)
+            packed_embedded = nn.utils.rnn.pack_padded_sequence(
+                lstm_input, torch.sum(attention_mask, dim=1), batch_first=True, enforce_sorted=False
+            )
             packed_output, (hidden, cell) = lstm_layer(packed_embedded)
             lstm_output, output_lengths = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True)
             lstm_input = lstm_output
@@ -88,11 +96,11 @@ def train(model, iterator, optimizer, criterion):
     epoch_acc = 0
 
     for batch in iterator:
-        text, text_attention_mask = batch['sentence1'], batch['premise_attention_mask']
+        text, text_attention_mask = batch["sentence1"], batch["premise_attention_mask"]
         optimizer.zero_grad()
         predictions = model(text, text_attention_mask).squeeze(1)
-        loss = criterion(predictions, batch['gold_label'].to(device))
-        acc = binary_accuracy(predictions, batch['gold_label'].to(device))
+        loss = criterion(predictions, batch["gold_label"].to(device))
+        acc = binary_accuracy(predictions, batch["gold_label"].to(device))
         loss.backward()
         optimizer.step()
         epoch_loss += loss.item()
@@ -108,10 +116,10 @@ def evaluate(model, iterator, criterion):
 
     with torch.no_grad():
         for batch in iterator:
-            text, text_attention_mask = batch['sentence1'], batch['premise_attention_mask']
+            text, text_attention_mask = batch["sentence1"], batch["premise_attention_mask"]
             predictions = model(text, text_attention_mask).squeeze(1)
-            loss = criterion(predictions, batch['gold_label'].to(device))
-            acc = binary_accuracy(predictions, batch['gold_label'].to(device))
+            loss = criterion(predictions, batch["gold_label"].to(device))
+            acc = binary_accuracy(predictions, batch["gold_label"].to(device))
             epoch_loss += loss.item()
             epoch_acc += acc.item()
 
@@ -127,9 +135,9 @@ def model_test(model, iterator, criterion):
 
     with torch.no_grad():
         for batch in iterator:
-            input_ids = batch['sentence1']
-            attention_mask = batch['premise_attention_mask']
-            labels = batch['gold_label']
+            input_ids = batch["sentence1"]
+            attention_mask = batch["premise_attention_mask"]
+            labels = batch["gold_label"]
 
             predictions = model(input_ids, attention_mask)
             loss = criterion(predictions.squeeze(), labels.float().squeeze())
@@ -287,7 +295,7 @@ def calculate_f1(predictions, true):
 # plt.tight_layout()
 # plt.show()
 def apply_get_bert_embeddings(row):
-    return get_bert_embeddings(row['sentence1'], row['sentence2']).squeeze()
+    return get_bert_embeddings(row["sentence1"], row["sentence2"]).squeeze()
 
 
 def get_bert_embeddings(sentence1: str, sentence2: str) -> torch.Tensor:
@@ -360,18 +368,18 @@ batch_size = 256
 
 train_df = pd.read_csv("Data/match.csv").head(n)
 test_df = pd.read_csv("Data/match.csv").head(t)
-train_df['label'] = np.where(train_df['gold_label'] == 'contradiction', 1, 0)  # label cleaning
-test_df['label'] = np.where(test_df['gold_label'] == 'contradiction', 1, 0)  # label cleaning
+train_df["label"] = np.where(train_df["gold_label"] == "contradiction", 1, 0)  # label cleaning
+test_df["label"] = np.where(test_df["gold_label"] == "contradiction", 1, 0)  # label cleaning
 
-train_df['embeddings'] = train_df.apply(apply_get_bert_embeddings, axis=1)
-test_df['embeddings'] = test_df.apply(apply_get_bert_embeddings, axis=1)
+train_df["embeddings"] = train_df.apply(apply_get_bert_embeddings, axis=1)
+test_df["embeddings"] = test_df.apply(apply_get_bert_embeddings, axis=1)
 
 # Sample BERT embeddings (replace this with the actual embeddings from get_bert_embeddings function)
-train_bert_embeddings = torch.stack(list(train_df['embeddings']), dim=0)
-test_bert_embeddings = torch.stack(list(test_df['embeddings']), dim=0)
+train_bert_embeddings = torch.stack(list(train_df["embeddings"]), dim=0)
+test_bert_embeddings = torch.stack(list(test_df["embeddings"]), dim=0)
 # Initialize the model
 model = SentenceClassifier()
-device = torch.device('cpu')
+device = torch.device("cpu")
 model = model.to(device)
 
 print("Model on CPU")
@@ -388,11 +396,11 @@ for epoch in range(num_epochs):
 
     for i in range(0, len(train_df), batch_size):
         # Prepare the batch
-        batch_embeddings = train_bert_embeddings[i:i+batch_size]
+        batch_embeddings = train_bert_embeddings[i : i + batch_size]
 
         # Get the corresponding labels for this batch
-        batch_labels = train_df['label'].iloc[i:i + batch_size].values
-        batch_labels = torch.tensor(batch_labels.astype(float),  dtype=torch.float32).view(-1, 1)
+        batch_labels = train_df["label"].iloc[i : i + batch_size].values
+        batch_labels = torch.tensor(batch_labels.astype(float), dtype=torch.float32).view(-1, 1)
 
         # Zero gradients
         optimizer.zero_grad()
@@ -424,10 +432,10 @@ with torch.no_grad():
     correct = 0
     for i in range(len(output)):
         # print(f"Actual: {test_df.iloc[i]['label']} | Predicted: {round(output[i].item())}")
-        if int(test_df.iloc[i]['label']) == int(round(output[i].item())):
+        if int(test_df.iloc[i]["label"]) == int(round(output[i].item())):
             correct += 1
 print(f"Accuracy: {correct / len(output)}")
-print(list(test_df['label']))
+print(list(test_df["label"]))
 print(output)
 print(rounded_outputs)
 print(f"F1: {f1_score(list(test_df['label']), rounded_outputs)}")

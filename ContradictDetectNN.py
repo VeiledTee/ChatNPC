@@ -9,21 +9,18 @@ from convert_dataset import load_txt_file_to_dataframe
 class SiameseNetworkWithBERT(nn.Module):
     def __init__(self, hidden_size):
         super(SiameseNetworkWithBERT, self).__init__()
-        self.bert_model = BertModel.from_pretrained('bert-base-uncased')
+        self.bert_model = BertModel.from_pretrained("bert-base-uncased")
         self.encoder = nn.LSTM(self.bert_model.config.hidden_size, hidden_size, batch_first=True)
-        self.classifier = nn.Sequential(
-            nn.Linear(hidden_size * 2, 64),
-            nn.ReLU(),
-            nn.Linear(64, 1),
-            nn.Sigmoid()
-        )
+        self.classifier = nn.Sequential(nn.Linear(hidden_size * 2, 64), nn.ReLU(), nn.Linear(64, 1), nn.Sigmoid())
 
     def forward(self, input_ids, attention_mask):
         # Get BERT embeddings
         premise_outputs = self.bert_model(input_ids=input_ids["premise"], attention_mask=attention_mask["premise"])
         premise_pooled_output = premise_outputs.pooler_output  # Extract the pooled output
 
-        hypothesis_outputs = self.bert_model(input_ids=input_ids["hypothesis"], attention_mask=attention_mask["hypothesis"])
+        hypothesis_outputs = self.bert_model(
+            input_ids=input_ids["hypothesis"], attention_mask=attention_mask["hypothesis"]
+        )
         hypothesis_pooled_output = hypothesis_outputs.pooler_output  # Extract the pooled output
 
         # Concatenate the premise and hypothesis embeddings along the batch dimension
@@ -45,22 +42,21 @@ class CreateDataset(torch.utils.data.Dataset):
     def __getitem__(self, index):
         sentence1 = self.dataframe.iloc[index]["sentence1"]
         sentence2 = self.dataframe.iloc[index]["sentence2"]
-        label = 1 if self.dataframe.iloc[index]["gold_label"].lower() == 'contradiction' else 0
+        label = 1 if self.dataframe.iloc[index]["gold_label"].lower() == "contradiction" else 0
 
         # Tokenize the sentences using the BERT tokenizer
         encoded_sentences = self.tokenizer(
-            sentence1,
-            sentence2,
-            padding='max_length',
-            truncation=True,
-            max_length=self.max_length,
-            return_tensors='pt'
+            sentence1, sentence2, padding="max_length", truncation=True, max_length=self.max_length, return_tensors="pt"
         )
 
-        input_ids = encoded_sentences['input_ids'].squeeze()
-        attention_mask = encoded_sentences['attention_mask'].squeeze()
+        input_ids = encoded_sentences["input_ids"].squeeze()
+        attention_mask = encoded_sentences["attention_mask"].squeeze()
 
-        return {'premise': input_ids, 'hypothesis': input_ids}, {'premise': attention_mask, 'hypothesis': attention_mask}, torch.tensor(label, dtype=torch.float)
+        return (
+            {"premise": input_ids, "hypothesis": input_ids},
+            {"premise": attention_mask, "hypothesis": attention_mask},
+            torch.tensor(label, dtype=torch.float),
+        )
 
 
 model = SiameseNetworkWithBERT(hidden_size=128)
@@ -69,12 +65,12 @@ criterion = nn.BCELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
 # Initialize the BERT tokenizer
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 
 # Set maximum length for tokenized inputs (adjust as needed based on your model)
 max_length = 128
 
-dataset_descriptors: list = ['match', 'mismatch']
+dataset_descriptors: list = ["match", "mismatch"]
 dataframes: list = []
 
 for descriptor in dataset_descriptors:
@@ -86,24 +82,16 @@ df = pd.concat(dataframes, ignore_index=True)
 
 # Create the custom dataset
 train_dataset = CreateDataset(df, tokenizer, max_length)
-val_dataset = CreateDataset(pd.read_csv('Data/contradiction-dataset.csv'), tokenizer, max_length)
+val_dataset = CreateDataset(pd.read_csv("Data/contradiction-dataset.csv"), tokenizer, max_length)
 
 # Set batch size for training
 batch_size = 32
 
 # Step 4: Create DataLoader for training data
-train_loader = torch.utils.data.DataLoader(
-    dataset=train_dataset,
-    batch_size=batch_size,
-    shuffle=True
-)
+train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
 
 # Step 4: Create DataLoader for validation data
-val_loader = torch.utils.data.DataLoader(
-    dataset=val_dataset,
-    batch_size=batch_size,
-    shuffle=True
-)
+val_loader = torch.utils.data.DataLoader(dataset=val_dataset, batch_size=batch_size, shuffle=True)
 
 # Training loop
 num_epochs = 3
