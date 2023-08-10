@@ -33,7 +33,9 @@ def clean_test_data(dataset: str, device: str, batch_size: int) -> Tuple[DataLoa
     labels: List[int] = [1 if x == "contradiction" else 0 for x in multinli_df["gold_label"]]
 
     # Convert data and labels to tensors
-    x_data: torch.Tensor = torch.tensor(data_2d).to(device).reshape(data_2d.shape[0], data_3d.shape[1], data_3d.shape[2])
+    x_data: torch.Tensor = (
+        torch.tensor(data_2d).to(device).reshape(data_2d.shape[0], data_3d.shape[1], data_3d.shape[2])
+    )
     y_labels: torch.Tensor = torch.tensor(labels).to(device)
 
     # Create dataset and dataloader
@@ -53,9 +55,11 @@ if __name__ == "__main__":
     # DEVICE = 'cpu'
 
     model_load_path: str = f"Models/train_match.pth"
-    test_sentences = [["Billy loves cake",
-                       "Billy hates cake"], ['The sky is clear today.', "What a beautiful sunny day!"],
-                      ["Josh doesn't like pizza.", "Josh loves eating pizza!"]]
+    test_sentences = [
+        ["Billy loves cake", "Billy hates cake"],
+        ["The sky is clear today.", "What a beautiful sunny day!"],
+        ["Josh doesn't like pizza.", "Josh loves eating pizza!"],
+    ]
     test_labels = [1, 0, 1]
 
     if test_sentences:

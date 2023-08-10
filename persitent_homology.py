@@ -173,7 +173,7 @@ if __name__ == "__main__":
         "Billy loves cake",
         "Josh hates cake",
     ]
-
+    DEVICE = torch.device("cpu")
     ph_features: list = persistent_homology_features(phrases=sentences)  # (sentence, dimension, k embedding)
     print(len(sentences))
     print(len(ph_features))

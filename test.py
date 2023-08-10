@@ -1,111 +1,293 @@
-import io
-import logging
-import os
-import random
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, Tuple
 
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
+import matplotlib
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.model_selection import train_test_split
-from torch.utils.data import DataLoader, TensorDataset
-from transformers import BertModel, BertTokenizer
+from matplotlib import pyplot as plt
+from sklearn.metrics import f1_score
+import pandas as pd
+import torch
+from transformers import BertTokenizer, BertModel
+import pandas as pd
+from torch.utils.data import Dataset, DataLoader
+import torch
+import torch.nn as nn
+import numpy as np
+# from bilstm_training import get_bert_embeddings
+import logging
 
-from BiLSTM import BiLSTMModel
-from convert_dataset import read_npz_file
-from variables import (
-    BATCH_SIZE,
-    DEVICE,
-    DATASET,
-    TESTSET,
-    INPUT_SIZE,
-    SEQUENCE_LENGTH,
-    HIDDEN_SIZE,
-    NUM_LAYERS,
-    OUTPUT_SIZE,
-    EPOCHS,
-    LEARNING_RATE,
-    CHKPT_INTERVAL,
-)
-
-# Disable the logging level for the transformers library
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
 
-def get_most_recent_file(directory: str) -> Optional[str]:
-    if not os.path.isdir(directory):
-        return None
+class CustomDataset(Dataset):
+    def __init__(self, dataframe, tokenizer, max_length=128):
+        self.data = dataframe
+        self.tokenizer = tokenizer
+        self.max_length = max_length
 
-    files = [os.path.join(directory, f) for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f))]
-    files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+    def __len__(self):
+        return len(self.data)
 
-    if not files:
-        return None
+    def __getitem__(self, idx):
+        premise = self.data['sentence1'].iloc[idx]
+        hypothesis = self.data['sentence2'].iloc[idx]
+        label = 1 if self.data['gold_label'].iloc[idx].lower() == 'contradiction' else 0
 
-    return files[0]
+        premise_encoded = self.tokenizer(premise, add_special_tokens=True, truncation=True, padding='max_length',
+                                         max_length=self.max_length)
+        hypothesis_encoded = self.tokenizer(hypothesis, add_special_tokens=True, truncation=True, padding='max_length',
+                                            max_length=self.max_length)
 
-
-def load_txt_file_to_dataframe(dataset_description: str) -> pd.DataFrame:
-    """
-    Load MultiNLI data into dataframe for use
-    :param dataset_description: Which dataset to load and work with
-    :return: Cleaned data contained in a dataframe
-    """
-    to_drop: list = [
-        "label1",
-        "sentence1_binary_parse",
-        "sentence2_binary_parse",
-        "sentence1_parse",
-        "sentence2_parse",
-        "promptID",
-        "pairID",
-        "genre",
-        "label2",
-        "label3",
-        "label4",
-        "label5",
-    ]
-    if dataset_description.lower().strip() == "train":
-        data_frame = pd.read_csv("Data/MultiNLI/multinli_1.0_train.txt", sep="\t", encoding="latin-1").drop(
-            columns=to_drop
-        )
-    elif dataset_description.lower().strip() == "match":
-        data_frame = pd.read_csv("Data/MultiNLI/multinli_1.0_dev_matched.txt", sep="\t").drop(columns=to_drop)
-    elif dataset_description.lower().strip() == "mismatch":
-        data_frame = pd.read_csv("Data/MultiNLI/multinli_1.0_dev_mismatched.txt", sep="\t").drop(columns=to_drop)
-    else:
-        raise ValueError("Pass only 'train', 'match', or 'mismatch' to the function")
-
-    data_frame.dropna(inplace=True)
-    return data_frame
+        return {
+            'sentence1': torch.tensor(premise_encoded['input_ids'], dtype=torch.long),
+            'premise_attention_mask': torch.tensor(premise_encoded['attention_mask'], dtype=torch.long),
+            'sentence2': torch.tensor(hypothesis_encoded['input_ids'], dtype=torch.long),
+            'sentence2_attention_mask': torch.tensor(hypothesis_encoded['attention_mask'], dtype=torch.long),
+            'gold_label': torch.tensor(label, dtype=torch.float)
+        }
 
 
-def create_train_dev_sets(data: list, dev_ratio: float) -> Tuple[List[int], List[int]]:
-    """
-    Create a dev set and training set from a list of data.
+class BiLSTMModel(nn.Module):
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, dropout, num_layers):
+        super(BiLSTMModel, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.lstm_layers = nn.ModuleList([nn.LSTM(embedding_dim if i == 0 else hidden_dim * 2, hidden_dim,
+                                                  bidirectional=True, batch_first=True)
+                                          for i in range(num_layers)])
+        self.fc = nn.Linear(hidden_dim * 2, output_dim)
+        self.dropout = nn.Dropout(dropout)
 
-    :param data: The list of data to split.
-    :param dev_ratio: The ratio of data to be allocated for the dev set.
-    :return: A tuple containing the indexes of the dev set and training set.
-    """
-    data_size = len(data)
-    indices = list(range(data_size))
-    random.shuffle(indices)  # Shuffle the indices randomly
+    def forward(self, input_ids, attention_mask):
+        print("Dimensionality of word embeddings:",
+              self.embedding.embedding_dim)  # Print the dimensionality of word embeddings
+        embedded = self.dropout(self.embedding(input_ids))
 
-    dev_size = int(data_size * dev_ratio)  # Calculate the dev set size
+        lstm_input = embedded
+        for lstm_layer in self.lstm_layers:
+            packed_embedded = nn.utils.rnn.pack_padded_sequence(lstm_input, torch.sum(attention_mask, dim=1),
+                                                                batch_first=True, enforce_sorted=False)
+            packed_output, (hidden, cell) = lstm_layer(packed_embedded)
+            lstm_output, output_lengths = nn.utils.rnn.pad_packed_sequence(packed_output, batch_first=True)
+            lstm_input = lstm_output
 
-    dev_indices = indices[:dev_size]  # Extract dev set indices from the beginning of the shuffled indices
-    train_indices = indices[dev_size:]  # Extract training set indices from the remaining shuffled indices
-
-    return train_indices, dev_indices
+        hidden = self.dropout(torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1))
+        return self.fc(hidden)
 
 
-def create_batches(data: torch.Tensor) -> List[torch.Tensor]:
-    # Split the data into batches
-    return torch.split(data, BATCH_SIZE, dim=0)
+def binary_accuracy(preds, y):
+    rounded_preds = torch.round(torch.sigmoid(preds))
+    correct = (rounded_preds == y).float()
+    acc = correct.sum() / len(correct)
+    return acc
+
+
+def train(model, iterator, optimizer, criterion):
+    model.train()
+    epoch_loss = 0
+    epoch_acc = 0
+
+    for batch in iterator:
+        text, text_attention_mask = batch['sentence1'], batch['premise_attention_mask']
+        optimizer.zero_grad()
+        predictions = model(text, text_attention_mask).squeeze(1)
+        loss = criterion(predictions, batch['gold_label'].to(device))
+        acc = binary_accuracy(predictions, batch['gold_label'].to(device))
+        loss.backward()
+        optimizer.step()
+        epoch_loss += loss.item()
+        epoch_acc += acc.item()
+
+    return epoch_loss / len(iterator), epoch_acc / len(iterator)
+
+
+def evaluate(model, iterator, criterion):
+    model.eval()
+    epoch_loss = 0
+    epoch_acc = 0
+
+    with torch.no_grad():
+        for batch in iterator:
+            text, text_attention_mask = batch['sentence1'], batch['premise_attention_mask']
+            predictions = model(text, text_attention_mask).squeeze(1)
+            loss = criterion(predictions, batch['gold_label'].to(device))
+            acc = binary_accuracy(predictions, batch['gold_label'].to(device))
+            epoch_loss += loss.item()
+            epoch_acc += acc.item()
+
+    return epoch_loss / len(iterator), epoch_acc / len(iterator)
+
+
+def model_test(model, iterator, criterion):
+    model.eval()  # Set the model to evaluation mode
+
+    test_loss = 0.0
+    all_preds = []
+    all_labels = []
+
+    with torch.no_grad():
+        for batch in iterator:
+            input_ids = batch['sentence1']
+            attention_mask = batch['premise_attention_mask']
+            labels = batch['gold_label']
+
+            predictions = model(input_ids, attention_mask)
+            loss = criterion(predictions.squeeze(), labels.float().squeeze())
+            test_loss += loss.item()
+
+            rounded_preds = torch.round(torch.sigmoid(predictions))
+            all_preds.extend(rounded_preds.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+
+    test_loss /= len(iterator)
+    test_accuracy = binary_accuracy(torch.tensor(all_preds), torch.tensor(all_labels))
+
+    test_f1 = f1_score(all_labels, all_preds)
+
+    return test_loss, test_accuracy, test_f1
+
+
+def calculate_f1(predictions, true):
+    # Round the predictions to obtain binary values (0 or 1)
+    print(predictions)
+    rounded_preds = torch.round(torch.sigmoid(predictions)).cpu().numpy()
+    y_true = true.cpu().numpy()
+    print(f"Length Predictions: {len(y_true)}")
+    print(f"Predicted Sum:      {rounded_preds.sum()}")
+    print(f"True Sum:           {sum(y_true)}")
+
+    # Calculate true positives, false positives, and false negatives
+    tp = ((rounded_preds == 1) & (y_true == 1)).sum()
+    fp = ((rounded_preds == 1) & (y_true == 0)).sum()
+    fn = ((rounded_preds == 0) & (y_true == 1)).sum()
+
+    # Calculate precision, recall, and F1 score
+    precision = tp / (tp + fp + 1e-8)
+    recall = tp / (tp + fn + 1e-8)
+    f1 = 2 * (precision * recall) / (precision + recall + 1e-8)
+
+    return f1
+
+
+# # # # Set a random seed for reproducibility
+# # SEED = 1234
+# # torch.manual_seed(SEED)
+# # torch.backends.cudnn.deterministic = True
+#
+# matplotlib.use('TkAgg')
+#
+# # Load the preprocessed data
+# # data = pd.concat([pd.read_csv('Data/match.csv'), pd.read_csv('Data/mismatch.csv')])
+# # data = pd.read_csv('Data/match.csv')
+# data = pd.read_csv('Data/contradiction-dataset.csv')
+# test_data = pd.read_csv('Data/contradiction-dataset.csv')
+#
+# # Define the BERT tokenizer
+# tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+#
+# # Create the custom dataset
+# dataset = CustomDataset(data, tokenizer, max_length=128)
+# test_dataset = CustomDataset(test_data, tokenizer, max_length=128)
+#
+# # Define batch size and create DataLoader
+# BATCH_SIZE = 32
+# train_size = int(0.8 * len(dataset))
+# val_size = len(dataset) - train_size
+# train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
+#
+# train_iterator = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+# val_iterator = DataLoader(val_dataset, batch_size=BATCH_SIZE)
+# test_iterator = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+#
+# # hyperparameters
+# vocab_size = tokenizer.vocab_size
+# embedding_dim = 512
+# hidden_dim = 256
+# output_dim = 1
+# dropout = 0
+# num_layers = 128
+#
+# # Initialize the model and move it to the GPU if available
+# model = BiLSTMModel(vocab_size=vocab_size, embedding_dim=embedding_dim, hidden_dim=hidden_dim, output_dim=output_dim, dropout=dropout, num_layers=num_layers)
+# device = torch.device('cpu')
+# model = model.to(device)
+#
+# print("Model on CPU")
+#
+# # Define the loss and optimizer
+# criterion = nn.BCEWithLogitsLoss()
+# optimizer = optim.Adam(model.parameters())
+#
+# # Train the model
+# N_EPOCHS = 10
+# train_losses = []
+# train_accuracies = []
+# train_f1_scores = []
+# valid_losses = []
+# valid_accuracies = []
+# valid_f1_scores = []
+#
+# for epoch in range(N_EPOCHS):
+#     train_loss, train_acc = train(model, train_iterator, optimizer, criterion)
+#     with torch.no_grad():
+#         train_preds = torch.cat(
+#             [model(batch['sentence1'], batch['premise_attention_mask']) for batch in train_iterator])
+#     print(f'Epoch: {epoch + 1:02}')
+#     train_f1 = calculate_f1(train_preds, torch.cat([batch['gold_label'] for batch in train_iterator]))
+#     print(f'\tTrain Loss: {train_loss:.3f} | Train Acc: {train_acc * 100:.2f}% | Train F1: {train_f1:.3f}')
+#
+#     valid_loss, valid_acc = evaluate(model, val_iterator, criterion)
+#     with torch.no_grad():
+#         valid_preds = torch.cat([model(batch['sentence1'], batch['premise_attention_mask']) for batch in val_iterator])
+#     valid_f1 = calculate_f1(valid_preds, torch.cat([batch['gold_label'] for batch in val_iterator]))
+#     print(f'\t Val. Loss: {valid_loss:.3f} |  Val. Acc: {valid_acc * 100:.2f}% | Val. F1: {valid_f1:.3f}')
+#
+#     train_losses.append(train_loss)
+#     train_accuracies.append(train_acc)
+#     train_f1_scores.append(train_f1)
+#     valid_losses.append(valid_loss)
+#     valid_accuracies.append(valid_acc)
+#     valid_f1_scores.append(valid_f1)
+#
+# test_loss, test_accuracy = evaluate(model, test_iterator, criterion)
+# with torch.no_grad():
+#     test_preds = torch.cat([model(batch['sentence1'], batch['premise_attention_mask']) for batch in test_iterator])
+# test_f1 = calculate_f1(test_preds, torch.cat([batch['gold_label'] for batch in test_iterator]))
+# print(f'Test Loss: {test_loss:.3f} | Test Acc: {test_accuracy * 100:.2f}% | Test F1: {test_f1:.3f}')
+#
+# plt.figure(figsize=(12, 8))
+#
+# # Plot training and validation accuracy
+# plt.subplot(3, 1, 1)
+# plt.plot(range(1, N_EPOCHS+1), train_accuracies, label='Training Accuracy')
+# plt.plot(range(1, N_EPOCHS+1), valid_accuracies, label='Validation Accuracy')
+# plt.xlabel('Epoch')
+# plt.ylabel('Accuracy')
+# plt.title('Training and Validation Accuracy')
+# plt.legend()
+#
+# # Plot training and validation loss
+# plt.subplot(3, 1, 2)
+# plt.plot(range(1, N_EPOCHS+1), train_losses, label='Training Loss')
+# plt.plot(range(1, N_EPOCHS+1), valid_losses, label='Validation Loss')
+# plt.xlabel('Epoch')
+# plt.ylabel('Loss')
+# plt.title('Training and Validation Loss')
+# plt.legend()
+#
+# # Plot training and validation F1 score
+# plt.subplot(3, 1, 3)
+# plt.plot(range(1, N_EPOCHS+1), train_f1_scores, label='Training F1 Score')
+# plt.plot(range(1, N_EPOCHS+1), valid_f1_scores, label='Validation F1 Score')
+# plt.xlabel('Epoch')
+# plt.ylabel('F1 Score')
+# plt.title('Training and Validation F1 Score')
+# plt.legend()
+#
+# plt.tight_layout()
+# plt.show()
+def apply_get_bert_embeddings(row):
+    return get_bert_embeddings(row['sentence1'], row['sentence2']).squeeze()
 
 
 def get_bert_embeddings(sentence1: str, sentence2: str) -> torch.Tensor:
@@ -121,8 +303,8 @@ def get_bert_embeddings(sentence1: str, sentence2: str) -> torch.Tensor:
     attention_mask: torch.Tensor = torch.tensor(tokens["attention_mask"]).unsqueeze(0)  # Add batch dimension
 
     # Pad or truncate the input IDs and attention masks to the maximum sequence length
-    input_ids = torch.nn.functional.pad(input_ids, (0, SEQUENCE_LENGTH - input_ids.size(1)))
-    attention_mask = torch.nn.functional.pad(attention_mask, (0, SEQUENCE_LENGTH - attention_mask.size(1)))
+    input_ids = torch.nn.functional.pad(input_ids, (0, 64 - input_ids.size(1)))
+    attention_mask = torch.nn.functional.pad(attention_mask, (0, 64 - attention_mask.size(1)))
 
     # Obtain the BERT embeddings
     with torch.no_grad():
@@ -132,507 +314,120 @@ def get_bert_embeddings(sentence1: str, sentence2: str) -> torch.Tensor:
     return embeddings
 
 
-def count_files(directory: str) -> int:
-    """
-    Count the number of files in a directory.
-
-    :param directory: The path to the directory.
-    :return: The number of files in the directory.
-    """
-    file_count = 0
-    for _, _, files in os.walk(directory):
-        file_count += len(files)
-    return file_count
-
-
-def train_model(
-    model_number: int,
-    training_dataloader,
-    x_validation,
-    y_validation,
-    input_size,
-    hidden_size,
-    num_layers,
-    output_size,
-    epochs: int,
-    learning_rate: float,
-    chkpt_interval: int,
-    device: str,
-    path_to_load_model: str = "",
-):
-    # Initialize the BiLSTM model
-    bilstm: BiLSTMModel = BiLSTMModel(input_size, hidden_size, num_layers, output_size).to(device)
-
-    # Define loss function and optimizer
-    loss_function: nn.CrossEntropyLoss = nn.CrossEntropyLoss()
-    optimizer: optim.Adam = optim.Adam(bilstm.parameters(), lr=learning_rate)
-
-    # Initialize lists for training and validation loss
-    training_losses: List[float] = []
-    validation_losses: List[float] = []
-
-    # Load the pre-trained weights if available
-    if path_to_load_model != "":
-        try:
-            checkpoint = torch.load(get_most_recent_file(path_to_load_model))
-        except AttributeError:
-            # Read the file into memory
-            with open(path_to_load_model, 'rb') as f:
-                model_data = f.read()
-
-            # Load the model from memory using torch.load with a BytesIO buffer
-            checkpoint = torch.load(io.BytesIO(model_data))
-
-        print(f'Loaded {path_to_load_model} successfully!')
-        if type(checkpoint) == BiLSTMModel:
-            bilstm = checkpoint
-            # Load optimizer
-            optimizer: optim.Adam = optim.Adam(bilstm.parameters(), lr=LEARNING_RATE)
-
-            # Training loss, validation loss, set start
-            training_losses = []
-            validation_losses = []
-            start_epoch = 0
-        else:
-            # Load the pre-trained weights
-            bilstm.load_state_dict(checkpoint["model_state_dict"])
-
-            # Load the optimizer state
-            optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-
-            # Load the loss and validation losses
-            training_losses = checkpoint["train_loss"]
-            validation_losses = checkpoint["val_loss"]
-
-            # Get the last epoch to resume training from that point
-            start_epoch = checkpoint["epoch"]
-    else:
-        start_epoch = 0
-
-    if start_epoch >= epochs:
-        epochs += start_epoch
-        # Training loop
-        for epoch in range(start_epoch, epochs):
-            bilstm.train()  # get to training
-            train_loss_sum: float = 0.0
-            train_samples: int = 0
-
-            # Iterate over the shuffled batches
-            for batch_x, batch_y in training_dataloader:
-                # Forward pass
-                predictions: torch.Tensor = bilstm(batch_x.to(device))
-                # Create a tensor of zeros with the same number of samples
-                zeros_tensor: torch.Tensor = torch.zeros(predictions.shape[0], 1).to(device)
-
-                # Concatenate the predictions tensor with the zeros tensor
-                predictions: torch.Tensor = torch.cat((predictions, zeros_tensor), dim=1).to(device)
-                batch_y: torch.Tensor = batch_y.squeeze().to(device)
-
-                # Calculate the training loss
-                loss: torch.Tensor = loss_function(predictions, batch_y)
-                train_loss_sum += loss.item() * len(batch_x)
-                train_samples += len(batch_x)
-
-                # Backpropagation
-                loss.backward()
-                optimizer.step()
-
-            training_losses.append(train_loss_sum / train_samples)  # record avg training loss
-
-            # Validation phase
-            bilstm.eval()
-            val_loss_sum: float = 0.0
-            val_samples: int = 0
-            with torch.no_grad():
-                # Forward pass on the validation set
-                val_predictions: torch.Tensor = bilstm(x_validation.to(device))
-                # Create a tensor of zeros with the same number of samples
-                zeros_tensor: torch.Tensor = torch.zeros(val_predictions.shape[0], 1).to(device)
-                # Concatenate the predictions tensor with the zeros tensor
-                val_predictions: torch.Tensor = torch.cat((val_predictions, zeros_tensor), dim=1).to(device)
-                # Calculate the validation loss
-                val_loss: torch.Tensor = loss_function(val_predictions, y_validation.squeeze().to(device))
-                val_loss_sum += val_loss.item() * len(x_validation)
-                val_samples += len(x_validation)
-
-            validation_losses.append(val_loss_sum / val_samples)  # record avg validation loss
-
-            # Print training and validation loss for each epoch
-            print(
-                f"Epoch {epoch + 1}/{epochs}: Train Loss: {training_losses[-1]:.4f}, Val Loss: {validation_losses[-1]:.4f}"
-            )
-
-            # Save checkpoint if we've reached the interval
-            if (epoch + 1) % chkpt_interval == 0:
-                # Define the checkpoint file path
-                checkpoint_path = f"Checkpoint/{model_number}/checkpoint_{epoch + 1}.pth"
-
-                # Save the checkpoint
-                checkpoint = {
-                    "epoch": epoch + 1,
-                    "model_state_dict": bilstm.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
-                    "train_loss": training_losses,
-                    "val_loss": validation_losses,
-                }
-                torch.save(checkpoint, checkpoint_path)
-    else:
-        # Training loop
-        for epoch in range(start_epoch, epochs):
-            bilstm.train()  # get to training
-            train_loss_sum: float = 0.0
-            train_samples: int = 0
-
-            # Iterate over the shuffled batches
-            for batch_x, batch_y in training_dataloader:
-                # Forward pass
-                predictions: torch.Tensor = bilstm(batch_x.to(device))
-                # Create a tensor of zeros with the same number of samples
-                zeros_tensor: torch.Tensor = torch.zeros(predictions.shape[0], 1).to(device)
-
-                # Concatenate the predictions tensor with the zeros tensor
-                predictions: torch.Tensor = torch.cat((predictions, zeros_tensor), dim=1).to(device)
-                batch_y: torch.Tensor = batch_y.squeeze().to(device)
-
-                # Calculate the training loss
-                loss: torch.Tensor = loss_function(predictions, batch_y)
-                train_loss_sum += loss.item() * len(batch_x)
-                train_samples += len(batch_x)
-
-                # Backpropagation
-                loss.backward()
-                optimizer.step()
-
-            training_losses.append(train_loss_sum / train_samples)  # record avg training loss
-
-            # Validation phase
-            bilstm.eval()
-            val_loss_sum: float = 0.0
-            val_samples: int = 0
-            with torch.no_grad():
-                # Forward pass on the validation set
-                val_predictions: torch.Tensor = bilstm(x_validation.to(device))
-                # Create a tensor of zeros with the same number of samples
-                zeros_tensor: torch.Tensor = torch.zeros(val_predictions.shape[0], 1).to(device)
-                # Concatenate the predictions tensor with the zeros tensor
-                val_predictions: torch.Tensor = torch.cat((val_predictions, zeros_tensor), dim=1).to(device)
-                # Calculate the validation loss
-                val_loss: torch.Tensor = loss_function(val_predictions, y_validation.squeeze().to(device))
-                val_loss_sum += val_loss.item() * len(x_validation)
-                val_samples += len(x_validation)
-
-            validation_losses.append(val_loss_sum / val_samples)  # record avg validation loss
-
-            # Print training and validation loss for each epoch
-            print(
-                f"Epoch {epoch + 1}/{EPOCHS}: Train Loss: {training_losses[-1]:.4f}, Val Loss: {validation_losses[-1]:.4f}"
-            )
-
-            # Save checkpoint if we've reached the interval
-            if (epoch + 1) % chkpt_interval == 0:
-                # Define the checkpoint file path
-                checkpoint_path = f"Checkpoint/{model_number}/checkpoint_{epoch + 1}.pth"
-
-                # Save the checkpoint
-                checkpoint = {
-                    "epoch": epoch + 1,
-                    "model_state_dict": bilstm.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
-                    "train_loss": training_losses,
-                    "val_loss": validation_losses,
-                }
-                torch.save(checkpoint, checkpoint_path)
-    return bilstm, training_losses, validation_losses, epochs
-
-
-def read_npz_files(npz_dir):
-    if npz_dir == 'Data/MultiNLI/train_embeddings.npz':
-        npz_dir = "Data/NPZ/Train"
-        file_list = []
-        for file_name in os.listdir(npz_dir):
-            if file_name.endswith(".npz"):
-                file_path = os.path.join(npz_dir, file_name)
-                file_list.append(file_path)
-
-        # Sort the file list by creation time
-        sorted_file_list = sorted(file_list, key=os.path.getmtime)
-        print(len(sorted_file_list))
-
-        def data_generator():
-            for filepath in sorted_file_list:
-                print(filepath)
-                loaded_data = np.load(filepath)
-
-                for key in loaded_data.files:
-                    yield loaded_data[key]
-
-        return data_generator()
-    else:
-        return read_npz_file(npz_dir)
-
-
-def clean_train_data(dataset: str, device: str, batch_size: int) -> Tuple[DataLoader, DataLoader]:
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe(dataset)  # get data from file for labels
-
-    # Make labels
-    labels: List[int] = [1 if x == "contradiction" else 0 for x in multinli_df["gold_label"]]
-
-    data_generator = read_npz_files(f"Data/MultiNLI/{dataset}_embeddings.npz")  # Get data generator
-
-    # Create a placeholder for the first batch
-    x_batch, y_batch = None, None
-
-    def generate_batch():
-        nonlocal x_batch, y_batch
-
-        # Load data from the generator until there's no more data
-        try:
-            data = next(data_generator)
-        except StopIteration:
-            return None
-
-        # Process the loaded data
-        x_data = data
-        y_data = labels[len(x_data)]
-
-        x_batch = torch.tensor(x_data).to(device)
-        y_batch = torch.tensor(y_data).to(device)
-
-        return x_batch, y_batch
-
-    # Generate the first batch
-    x_batch, y_batch = generate_batch()
-
-    def batch_generator():
-        while x_batch is not None:
-            yield x_batch, y_batch
-            x_batch, y_batch = generate_batch()
-
-    print(len(x_batch), len(y_batch))
-    train_dataset = TensorDataset(x_batch, y_batch)
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-
-    return batch_generator(), train_dataloader
-
-
-def read_npz_file(file_path):
-    loaded_data = np.load(file_path)
-    data = {}
-
-    for key in loaded_data.files:
-        data[key] = loaded_data[key]
-
-    return data
-
-
-if __name__ == "__main__":
-    # Check if GPU is available
-    if torch.cuda.is_available():
-        print("GPU is available. PyTorch is using GPU:", torch.cuda.get_device_name(DEVICE))
-    else:
-        print("GPU is not available. PyTorch is using CPU.")
-
-    # Create the "Models" folder if it doesn't exist
-    if not os.path.exists("Models"):
-        os.makedirs("Models")
-    # Create the "Models" folder if it doesn't exist
-    if not os.path.exists("Figures"):
-        os.makedirs("Figures")
-
-    model_num: int = count_files("Models")
-
-    # Create the "Checkpoint" folder if it doesn't exist
-    if not os.path.exists(f"Checkpoint/{model_num}"):
-        os.makedirs(f"Checkpoint/{model_num}")
-
-    model_save_path: str = f"Models/{DATASET}_{TESTSET}.pth"
-    model_load_path: str = f""  # train model anew
-    # model_load_path: str = f"Checkpoint/{model_num - 1}"  # load checkpoint
-    # model_load_path: str = f"Models/match.pth"  # load other model and continue training
-
-    DEVICE = 'cpu'
-
-    print(f"Training model to save to {model_save_path}")
-
-    # batch_gen, train_dataloader = clean_train_data(DATASET, DEVICE, BATCH_SIZE)
-
-    class_counts = torch.tensor([261799/392702, 130903/392702])
-    total_samples = class_counts.sum()
-    class_weights = total_samples / class_counts
-    pos_weight = class_weights[1]
-
-    multinli_df: pd.DataFrame = load_txt_file_to_dataframe(DATASET)  # get data from file for labels
-
-    # Make labels
-    multinli_labels: List[int] = [1 if x == "contradiction" else 0 for x in multinli_df["gold_label"]]
-
-    bilstm: BiLSTMModel = BiLSTMModel(INPUT_SIZE, HIDDEN_SIZE, NUM_LAYERS, OUTPUT_SIZE).to(DEVICE)
-    loss_function: nn.BCEWithLogitsLoss = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(3.0))
-    # loss_function: nn.CrossEntropyLoss = nn.CrossEntropyLoss()
-    optimizer: optim.Adam = optim.Adam(bilstm.parameters(), lr=LEARNING_RATE)
-
-    npz_dir = "Data/NPZ/Train"
-    file_list = []
-    for file_name in os.listdir(npz_dir):
-        if file_name.endswith(".npz"):
-            file_path = os.path.join(npz_dir, file_name)
-            file_list.append(file_path)
-
-    # Sort the file list by creation time
-    sorted_file_list = sorted(file_list, key=os.path.getmtime)
-
-    # Prep validation data
-    test_df: pd.DataFrame = load_txt_file_to_dataframe(TESTSET)  # get data from file for labels
-
-    # Make labels
-    test_labels: List[int] = [1 if x == "contradiction" else 0 for x in test_df["gold_label"]]
-
-    test_data = read_npz_files(f"Data/MultiNLI/{TESTSET}_embeddings.npz")  # Read embeddings of data generated by BERT
-
-    # Create validation sets
-    x_data, y_data = [], []
-    for key, value in test_data.items():
-        x_data.append(np.array(value))
-        y_data.append(test_labels[int(key)])
-
-    x_data = np.array(x_data)
-    # print(x_data.shape)
-    # Convert x_data and y_data to tensors
-    x_validation: torch.Tensor = torch.tensor(x_data).to(DEVICE).reshape(x_data.shape[0], x_data.shape[1], x_data.shape[2])
-    y_validation: torch.Tensor = torch.tensor(np.array(y_data)).float().to(DEVICE)
-
-    print("Validation set ready")
-
-    train_losses = []
-    validation_losses = []
-
-    # Training loop
-    for epoch in range(0, EPOCHS):
-        bilstm.train()  # get to training
-        train_loss_sum: float = 0.0
-        train_samples: int = 0
-
-        batch_count = 0
-
-        # Iterate over the shuffled batches
-        for data_path in sorted_file_list:
-            # print(data_path)
-            data = read_npz_file(data_path)
-            # print(list(data.keys())[0], list(data.keys())[-1])
-
-            batch_x = np.stack(list(data.values()))
-
-            min_index = int(batch_count * BATCH_SIZE)
-            max_index = min(int(min_index + BATCH_SIZE), len(multinli_labels))
-
-            labels = multinli_labels[min_index:max_index]
-            batch_y = np.array(labels)
-            # print(batch_y.shape)
-
-            # Convert NumPy arrays to Torch tensors if needed
-            batch_x = torch.from_numpy(batch_x).to(DEVICE)
-            batch_y = torch.from_numpy(batch_y).squeeze().to(DEVICE).float()
-
-            # Apply class weights to the target tensor
-            weighted_batch_y = batch_y.to(DEVICE)
-            weighted_batch_y[weighted_batch_y == 1] *= pos_weight
-
-            # Forward pass
-            predictions: torch.Tensor = bilstm(batch_x)
-            predictions = predictions.squeeze()
-
-            # print(predictions.shape)
-            # print(batch_y.shape)
-            # print(weighted_batch_y.shape)
-
-            # Calculate the training loss
-            loss: torch.Tensor = loss_function(predictions, weighted_batch_y)
-            train_loss_sum += loss.item() * len(batch_x)
-            train_samples += len(batch_x)
-
-            # Backpropagation
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            # Delete the loaded data to free up memory
-            del data, batch_x, batch_y, predictions, loss
-            batch_count += 1
-
-        train_losses.append(train_loss_sum / train_samples)  # record avg training loss
-        print(train_losses)
-
-        # Validation phase
-        bilstm.eval()
-        val_loss_sum: float = 0.0
-        val_samples: int = 0
-        with torch.no_grad():
-            # Forward pass on the validation set
-            val_predictions: torch.Tensor = bilstm(x_validation.to(DEVICE))
-            # Apply class weights to the target tensor
-            weighted_validation_y = y_validation.to(DEVICE)
-            # print(weighted_validation_y)
-            weighted_validation_y[weighted_validation_y == 1] *= pos_weight
-            # print(val_predictions.squeeze().shape, y_validation.squeeze().shape)
-            # # Create a tensor of zeros with the same number of samples
-            # zeros_tensor: torch.Tensor = torch.zeros(val_predictions.shape[0], 1).to(DEVICE)
-            # # Concatenate the predictions tensor with the zeros tensor
-            # val_predictions: torch.Tensor = torch.cat((val_predictions, zeros_tensor), dim=1).to(DEVICE)
-            # Calculate the validation loss
-            val_loss: torch.Tensor = loss_function(val_predictions.squeeze(), weighted_validation_y.squeeze().to(DEVICE))
-            val_loss_sum += val_loss.item() * len(x_validation)
-            val_samples += len(x_validation)
-
-        validation_losses.append(val_loss_sum / val_samples)
-
-        print(
-            f"Epoch {epoch + 1}/{EPOCHS}: Train Loss: {train_losses[-1]:.4f} Validation Loss: {validation_losses[-1]:.4f}"
-        )
-
-        # Save checkpoint if we've reached the interval
-        if (epoch + 1) % CHKPT_INTERVAL == 0:
-            # Define the checkpoint file path
-            checkpoint_path = f"Checkpoint/{model_num}/checkpoint_{epoch + 1}.pth"
-
-            # Save the checkpoint
-            checkpoint = {
-                "epoch": epoch + 1,
-                "model_state_dict": bilstm.state_dict(),
-                "optimizer_state_dict": optimizer.state_dict(),
-                "train_loss": train_losses,
-            }
-            torch.save(checkpoint, checkpoint_path)
-            print("Checkpoint saved")
-
-    # print("Data loaded")
-    #
-    # # model, train_losses, val_losses, x_range = train_model(
-    # #     model_num,
-    # #     train_dataloader,
-    # #     x_val,
-    # #     y_val,
-    # #     INPUT_SIZE,
-    # #     HIDDEN_SIZE,
-    # #     NUM_LAYERS,
-    # #     OUTPUT_SIZE,
-    # #     EPOCHS,
-    # #     LEARNING_RATE,
-    # #     CHKPT_INTERVAL,
-    # #     DEVICE,
-    # #     path_to_load_model=model_load_path,
-    # # )
-
-    # Save the entire model
-    torch.save(bilstm, model_save_path)
-    print(f"Model saved to {model_save_path}")
-    print(train_losses)
-
-    # Plot the training and validation loss curves
-    plt.plot(range(1, EPOCHS + 1), train_losses, label="Training Loss")
-    plt.plot(range(1, EPOCHS + 1), validation_losses, label="Validation Loss")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.title("Training and Validation Loss")
-    plt.legend()
-    plt.savefig(f"Figures/fig_{model_num}.svg", format="svg")
-    plt.close()
+class SentenceClassifier(nn.Module):
+    def __init__(self, input_dim=768, hidden_dim=None, output_dim=1, dropout_prob=0.0):
+        super(SentenceClassifier, self).__init__()
+        if hidden_dim is None:
+            hidden_dim = [256, 128, 64]
+        self.n = len(hidden_dim)
+        self.layers = nn.ModuleList()
+        prev_dim = input_dim
+        for dim in hidden_dim:
+            self.layers.append(nn.Linear(prev_dim, dim))
+            self.layers.append(nn.ReLU())
+            self.layers.append(nn.Dropout(dropout_prob))
+            prev_dim = dim
+
+        # Add a convolutional layer
+        self.conv_layer = nn.Conv1d(in_channels=prev_dim, out_channels=32, kernel_size=3, padding=1)
+        self.maxpool_layer = nn.MaxPool1d(kernel_size=2)
+
+        # Add global average pooling layer to collapse
+        self.pooling_layer = nn.AdaptiveAvgPool1d(1)
+
+        self.output_layer = nn.Linear(32, output_dim)
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+
+        # Apply convolutional and pooling layers
+        x = x.permute(0, 2, 1)  # Permute to (batch_size, channels, sequence_length)
+        x = self.conv_layer(x)
+        x = self.maxpool_layer(x)
+        x = x.permute(0, 2, 1)  # Permute back to (batch_size, sequence_length, channels)
+
+        # Apply global average pooling to collapse
+        x = self.pooling_layer(x).squeeze(-1)
+
+        return torch.sigmoid(self.output_layer(x))
+
+
+n = 30
+t = 5
+num_epochs = 10
+batch_size = 256
+
+train_df = pd.read_csv("Data/match.csv").head(n)
+test_df = pd.read_csv("Data/match.csv").head(t)
+train_df['label'] = np.where(train_df['gold_label'] == 'contradiction', 1, 0)  # label cleaning
+test_df['label'] = np.where(test_df['gold_label'] == 'contradiction', 1, 0)  # label cleaning
+
+train_df['embeddings'] = train_df.apply(apply_get_bert_embeddings, axis=1)
+test_df['embeddings'] = test_df.apply(apply_get_bert_embeddings, axis=1)
+
+# Sample BERT embeddings (replace this with the actual embeddings from get_bert_embeddings function)
+train_bert_embeddings = torch.stack(list(train_df['embeddings']), dim=0)
+test_bert_embeddings = torch.stack(list(test_df['embeddings']), dim=0)
+# Initialize the model
+model = SentenceClassifier()
+device = torch.device('cpu')
+model = model.to(device)
+
+print("Model on CPU")
+
+# Define the loss function (binary cross-entropy loss)
+criterion = nn.BCEWithLogitsLoss()
+
+# Define the optimizer (e.g., Adam optimizer)
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+for epoch in range(num_epochs):
+    model.train()  # Set the model to training mode
+    running_loss = 0.0
+
+    for i in range(0, len(train_df), batch_size):
+        # Prepare the batch
+        batch_embeddings = train_bert_embeddings[i:i+batch_size]
+
+        # Get the corresponding labels for this batch
+        batch_labels = train_df['label'].iloc[i:i + batch_size].values
+        batch_labels = torch.tensor(batch_labels.astype(float),  dtype=torch.float32).view(-1, 1)
+
+        # Zero gradients
+        optimizer.zero_grad()
+
+        # Forward pass
+        outputs = model(batch_embeddings)
+
+        # Compute the loss
+        loss = criterion(outputs, batch_labels)
+
+        # Backpropagation
+        loss.backward()
+
+        # Optimize (update model parameters)
+        optimizer.step()
+
+        # Update running loss
+        running_loss += loss.item()
+
+    # Print the average loss for this epoch
+    average_loss = running_loss / (len(train_df) / batch_size)
+    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {average_loss:.4f}")
+
+# After training, you can use the model for predictions
+with torch.no_grad():
+    model.eval()  # Set the model to evaluation mode
+    output = model(test_bert_embeddings)
+    rounded_outputs = [int(round(output[i].item())) for i in range(len(output))]
+    correct = 0
+    for i in range(len(output)):
+        # print(f"Actual: {test_df.iloc[i]['label']} | Predicted: {round(output[i].item())}")
+        if int(test_df.iloc[i]['label']) == int(round(output[i].item())):
+            correct += 1
+print(f"Accuracy: {correct / len(output)}")
+print(list(test_df['label']))
+print(output)
+print(rounded_outputs)
+print(f"F1: {f1_score(list(test_df['label']), rounded_outputs)}")

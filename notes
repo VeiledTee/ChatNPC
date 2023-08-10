@@ -1,6 +1,6 @@
 - bullet point
 * to do
-
+------------------------------------------------------------------------------------------------------
 NOTES:
 - use vector database for efficient storage and retrieval of data
 - for testing model:
@@ -12,7 +12,7 @@ NOTES:
 - dynamic ID
 * test different embeddings (all-mpnet-base-v2 vs all-MiniLM-L6-v2)
 
------------------------------------
+------------------------------------------------------------------------------------------------------
 - semantic role labeling
 	- go from phrase to topic
 - 4-5 more topics
@@ -41,8 +41,7 @@ PROBLEMS
 1. determine if talking about same thing
 2. determine if contrasting
 3. do something (confidence score, etc.)
------------------------------------
-Paper flow:
+------------------------------------------------------------------------------------------------------
 Intro
     Introduce project and motivation
 Related Works
@@ -86,8 +85,168 @@ Building the Dialogue System
         Relational Database
         Vector Database
 
--------------------------------
+------------------------------------------------------------------------------------------------------
 Hallucinating example
 can you provide me references for an author that discusses AI in dialogue systems
 chat online -> Hallucinated a book that exists but incorrect authors
 after asking it to verify actual book
+------------------------------------------------------------------------------------------------------
++++ 	Linguistics Papers	+++
+MAIN IDEAS: 
+	+ Contradiction: two sentences that are unlikely/cannot appear at the same time
+	+ Context embeddings put contradicting terms close together in vector space
+	+ Embed sentences as a pair -> want to preserve the ideas from sentences so combine into one embedding
+
++ Contradticiton Detection in Financial Reports +
+	- Additional pre-training (part-of-speech tagging) to enhance semantic capabilties (spaCy framework)
+	- XLM-RoBERTa (most general model) performs best when pretrained for POS tagging and fine tuned on SNLI and finCD datasets
+	- Architecture: 
+		* encoder + feed-forward network
+	- pre-training on finacial docs may not help with contradiction detection
+	- future work, include more info as context for transformer
+	
++ Factual Inconsistency Classification +
+	- 4 model pipeline
+		* Input: Claim, Context
+		* Claim, Context > M1 > Inconsistent claim triples <S, R, T>, inconsistnet context span
+		* Claim, Context, Inconsistent claim triples <S, R, T>, inconsistent context span > M2 > Inconsistency type, Inconsistent claim component
+		* Inconsistent context span, inconsistnet claim component > M3 > coarse Inconsistent entity type
+		* Inconsistent context span, inconsistnet claim component, coarse Inconsistent entity type > M4 > Fine-grained inconsistent entity-type
+		
++ Contradiction-Specific Word Embeddings +
+	- Contradiction occurs hwen sentencews are unliekly to be correct at the same time
+	- PROBLEM: Contradicting words and sentences are very close in vector space
+	- CONTRIBUTION: Data constructino method to generate large-scale corpus for contradiction specific word embeddings (CWE)
+	- CONTRIBUTION: Neural net for CWE
+	- CONTRIBUTION: apply CWE in smeantic relation representation to detect contradiction (+6.11% above SotA)
+	- CWE Learning Model:
+		* 5 layers: lookup > linear > tanh > sum > linear
+		* Input: pair of sentences
+		* solve classificatino problem through ranking objective function
+	- Classifier:
+		* 6 layers: lookup (embedding) > convolution > max pool > tanh > composition > softmax
+		* left side: full sentences as input, looks at sementic relation between them
+		* right side: learns from unaligned phrases (obtained by removing overlappign words from sentences)
+		* 3 features added to softmax input > negation (odd # of neg. words deemed to be an indicator, word order (difference in word order between overlapping words in sentence pairs), and unaligned word order (avg # unaligned words after removing overlapping words, w large value roughly indicated entailment)
+	- Outperforms other models
+	
++ Sarcasm Recognition +
+https://aclanthology.org/2023.eacl-main.25.pdf
+	- Uses prompt template
+		* given x='best pizza ever!', x_p = x it is [MASK].
+		* Verbalizer maps from label word set to label space
+		* P(y | x_p) takes class y and calculates the probability given x_p 
+		* model predicts [MASK] is + if p(V_pos) > p(V_neg), and - if p(V_neg) > p(V_pos)
+	- Clash prompt: mimic actual intention
+		* 5 different examples (x Actually [MASK], x In reality it was [MASK], x, As a matter of fact, it was [MASK], x To tell you the truth, it was [MASK], x In fact, it was [MASK])
+		* fact-related phrases to express (in)consistency with facts
+	- Question prompt: telling the model the task is to ID sarcasm by asking a question
+		* More direct than clash prompts
+		* 3 examples (x Are you kidding? [MASK], x Are you sarastic? [MASK], x Are you ironic? [MASK])
+	- Goal of verbalizer was to determine label words to replace mask, then how to map label words to corresponding labels
+		* Step 1: Label word searching
+			- Find [MASK] appropriate words 
+			- For question prompt, "Yes" or "No" is sufficient
+			- For clash prompt, 3 stages
+				* determine seed words based on stats info
+				* retrieve candidate words using knowledge based on seed words
+				* denoise and obtain final label words based on rules
+		* Step 2: Verbalizer mapping
+			- Map predicted probability of label words to final label y
+			- question prompt: only one label in each class
+			- clash prompt: avg of label words based on label word searching process as class probability
+
++ Transformer guided Chaining +
+https://aclanthology.org/2023.findings-acl.588.pdf
+	- OBSERVATION: 84.5% accuracy with minimalist transformer, requires 1-step inference to be carefully trained
+	- OBSERVATION: Inferred reasoning chains are 78% correct but can be over twice the lengths of optimal chains
+	- OBSERVATION: First Order Logic (FOL) with simple conjunctions and existenial quantifiers are easier to handle, equivalence is more difficult
+	- FOL contradiction definition: P !entail H (and) P entail !H
+	- Logic model
+		* Consider Forward Chaining algorithm
+		* Use a transformer to do fact unification and rule inference
+		* Second transformer to verify given hypothesisagainst known facts
+		* Rule Inference
+			- given current known facts and a rule, check if matches exist and infer new facts from knowledge (intermediate facts)
+			- T5 transformer was used 
+		* Fact Checking
+			- verifies given hypothesis against known facts
+		* Assemble Chain
+			- Store rule and intermediate facts each time a rule is satisfied
+			- If hypothesis is verified, stored rules and facts are assembled to form a reasoning chain
+
++ Mitigating contradictions based on contrastive learning +
+https://aclanthology.org/2022.findings-acl.219.pdf
+	- OBSERVATION: MCCL (Mitigate Contradiction via Contrastive Learning) contrasts target response with negative pairs
+	- Contrastive learning: learn features of a dataset without labels by determining which data points are similar or different
+		* Train model to learn response represantation by contrasting positive pairs with negative pairs
+		* straightforward approach: treat randomly selected responses from different conversations as semantic negative examples 
+		* helps model identify which features make output positive or negative
+	- minimizes similarity between target response and self-contradiction negative example
+	- maximizes similarity between target and semantic-aligned positive example
+
++ Contradiction detection for rumours +
+https://aclanthology.org/W16-5004.pdf
+	- Data: Tweets and twitter threads
+	- Contradiction at text similarity only, not semantic
+	- Recognizing textual Entailment (RTE) framework
+	- distinguish between two contradiction types: 
+		* Independent Contradictions: contradictory relation between independent posts, two tweets contain different info about same target that can't simultaneously be true
+		* Disagreeing Replies: contradictory relation between claim-orienting tweet anf a direct reply, where the reply expresses disagreement with the claim-introducing tweet
+	- Both types tackled as three-way RTE task on pairs of tweets
+	- RTE:
+		* entailment, contradiction, or neutral/unknown
+		* http://hltfbk.github.io/Excitement-Open-Platform/
+	- Text similarity features:
+		* Vocab overlap: used cosine similarity and f1 score for content word stem types, 4 features (cosine, cosine_pos, f_score, f_score_pos -> Part-Of-Speech btw)
+		* Local overlap: overlap of stemmed word tokens found using Smith-Waterman algorithm
+	- Classifiers: Nearest centroids and random forest
+	- Using text similarity can account for varying sequences of tokens ("the cat chased the mouse" and "the mouse was chased by the cat" both say the same thing in different ways
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
