@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
 import matplotlib
 import torch
@@ -13,13 +13,23 @@ from sklearn.metrics import accuracy_score, f1_score
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import torch
+from transformers import BertTokenizer, BertModel
+import torch
 import torch.nn as nn
+from transformers import AutoTokenizer, AutoModel
 import numpy as np
+import torch.nn.functional as F
 
 from variables import DEVICE
 import logging
+from persitent_homology import persistent_homology_features
 
 logging.getLogger("transformers").setLevel(logging.ERROR)
+
+# Set a random seed for reproducibility
+SEED = 42
+torch.manual_seed(SEED)
+torch.backends.cudnn.deterministic = True
 
 
 class CustomDataset(Dataset):
@@ -178,12 +188,76 @@ def calculate_f1(predictions, true):
     return f1
 
 
-# # Set a random seed for reproducibility
-# SEED = 42
-# torch.manual_seed(SEED)
-# torch.backends.cudnn.deterministic = True
-print()
+def apply_get_bert_embeddings(row):
+    return get_bert_embeddings(row["sentence1"], row["sentence2"]).squeeze()
 
+
+def get_bert_embeddings(sentence1: str, sentence2: str) -> torch.Tensor:
+    # Load pre-trained BERT model and tokenizer
+    tokenizer: BertTokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    bert_model: BertModel = BertModel.from_pretrained("bert-base-uncased")
+
+    # Tokenize the sentences and obtain the input IDs and attention masks
+    tokens: Dict[str, torch.Tensor] = tokenizer.encode_plus(
+        sentence1, sentence2, add_special_tokens=True, padding="longest", truncation=True
+    )
+    input_ids: torch.Tensor = torch.tensor(tokens["input_ids"]).unsqueeze(0)  # Add batch dimension
+    attention_mask: torch.Tensor = torch.tensor(tokens["attention_mask"]).unsqueeze(0)  # Add batch dimension
+
+    # Pad or truncate the input IDs and attention masks to the maximum sequence length
+    input_ids = torch.nn.functional.pad(input_ids, (0, 50 - input_ids.size(1)))
+    attention_mask = torch.nn.functional.pad(attention_mask, (0, 50 - attention_mask.size(1)))
+
+    # Obtain the BERT embeddings
+    with torch.no_grad():
+        bert_outputs: Tuple[torch.Tensor] = bert_model(input_ids, attention_mask=attention_mask)
+        embeddings: torch.Tensor = bert_outputs.last_hidden_state  # Extract the last hidden state
+    print(embeddings.shape)
+    return embeddings
+
+
+def get_sentence_embedding(sentence: str) -> torch.Tensor:
+    # Load pre-trained BERT model and tokenizer
+    model_name = "bert-base-uncased"
+    tokenizer = BertTokenizer.from_pretrained(model_name)
+    model = BertModel.from_pretrained(model_name)
+
+    # Tokenize the input sentence
+    tokens = tokenizer(sentence, padding=True, truncation=True, return_tensors="pt")
+
+    # Get the model output
+    with torch.no_grad():
+        outputs = model(**tokens)
+
+    # Get the representation of [CLS] token (sentence embedding)
+    sentence_embedding = outputs.last_hidden_state[:, 0, :]  # [batch_size, hidden_size]
+    return sentence_embedding.squeeze()
+
+
+def count_negations(sentences: List[str]) -> int:
+    negation_count: int = 0
+    for sentence in sentences:
+        # Load the BERT tokenizer
+        tokenizer: BertTokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+        # Count the negation words
+        negation_words: List[str] = ["not", "no", "never", "none", "nobody", "nowhere", "nothing", "neither", "nor"]
+        # Preprocess contractions
+        sentence: str = sentence.replace("n't", " not")
+        sentence: str = sentence.replace("'re", " are")
+        sentence: str = sentence.replace("'ll", " will")
+        # tokenize
+        words: tokenizer = tokenizer.tokenize(sentence)
+        # Count the negation words
+        negation_count += sum(1 for word in words if word.lower() in negation_words)
+
+    return negation_count
+
+
+def str_to_tensor(string: str) -> torch.Tensor:
+    string = string.replace('\n', '')
+    nums = string[9:-2].strip().split(", ")
+    num_list = [float(num_str) for num_str in nums]
+    return torch.tensor(num_list)
 
 # matplotlib.use('TkAgg')
 #
@@ -297,153 +371,189 @@ print()
 #
 # plt.tight_layout()
 # plt.show()
-def apply_get_bert_embeddings(row):
-    return get_bert_embeddings(row["sentence1"], row["sentence2"]).squeeze()
-
-
-def get_bert_embeddings(sentence1: str, sentence2: str) -> torch.Tensor:
-    # Load pre-trained BERT model and tokenizer
-    tokenizer: BertTokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    bert_model: BertModel = BertModel.from_pretrained("bert-base-uncased")
-
-    # Tokenize the sentences and obtain the input IDs and attention masks
-    tokens: Dict[str, torch.Tensor] = tokenizer.encode_plus(
-        sentence1, sentence2, add_special_tokens=True, padding="longest", truncation=True
-    )
-    input_ids: torch.Tensor = torch.tensor(tokens["input_ids"]).unsqueeze(0)  # Add batch dimension
-    attention_mask: torch.Tensor = torch.tensor(tokens["attention_mask"]).unsqueeze(0)  # Add batch dimension
-
-    # Pad or truncate the input IDs and attention masks to the maximum sequence length
-    input_ids = torch.nn.functional.pad(input_ids, (0, 64 - input_ids.size(1)))
-    attention_mask = torch.nn.functional.pad(attention_mask, (0, 64 - attention_mask.size(1)))
-
-    # Obtain the BERT embeddings
-    with torch.no_grad():
-        bert_outputs: Tuple[torch.Tensor] = bert_model(input_ids, attention_mask=attention_mask)
-        embeddings: torch.Tensor = bert_outputs.last_hidden_state  # Extract the last hidden state
-
-    return embeddings
 
 
 class SentenceClassifier(nn.Module):
-    def __init__(self, input_dim=786, output_dim=1):
+    def __init__(self):
         super(SentenceClassifier, self).__init__()
 
-        # Add a convolutional layer
-        self.conv_layer = nn.Conv1d(in_channels=input_dim, out_channels=32, kernel_size=3, padding=1)
-        self.maxpool_layer = nn.MaxPool1d(kernel_size=2)
+        # Define your layers
+        self.conv1 = nn.Conv1d(in_channels=768, out_channels=64, kernel_size=1)
+        self.maxpool = nn.MaxPool1d(kernel_size=1)
+        self.fc1 = nn.Linear(129, 32)  # composition layer
+        self.fc2 = nn.Linear(32, 1)  # output layer
 
-        self.tanh = nn.Tanh()
-        self.sigmoid = nn.Sigmoid()
+    def forward(self, inputs):
+        x1, x2, additional_feature = inputs
 
-        self.output_layer = nn.Linear(32, output_dim)
+        # Apply convolution and max pooling
+        # print(f"1a: {x1.unsqueeze(2).shape}")
+        # print(f"1b: {x2.unsqueeze(2).shape}")
 
-    def forward(self, x):
-        # Apply convolutional and pooling layers
-        x = x.permute(0, 2, 1)  # Permute to (batch_size, channels, sequence_length)
-        x = self.conv_layer(x)
-        x = self.maxpool_layer(x)
+        x1 = F.relu(self.conv1(x1.unsqueeze(2)))  # Add a channel dimension
+        # print(f"2a: {x1.shape}")
+        x1 = self.maxpool(x1)
+        # print(f"3a: {x1.shape}")
+        x2 = F.relu(self.conv1(x2.unsqueeze(2)))  # Add a channel dimension
+        # print(f"2b: {x2.shape}")
+        x2 = self.maxpool(x2)
+        # print(f"3b: {x2.shape}")
 
-        # Apply tanh activation
-        x = self.tanh(x)
+        # Apply tanh activation function to x1 and x2 tensors
+        x1 = torch.tanh(x1)
+        x2 = torch.tanh(x2)
 
-        # Apply global average pooling to collapse
-        x = torch.mean(x, dim=-1)
+        # Flatten the convolutional outputs
+        x1 = x1.view(x1.size(0), -1)
+        x2 = x2.view(x2.size(0), -1)
+        # print(f"4a: {x1.shape}")
+        # print(f"4b: {x2.shape}")
 
-        x = self.output_layer(x)
+        # Concatenate the flattened outputs and additional feature
+        concatenated = torch.cat((x1, x2, additional_feature), dim=1)
+        # print(f"Concat: {concatenated.shape}")
 
-        # Apply sigmoid activation
-        x = self.sigmoid(x)
+        # Apply fully connected layers
+        x = self.fc1(concatenated)
+        output = torch.sigmoid(self.fc2(x))
 
-        return x
+        return output
 
+if __name__ == '__main__':
+    num_epochs = 10
+    batch_size = 5
 
-n = 30
-t = 6
-num_epochs = 10
-batch_size = 256
+    # Load and preprocess the data
+    n = 50
+    v = 10
+    t = 10
+    # n = None
+    # v = None
+    # t = None
+    if n is not None and t is not None:
+        train_df = pd.read_csv("Data/match_cleaned.csv").head(n)
+        valid_df = pd.read_csv("Data/mismatch_cleaned.csv").head(v)
+        test_df = pd.read_csv("Data/contradiction-dataset_cleaned.csv").head(t)
+    else:
+        train_df = pd.read_csv("Data/match_cleaned.csv")
+        valid_df = pd.read_csv("Data/mismatch_cleaned.csv")
+        test_df = pd.read_csv("Data/contradiction-dataset_cleaned.csv")
 
-train_df = pd.read_csv("Data/match.csv").head(n)
-test_df = pd.read_csv("Data/match.csv").head(t)
-train_df["label"] = np.where(train_df["gold_label"] == "contradiction", 1, 0)  # label cleaning
-test_df["label"] = np.where(test_df["gold_label"] == "contradiction", 1, 0)  # label cleaning
+    # correctly format tensors
+    train_df['sentence1_embeddings'] = train_df['sentence1_embeddings'].apply(str_to_tensor)
+    train_df['sentence2_embeddings'] = train_df['sentence2_embeddings'].apply(str_to_tensor)
+    valid_df['sentence1_embeddings'] = valid_df['sentence1_embeddings'].apply(str_to_tensor)
+    valid_df['sentence2_embeddings'] = valid_df['sentence2_embeddings'].apply(str_to_tensor)
+    test_df['sentence1_embeddings'] = test_df['sentence1_embeddings'].apply(str_to_tensor)
+    test_df['sentence2_embeddings'] = test_df['sentence2_embeddings'].apply(str_to_tensor)
+    # stack tensors to pass to model
+    train_bert_embeddings_sentence1 = torch.stack(list(train_df["sentence1_embeddings"]), dim=0)
+    train_bert_embeddings_sentence2 = torch.stack(list(train_df["sentence2_embeddings"]), dim=0)
+    valid_bert_embeddings_sentence1 = torch.stack(list(valid_df["sentence1_embeddings"]), dim=0)
+    valid_bert_embeddings_sentence2 = torch.stack(list(valid_df["sentence2_embeddings"]), dim=0)
+    test_bert_embeddings_sentence1 = torch.stack(list(test_df["sentence1_embeddings"]), dim=0)
+    test_bert_embeddings_sentence2 = torch.stack(list(test_df["sentence2_embeddings"]), dim=0)
+    # load model
+    model = SentenceClassifier()
+    device = torch.device(DEVICE)
+    model = model.to(device)
+    criterion = nn.BCEWithLogitsLoss().to(device)
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-train_df["embeddings"] = train_df.apply(apply_get_bert_embeddings, axis=1)
-test_df["embeddings"] = test_df.apply(apply_get_bert_embeddings, axis=1)
+    print(f"Model on {device}")
 
-# Sample BERT embeddings (replace this with the actual embeddings from get_bert_embeddings function)
-train_bert_embeddings = torch.stack(list(train_df["embeddings"]), dim=0)
-test_bert_embeddings = torch.stack(list(test_df["embeddings"]), dim=0)
-# Initialize the model
-model = SentenceClassifier()
-device = torch.device(DEVICE)
-model = model.to(device)
-criterion = nn.BCEWithLogitsLoss().to(device)
+    for epoch in range(num_epochs):
+        model.train()  # Set the model to training mode
+        running_loss = 0.0
+        all_predicted_labels = []
+        all_true_labels = []
 
-print(f"Model on {device}")
+        for i in range(0, len(train_df), batch_size):
+            # Prepare the batch
+            s1_embedding = train_bert_embeddings_sentence1[i : i + batch_size]
+            s2_embedding = train_bert_embeddings_sentence2[i : i + batch_size]
+            # Get the corresponding labels for this batch
+            batch_labels = train_df["label"].iloc[i : i + batch_size].values
+            batch_labels = torch.tensor(batch_labels.astype(float), dtype=torch.float32).view(-1, 1)
+            # Get additional feature values
+            num_negations = train_df["negation"].iloc[i : i + batch_size].values
+            batch_negations = torch.tensor(num_negations.astype(float), dtype=torch.float32).view(-1, 1)
+            # Move tensors to the device
+            s1_embedding = s1_embedding.to(device)
+            s2_embedding = s2_embedding.to(device)
+            batch_labels = batch_labels.to(device)
+            batch_negations = batch_negations.to(device)
+            # Forward pass
+            outputs = model([s1_embedding, s2_embedding, batch_negations])
+            # Compute the loss
+            loss = criterion(outputs, batch_labels)
+            # Backpropagation
+            optimizer.zero_grad()  # Clear accumulated gradients
+            loss.backward()
+            # Optimize (update model parameters)
+            optimizer.step()
+            # Update running loss
+            running_loss += loss.item()
+            # Convert outputs to binary predictions (0 or 1)
+            predicted_labels = (outputs >= 0.5).float().view(-1).cpu().numpy()
+            true_labels = batch_labels.view(-1).cpu().numpy()
+            all_predicted_labels.extend(predicted_labels)
+            all_true_labels.extend(true_labels)
+        # Calculate training accuracy and F1-score
+        accuracy = accuracy_score(all_true_labels, all_predicted_labels)
+        f1 = f1_score(all_true_labels, all_predicted_labels)
 
-# Define the optimizer (e.g., Adam optimizer)
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+        # Print training metrics for this epoch
+        average_loss = running_loss / (len(train_df) / batch_size)
+        print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {average_loss:.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
 
-for epoch in range(num_epochs):
-    model.train()  # Set the model to training mode
-    running_loss = 0.0
-    all_predicted_labels = []
-    all_true_labels = []
+        # Validation
+        model.eval()  # Set the model to evaluation mode
+        all_val_predicted_labels = []
 
-    for i in range(0, len(train_df), batch_size):
-        # Prepare the batch
-        batch_embeddings = train_bert_embeddings[i: i + batch_size]
+        with torch.no_grad():
+            for i in range(0, len(valid_df), batch_size):
+                # Prepare the batch for validation
+                s1_embedding = valid_bert_embeddings_sentence1[i : i + batch_size]
+                s2_embedding = valid_bert_embeddings_sentence2[i : i + batch_size]
+                batch_negations = valid_df["negation"].iloc[i : i + batch_size].values
 
-        # Get the corresponding labels for this batch
-        batch_labels = train_df["label"].iloc[i: i + batch_size].values
-        batch_labels = torch.tensor(batch_labels.astype(float), dtype=torch.float32).view(-1, 1)
+                # Move tensors to the device
+                s1_embedding = s1_embedding.to(device)
+                s2_embedding = s2_embedding.to(device)
+                batch_negations = torch.tensor(batch_negations.astype(float), dtype=torch.float32).view(-1, 1).to(device)
 
-        # Move tensors to the device
-        batch_embeddings = batch_embeddings.to(device)
-        batch_labels = batch_labels.to(device)
+                # Forward pass for validation
+                val_outputs = model([s1_embedding, s2_embedding, batch_negations])
 
-        # Forward pass
-        outputs = model(batch_embeddings)
+                # Convert validation outputs to binary predictions (0 or 1)
+                val_predicted_labels = (val_outputs >= 0.5).float().view(-1).cpu().numpy()
+                all_val_predicted_labels.extend(val_predicted_labels)
 
-        # Compute the loss
-        loss = criterion(outputs, batch_labels)
+        # Calculate validation accuracy and F1-score
+        val_accuracy = accuracy_score(valid_df["label"], all_val_predicted_labels)
+        val_f1 = f1_score(valid_df["label"], all_val_predicted_labels)
 
-        # Backpropagation
-        loss.backward()
+        print(f"Validation Accuracy: {val_accuracy:.4f}, Validation F1 Score: {val_f1:.4f}")
 
-        # Optimize (update model parameters)
-        optimizer.step()
+    with torch.no_grad():
+        model.eval()  # Set the model to evaluation mode
+        predictions = np.array([])
+        for i in range(0, len(test_df), batch_size):
+            # Prepare the batch
+            s1_embedding = test_bert_embeddings_sentence1[i : i + batch_size].to(device)
+            s2_embedding = test_bert_embeddings_sentence2[i : i + batch_size].to(device)
+            # Get additional feature values
+            num_negations = test_df["negation"].iloc[i : i + batch_size].values
+            batch_negations = torch.tensor(num_negations.astype(float), dtype=torch.float32).view(-1, 1).to(device)
+            output = model([s1_embedding, s2_embedding, batch_negations])
+            # print(output)
+            predicted_labels = (output >= 0.5).float().cpu().numpy()
+            predictions = np.append(predictions, predicted_labels)
 
-        # Update running loss
-        running_loss += loss.item()
+        true_labels = test_df["label"].values
+        accuracy = accuracy_score(true_labels, predictions)
+        f1 = f1_score(true_labels, predictions)
 
-        # Convert outputs to binary predictions (0 or 1)
-        predicted_labels = (outputs >= 0.5).float().view(-1).cpu().numpy()
-        true_labels = batch_labels.view(-1).cpu().numpy()
-
-        all_predicted_labels.extend(predicted_labels)
-        all_true_labels.extend(true_labels)
-
-    # print(all_true_labels)
-    # print(all_predicted_labels)
-    accuracy = accuracy_score(all_true_labels, all_predicted_labels)
-    f1 = f1_score(all_true_labels, all_predicted_labels)
-
-    # Print training metrics for this epoch
-    average_loss = running_loss / (len(train_df) / batch_size)
-    print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {average_loss:.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
-
-with torch.no_grad():
-    model.eval()  # Set the model to evaluation mode
-    test_bert_embeddings = test_bert_embeddings.to(device)
-    output = model(test_bert_embeddings)
-    print(output)
-    predicted_labels = (output >= 0.2).float().cpu().numpy()
-    true_labels = test_df["label"].values
-
-    accuracy = accuracy_score(true_labels, predicted_labels)
-    f1 = f1_score(true_labels, predicted_labels)
-
-    print("Accuracy:", accuracy)
-    print("F1 Score:", f1)
+        print("Accuracy:", accuracy)
+        print("F1 Score:", f1)
