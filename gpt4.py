@@ -62,16 +62,16 @@ if __name__ == "__main__":
         label: int = true[i]
         # print(f"{label}\t{sentence1}\t{sentence2}")
         generated_answer = int(
-                answer(
-                    f"Output 1 if following sentences are contradictory, and 0 otherwise:\n{sentence1}\n{sentence2}",
-                    HISTORY,
-                )
+            answer(
+                f"Output 1 if following sentences are contradictory, and 0 otherwise:\n{sentence1}\n{sentence2}",
+                HISTORY,
             )
+        )
         predictions.append(generated_answer)
 
     accuracy = accuracy_score(true, predictions)
     f1 = f1_score(true, predictions)
-    target_names = ['Negative', 'Positive']
+    target_names = ["Negative", "Positive"]
     report = classification_report(true, predictions, target_names=target_names)
     print("Accuracy:", accuracy)
     print("F1 Score:", f1)
