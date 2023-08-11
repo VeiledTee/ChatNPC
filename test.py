@@ -5,17 +5,18 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from matplotlib import pyplot as plt
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, accuracy_score
 import pandas as pd
 import torch
 from transformers import BertTokenizer, BertModel
+from sklearn.metrics import accuracy_score, f1_score
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import torch
 import torch.nn as nn
 import numpy as np
 
-# from bilstm_training import get_bert_embeddings
+from variables import DEVICE
 import logging
 
 logging.getLogger("transformers").setLevel(logging.ERROR)
@@ -177,11 +178,13 @@ def calculate_f1(predictions, true):
     return f1
 
 
-# # # # Set a random seed for reproducibility
-# # SEED = 1234
-# # torch.manual_seed(SEED)
-# # torch.backends.cudnn.deterministic = True
-#
+# # Set a random seed for reproducibility
+# SEED = 42
+# torch.manual_seed(SEED)
+# torch.backends.cudnn.deterministic = True
+print()
+
+
 # matplotlib.use('TkAgg')
 #
 # # Load the preprocessed data
@@ -323,46 +326,40 @@ def get_bert_embeddings(sentence1: str, sentence2: str) -> torch.Tensor:
 
 
 class SentenceClassifier(nn.Module):
-    def __init__(self, input_dim=768, hidden_dim=None, output_dim=1, dropout_prob=0.0):
+    def __init__(self, input_dim=786, output_dim=1):
         super(SentenceClassifier, self).__init__()
-        if hidden_dim is None:
-            hidden_dim = [256, 128, 64]
-        self.n = len(hidden_dim)
-        self.layers = nn.ModuleList()
-        prev_dim = input_dim
-        for dim in hidden_dim:
-            self.layers.append(nn.Linear(prev_dim, dim))
-            self.layers.append(nn.ReLU())
-            self.layers.append(nn.Dropout(dropout_prob))
-            prev_dim = dim
 
         # Add a convolutional layer
-        self.conv_layer = nn.Conv1d(in_channels=prev_dim, out_channels=32, kernel_size=3, padding=1)
+        self.conv_layer = nn.Conv1d(in_channels=input_dim, out_channels=32, kernel_size=3, padding=1)
         self.maxpool_layer = nn.MaxPool1d(kernel_size=2)
 
-        # Add global average pooling layer to collapse
-        self.pooling_layer = nn.AdaptiveAvgPool1d(1)
+        self.tanh = nn.Tanh()
+        self.sigmoid = nn.Sigmoid()
 
         self.output_layer = nn.Linear(32, output_dim)
 
     def forward(self, x):
-        for layer in self.layers:
-            x = layer(x)
-
         # Apply convolutional and pooling layers
         x = x.permute(0, 2, 1)  # Permute to (batch_size, channels, sequence_length)
         x = self.conv_layer(x)
         x = self.maxpool_layer(x)
-        x = x.permute(0, 2, 1)  # Permute back to (batch_size, sequence_length, channels)
+
+        # Apply tanh activation
+        x = self.tanh(x)
 
         # Apply global average pooling to collapse
-        x = self.pooling_layer(x).squeeze(-1)
+        x = torch.mean(x, dim=-1)
 
-        return torch.sigmoid(self.output_layer(x))
+        x = self.output_layer(x)
+
+        # Apply sigmoid activation
+        x = self.sigmoid(x)
+
+        return x
 
 
 n = 30
-t = 5
+t = 6
 num_epochs = 10
 batch_size = 256
 
@@ -379,13 +376,11 @@ train_bert_embeddings = torch.stack(list(train_df["embeddings"]), dim=0)
 test_bert_embeddings = torch.stack(list(test_df["embeddings"]), dim=0)
 # Initialize the model
 model = SentenceClassifier()
-device = torch.device("cpu")
+device = torch.device(DEVICE)
 model = model.to(device)
+criterion = nn.BCEWithLogitsLoss().to(device)
 
-print("Model on CPU")
-
-# Define the loss function (binary cross-entropy loss)
-criterion = nn.BCEWithLogitsLoss()
+print(f"Model on {device}")
 
 # Define the optimizer (e.g., Adam optimizer)
 optimizer = optim.Adam(model.parameters(), lr=0.001)
@@ -393,17 +388,20 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 for epoch in range(num_epochs):
     model.train()  # Set the model to training mode
     running_loss = 0.0
+    all_predicted_labels = []
+    all_true_labels = []
 
     for i in range(0, len(train_df), batch_size):
         # Prepare the batch
-        batch_embeddings = train_bert_embeddings[i : i + batch_size]
+        batch_embeddings = train_bert_embeddings[i: i + batch_size]
 
         # Get the corresponding labels for this batch
-        batch_labels = train_df["label"].iloc[i : i + batch_size].values
+        batch_labels = train_df["label"].iloc[i: i + batch_size].values
         batch_labels = torch.tensor(batch_labels.astype(float), dtype=torch.float32).view(-1, 1)
 
-        # Zero gradients
-        optimizer.zero_grad()
+        # Move tensors to the device
+        batch_embeddings = batch_embeddings.to(device)
+        batch_labels = batch_labels.to(device)
 
         # Forward pass
         outputs = model(batch_embeddings)
@@ -420,22 +418,32 @@ for epoch in range(num_epochs):
         # Update running loss
         running_loss += loss.item()
 
-    # Print the average loss for this epoch
-    average_loss = running_loss / (len(train_df) / batch_size)
-    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {average_loss:.4f}")
+        # Convert outputs to binary predictions (0 or 1)
+        predicted_labels = (outputs >= 0.5).float().view(-1).cpu().numpy()
+        true_labels = batch_labels.view(-1).cpu().numpy()
 
-# After training, you can use the model for predictions
+        all_predicted_labels.extend(predicted_labels)
+        all_true_labels.extend(true_labels)
+
+    # print(all_true_labels)
+    # print(all_predicted_labels)
+    accuracy = accuracy_score(all_true_labels, all_predicted_labels)
+    f1 = f1_score(all_true_labels, all_predicted_labels)
+
+    # Print training metrics for this epoch
+    average_loss = running_loss / (len(train_df) / batch_size)
+    print(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {average_loss:.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
+
 with torch.no_grad():
     model.eval()  # Set the model to evaluation mode
+    test_bert_embeddings = test_bert_embeddings.to(device)
     output = model(test_bert_embeddings)
-    rounded_outputs = [int(round(output[i].item())) for i in range(len(output))]
-    correct = 0
-    for i in range(len(output)):
-        # print(f"Actual: {test_df.iloc[i]['label']} | Predicted: {round(output[i].item())}")
-        if int(test_df.iloc[i]["label"]) == int(round(output[i].item())):
-            correct += 1
-print(f"Accuracy: {correct / len(output)}")
-print(list(test_df["label"]))
-print(output)
-print(rounded_outputs)
-print(f"F1: {f1_score(list(test_df['label']), rounded_outputs)}")
+    print(output)
+    predicted_labels = (output >= 0.2).float().cpu().numpy()
+    true_labels = test_df["label"].values
+
+    accuracy = accuracy_score(true_labels, predicted_labels)
+    f1 = f1_score(true_labels, predicted_labels)
+
+    print("Accuracy:", accuracy)
+    print("F1 Score:", f1)
