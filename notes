@@ -12,6 +12,10 @@ NOTES:
 - dynamic ID
 * test different embeddings (all-mpnet-base-v2 vs all-MiniLM-L6-v2)
 
+- NN Model:
+    - edit rounding to 0.5 to 0.004
+        - not good idea, when more records included predictions went from ~0.002- 0.005 to ~2e-8-4e-8
+
 ------------------------------------------------------------------------------------------------------
 - semantic role labeling
 	- go from phrase to topic
@@ -23,10 +27,10 @@ NOTES:
 	- Dataset: https://cims.nyu.edu/~sbowman/multinli/
 - Contradictory event pairs
 	- https://aclanthology.org/W15-0813.pdf
-- Contradiciton for rumours
+- Contradiction for rumours
 	- https://aclanthology.org/W16-5004.pdf
 	- PHEME RTE dataset: https://www.pheme.eu/2016/04/12/pheme-rte-dataset/
-- Finding Contradicitons in Text (2008)
+- Finding Contradictions in Text (2008)
 	- https://aclanthology.org/P08-1118.pdf
 
 PROBLEMS

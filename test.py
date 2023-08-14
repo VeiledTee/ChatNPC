@@ -378,15 +378,18 @@ class SentenceClassifier(nn.Module):
         super(SentenceClassifier, self).__init__()
 
         # Define your layers
-        self.conv1 = nn.Conv1d(in_channels=768, out_channels=64, kernel_size=1)
+        self.conv1 = nn.Conv1d(in_channels=768, out_channels=128, kernel_size=1)
         self.maxpool = nn.MaxPool1d(kernel_size=1)
-        self.fc1 = nn.Linear(129, 32)  # composition layer
-        self.fc2 = nn.Linear(32, 1)  # output layer
+        self.fc1 = nn.Linear(3, 64)  # composition layer
+        self.dropout1 = nn.Dropout(0.5)  # Dropout layer 1
+        self.fc2 = nn.Linear(64, 1)  # output layer
 
     def forward(self, inputs):
-        x1, x2, additional_feature = inputs
+        x1, x2, num_negation, x1_feature_a, x1_feature_b, x2_feature_a, x2_feature_b = inputs
+        print(x1_feature_a.shape, x1_feature_b.shape)
+        print(x2_feature_a.shape, x2_feature_b.shape)
 
-        # Apply convolution and max pooling
+        # # Apply convolution and max pooling
         # print(f"1a: {x1.unsqueeze(2).shape}")
         # print(f"1b: {x2.unsqueeze(2).shape}")
 
@@ -406,31 +409,33 @@ class SentenceClassifier(nn.Module):
         # Flatten the convolutional outputs
         x1 = x1.view(x1.size(0), -1)
         x2 = x2.view(x2.size(0), -1)
-        # print(f"4a: {x1.shape}")
-        # print(f"4b: {x2.shape}")
+        print(f"4a: {x1.shape}")
+        print(f"4b: {x2.shape}")
+        print(f"4c: {num_negation.shape}")
 
         # Concatenate the flattened outputs and additional feature
-        concatenated = torch.cat((x1, x2, additional_feature), dim=1)
+        concatenated = torch.cat((x1, x2, num_negation), dim=1)
         # print(f"Concat: {concatenated.shape}")
 
-        # Apply fully connected layers
         x = self.fc1(concatenated)
+        x = self.dropout1(x)  # Applying dropout
         output = torch.sigmoid(self.fc2(x))
 
         return output
 
+
 if __name__ == '__main__':
     num_epochs = 10
-    batch_size = 5
+    batch_size = 64
 
     # Load and preprocess the data
-    n = 50
-    v = 10
-    t = 10
+    n = 2
+    v = 1
+    t = 1
     # n = None
     # v = None
     # t = None
-    if n is not None and t is not None:
+    if n is not None and v is not None and t is not None:
         train_df = pd.read_csv("Data/match_cleaned.csv").head(n)
         valid_df = pd.read_csv("Data/mismatch_cleaned.csv").head(v)
         test_df = pd.read_csv("Data/contradiction-dataset_cleaned.csv").head(t)
@@ -458,7 +463,7 @@ if __name__ == '__main__':
     device = torch.device(DEVICE)
     model = model.to(device)
     criterion = nn.BCEWithLogitsLoss().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=0.1)
 
     print(f"Model on {device}")
 
@@ -478,13 +483,30 @@ if __name__ == '__main__':
             # Get additional feature values
             num_negations = train_df["negation"].iloc[i : i + batch_size].values
             batch_negations = torch.tensor(num_negations.astype(float), dtype=torch.float32).view(-1, 1)
+
+            s1_ph_features = persistent_homology_features(list(train_df["sentence1"].iloc[i : i + batch_size]))
+            dim_0_s1_features = [item[0] for item in s1_ph_features]
+            dim_1_s1_features = [item[1] for item in s1_ph_features]
+            batch_s1_feature_a = torch.tensor(np.array(dim_0_s1_features)).to(device)
+            batch_s1_feature_b = torch.tensor(np.array(dim_1_s1_features)).to(device)
+            print(batch_s1_feature_a.shape)
+            print(batch_s1_feature_b.shape)
+
+            s2_ph_features = persistent_homology_features(list(train_df["sentence2"].iloc[i : i + batch_size]))
+            dim_0_s2_features = [item[0] for item in s2_ph_features]
+            dim_1_s2_features = [item[1] for item in s2_ph_features]
+            batch_s2_feature_a = torch.tensor(np.array(dim_0_s2_features)).to(device)
+            batch_s2_feature_b = torch.tensor(np.array(dim_1_s2_features)).to(device)
+            print(batch_s2_feature_a.shape)
+            print(batch_s2_feature_b.shape)
+
             # Move tensors to the device
             s1_embedding = s1_embedding.to(device)
             s2_embedding = s2_embedding.to(device)
             batch_labels = batch_labels.to(device)
             batch_negations = batch_negations.to(device)
             # Forward pass
-            outputs = model([s1_embedding, s2_embedding, batch_negations])
+            outputs = model([s1_embedding, s2_embedding, batch_negations, batch_s1_feature_a, batch_s1_feature_b, batch_s2_feature_a, batch_s2_feature_b])
             # Compute the loss
             loss = criterion(outputs, batch_labels)
             # Backpropagation
@@ -534,7 +556,7 @@ if __name__ == '__main__':
         val_accuracy = accuracy_score(valid_df["label"], all_val_predicted_labels)
         val_f1 = f1_score(valid_df["label"], all_val_predicted_labels)
 
-        print(f"Validation Accuracy: {val_accuracy:.4f}, Validation F1 Score: {val_f1:.4f}")
+        print(f"\tValidation Accuracy: {val_accuracy:.4f}, Validation F1 Score: {val_f1:.4f}")
 
     with torch.no_grad():
         model.eval()  # Set the model to evaluation mode
@@ -552,6 +574,8 @@ if __name__ == '__main__':
             predictions = np.append(predictions, predicted_labels)
 
         true_labels = test_df["label"].values
+        # print(true_labels)
+        # print(predictions)
         accuracy = accuracy_score(true_labels, predictions)
         f1 = f1_score(true_labels, predictions)
 

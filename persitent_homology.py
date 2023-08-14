@@ -9,14 +9,13 @@ import numpy as np
 import torch
 from ripser import ripser
 from transformers import BertTokenizer, BertModel
+from variables import DEVICE
 
-# Check if GPU is available
-if torch.cuda.is_available():
-    DEVICE = torch.device("cuda")
-    print("GPU is available. PyTorch is using GPU:", torch.cuda.get_device_name(DEVICE))
-else:
-    DEVICE = torch.device("cpu")
-    print("GPU is not available. PyTorch is using CPU.")
+import numpy as np
+from typing import List
+from tqdm import tqdm
+import concurrent.futures
+
 
 # Disable the logging level for the transformers library
 logging.getLogger("transformers").setLevel(logging.ERROR)
@@ -63,15 +62,15 @@ def top_k_holes(ph_diagrams: List[np.ndarray], k: Optional[List[int]] = None) ->
 
     top_holes: List[np.ndarray] = []
     # Iterate over each dimension
-    for dimension, diag_array in enumerate(ph_diagrams):
+    for dimension, diagram_array in enumerate(ph_diagrams):
         # Initialize an empty list to store the hole indices and their persistence values
         holes = []
         # Iterate over each feature in the diagram
-        for j in range(diag_array.shape[0]):
-            feature_birth = diag_array[j, 0]
-            feature_death = diag_array[j, 1]
+        for j in range(diagram_array.shape[0]):
+            feature_birth = diagram_array[j, 0]
+            feature_death = diagram_array[j, 1]
             persistence = feature_death - feature_birth
-            holes.append(np.array([dimension, j, feature_birth, feature_death, persistence]))
+            holes.append(np.array([feature_birth, feature_death, persistence]))
 
         # Sort the holes based on their persistence values in descending order
         holes.sort(key=lambda x: x[4], reverse=True)
@@ -148,29 +147,28 @@ def persistent_homology_features(phrases: List[str]) -> List[List[np.ndarray]]:
 
 
 if __name__ == "__main__":
-    # sentences = ["Billy loves cake", "Josh hates cake"]
     sentences = [
-        "The sky is blue.",
-        "I love eating pizza.",
-        "She plays the piano beautifully.",
-        "The cat is sleeping.",
-        "I enjoy reading books.",
-        "He runs every morning.",
-        "The flowers are blooming in the garden.",
-        "They went for a walk in the park.",
-        "The movie was fantastic.",
-        "We had a great time at the beach.",
-        "She smiled and waved at me.",
-        "The rain is pouring outside.",
-        "He is studying for his exams.",
-        "The coffee tastes delicious.",
-        "I'm going to the gym later.",
-        "They are planning a trip to Europe.",
-        "She wrote a poem for her friend.",
-        "He likes to watch football on weekends.",
-        "The concert was amazing.",
-        "We had a delicious dinner at the restaurant.",
-        "Billy loves cake",
+        # "The sky is blue.",
+        # "I love eating pizza.",
+        # "She plays the piano beautifully.",
+        # "The cat is sleeping.",
+        # "I enjoy reading books.",
+        # "He runs every morning.",
+        # "The flowers are blooming in the garden.",
+        # "They went for a walk in the park.",
+        # "The movie was fantastic.",
+        # "We had a great time at the beach.",
+        # "She smiled and waved at me.",
+        # "The rain is pouring outside.",
+        # "He is studying for his exams.",
+        # "The coffee tastes delicious.",
+        # "I'm going to the gym later.",
+        # "They are planning a trip to Europe.",
+        # "She wrote a poem for her friend.",
+        # "He likes to watch football on weekends.",
+        # "The concert was amazing.",
+        # "We had a delicious dinner at the restaurant.",
+        # "Billy loves cake",
         "Josh hates cake",
     ]
     DEVICE = torch.device("cpu")
@@ -180,6 +178,9 @@ if __name__ == "__main__":
     print(sentences[0])
     print(len(ph_features[0]))  # 2 (num dimension)
     print(len(ph_features[0][0]))  # index 0: 260 features
+    print(len(ph_features[0][0][0]))  # index 0: top 5 features for each
+    for i in ph_features[0][0][0]:
+        print(i)
     print(len(ph_features[0][1]))  # index 1: 50 features
     # for i, ph in enumerate(ph_features):
     #     print(type(ph))
