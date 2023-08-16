@@ -2,6 +2,7 @@ import logging
 from typing import List, Optional, Tuple
 import concurrent.futures
 
+import pandas as pd
 from tqdm import tqdm
 import matplotlib
 import matplotlib.pyplot as plt
@@ -73,7 +74,7 @@ def top_k_holes(ph_diagrams: List[np.ndarray], k: Optional[List[int]] = None) ->
             holes.append(np.array([feature_birth, feature_death, persistence]))
 
         # Sort the holes based on their persistence values in descending order
-        holes.sort(key=lambda x: x[4], reverse=True)
+        holes.sort(key=lambda x: x[2], reverse=True)
 
         # Select the top k holes and add to list
         top_holes.append(np.array(holes[: k[dimension]]))
@@ -173,15 +174,15 @@ if __name__ == "__main__":
     ]
     DEVICE = torch.device("cpu")
     ph_features: list = persistent_homology_features(phrases=sentences)  # (sentence, dimension, k embedding)
-    print(len(sentences))
-    print(len(ph_features))
-    print(sentences[0])
-    print(len(ph_features[0]))  # 2 (num dimension)
-    print(len(ph_features[0][0]))  # index 0: 260 features
-    print(len(ph_features[0][0][0]))  # index 0: top 5 features for each
+    # print(len(sentences))
+    # print(len(ph_features))
+    # print(sentences[0])
+    # print(len(ph_features[0]))  # 2 (num dimension)
+    # print(len(ph_features[0][0]))  # index 0: 260 features
+    # print(len(ph_features[0][0][0]))  # index 0: top 5 features for each
     for i in ph_features[0][0][0]:
         print(i)
-    print(len(ph_features[0][1]))  # index 1: 50 features
+    # print(len(ph_features[0][1]))  # index 1: 50 features
     # for i, ph in enumerate(ph_features):
     #     print(type(ph))
     #     print(sentences[i])
