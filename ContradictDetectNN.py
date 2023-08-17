@@ -628,6 +628,14 @@ if __name__ == "__main__":
     print(f"Avg f1 over 30 runs:  {sum(tests_f1) / len(tests_f1)}")
     print(f"Best F1 Score:        {max(tests_f1)}")
     print(f"Worst F1 Score:       {min(tests_f1)}")
+    """
+    Avg acc over 30 runs: 0.7149188514357054
+    Best Accuracy:        0.7640449438202247
+    Worst Accuracy:       0.649812734082397
+    Avg f1 over 30 runs:  0.8275341820334495
+    Best F1 Score:        0.8630434782608696
+    Worst F1 Score:       0.7823050058207216
+    """
     # num_epochs = 10
     # batch_size = 64
     #
