@@ -1317,3 +1317,6 @@
 /Data/contradiction-dataset_cleaned_ph.csv
 /Data/match_cleaned.csv
 /Data/mismatch_cleaned.csv
+/Data/MultiNLI/multinli_1.0_dev_matched.txt
+/Data/MultiNLI/multinli_1.0_dev_mismatched.txt
+/Data/MultiNLI/multinli_1.0_train.txt
