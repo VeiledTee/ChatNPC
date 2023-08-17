@@ -668,12 +668,37 @@ if __name__ == "__main__":
     Best F1 Score:        0.8630434782608696
     Worst F1 Score:       0.7823050058207216
     """
-    print(f"c\n\tAccuracy Breakdown\n=====")
+    print(f"=====\n\tAccuracy Breakdown\n=====")
     analyze_float_list(tests_acc)
-    print(f"c\n\tF1 Score Breakdown\n=====")
+    print(f"=====\n\tF1 Score Breakdown\n=====")
     analyze_float_list(tests_f1)
     """
-    
+    =====
+    	Accuracy Breakdown
+    =====
+    Mean:                 0.70
+    Median:               0.71
+    Minimum:              0.47
+    Maximum:              0.81
+    Standard Deviation:   0.04
+    Variance:             0.00
+    Skewness:             -0.76
+    Kurtosis:             1.19
+    25th Percentile:      0.67
+    75th Percentile:      0.73
+    =====
+        F1 Score Breakdown
+    =====
+    Mean:                 0.82
+    Median:               0.82
+    Minimum:              0.63
+    Maximum:              0.89
+    Standard Deviation:   0.03
+    Variance:             0.00
+    Skewness:             -1.01
+    Kurtosis:             2.01
+    25th Percentile:      0.80
+    75th Percentile:      0.84
     """
     # num_epochs = 10
     # batch_size = 64
