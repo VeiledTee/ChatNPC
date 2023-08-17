@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from matplotlib import pyplot as plt
+from scipy import stats
 from sklearn.metrics import f1_score, accuracy_score
 import pandas as pd
 import torch
@@ -91,6 +92,37 @@ class BiLSTMModel(nn.Module):
 
         hidden = self.dropout(torch.cat((hidden[-2, :, :], hidden[-1, :, :]), dim=1))
         return self.fc(hidden)
+
+
+def analyze_float_list(data: List[float]) -> None:
+    """
+    Calculate and print various statistical measures from a list of floats.
+    :param data: A list of floats to analyze
+    :return: None
+    """
+    data_array: np.ndarray = np.array(data)
+
+    mean: float = np.mean(data_array)
+    median: float = np.median(data_array)
+    maximum: float = max(data_array)
+    minimum: float = min(data_array)
+    std_deviation: float = np.std(data_array)
+    variance: float = np.var(data_array)
+    skewness: float = stats.skew(data_array)
+    kurtosis: float = stats.kurtosis(data_array)
+    percentile_25: float = np.percentile(data_array, 25)
+    percentile_75: float = np.percentile(data_array, 75)
+
+    print(f"Mean:                 {mean:.2f}")
+    print(f"Median:               {median:.2f}")
+    print(f"Minimum:              {minimum:.2f}")
+    print(f"Maximum:              {maximum:.2f}")
+    print(f"Standard Deviation:   {std_deviation:.2f}")
+    print(f"Variance:             {variance:.2f}")
+    print(f"Skewness:             {skewness:.2f}")
+    print(f"Kurtosis:             {kurtosis:.2f}")
+    print(f"25th Percentile:      {percentile_25:.2f}")
+    print(f"75th Percentile:      {percentile_75:.2f}")
 
 
 def binary_accuracy(preds, y):
@@ -499,7 +531,7 @@ if __name__ == "__main__":
     tests_acc: list = []
     tests_f1: list = []
 
-    for _ in range(30):
+    for _ in range(2500):
         model = SentenceClassifier()
         device = torch.device(DEVICE)
         model = model.to(device)
@@ -622,12 +654,12 @@ if __name__ == "__main__":
             tests_acc.append(accuracy)
             tests_f1.append(f1)
             print(f"Test Accuracy: {accuracy:.4f}, Test F1 Score: {f1:.4f}")
-    print(f"Avg acc over 30 runs: {sum(tests_acc) / len(tests_acc)}")
-    print(f"Best Accuracy:        {max(tests_acc)}")
-    print(f"Worst Accuracy:       {min(tests_acc)}")
-    print(f"Avg f1 over 30 runs:  {sum(tests_f1) / len(tests_f1)}")
-    print(f"Best F1 Score:        {max(tests_f1)}")
-    print(f"Worst F1 Score:       {min(tests_f1)}")
+    # print(f"Avg acc over 30 runs: {sum(tests_acc) / len(tests_acc)}")
+    # print(f"Best Accuracy:        {max(tests_acc)}")
+    # print(f"Worst Accuracy:       {min(tests_acc)}")
+    # print(f"Avg f1 over 30 runs:  {sum(tests_f1) / len(tests_f1)}")
+    # print(f"Best F1 Score:        {max(tests_f1)}")
+    # print(f"Worst F1 Score:       {min(tests_f1)}")
     """
     Avg acc over 30 runs: 0.7149188514357054
     Best Accuracy:        0.7640449438202247
@@ -636,6 +668,10 @@ if __name__ == "__main__":
     Best F1 Score:        0.8630434782608696
     Worst F1 Score:       0.7823050058207216
     """
+    print(f"c\n\tAccuracy Breakdown\n=====")
+    analyze_float_list(tests_acc)
+    print(f"c\n\tF1 Score Breakdown\n=====")
+    analyze_float_list(tests_f1)
     # num_epochs = 10
     # batch_size = 64
     #
