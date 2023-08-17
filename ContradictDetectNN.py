@@ -263,7 +263,7 @@ def map_words_to_glove_embeddings(sentence, embeddings, max_length: int = 64):
     words = sentence.split()
     padding_length = max_length - len(words)
     sentence_embedding = np.mean([embeddings[word] for word in words if word in embeddings], axis=0)
-    padded_sentence_embedding = np.pad(sentence_embedding, [(0, padding_length), (0, 0)], mode='constant')
+    padded_sentence_embedding = np.pad(sentence_embedding, [(0, padding_length), (0, 0)], mode="constant")
     return torch.tensor(padded_sentence_embedding)
 
 
