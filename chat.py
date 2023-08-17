@@ -407,19 +407,19 @@ if __name__ == "__main__":
 
     HISTORY: List[dict] = []
 
-    # CHARACTER: str = "John Pebble"  # thief
+    CHARACTER: str = "John Pebble"  # thief
     # CHARACTER: str = "Evelyn Stone-Brown"  # blacksmith
     # CHARACTER: str = "Caleb Brown"  # baker
     # CHARACTER: str = 'Jack McCaster'  # fisherman
     # CHARACTER: str = "Peter Satoru"  # archer
     # CHARACTER: str = "Melinda Deek"  # knight
-    CHARACTER: str = "Sarah Ratengen"  # tavern owner
+    # CHARACTER: str = "Sarah Ratengen"  # tavern owner
 
     with open("Text Summaries/characters.json", "r") as f:
         names = json.load(f)
 
     PROFESSION, SOCIAL_CLASS = get_information(CHARACTER)
-    print(f"Conversation with: {CHARACTER}\n\tA {PROFESSION}")
+    print(f"Conversation with: {CHARACTER} (a {PROFESSION})")
     DATA_FILE: str = f"Text Summaries/Summaries/{names[CHARACTER]}.txt"
 
     INDEX_NAME: str = "thesis-index"
