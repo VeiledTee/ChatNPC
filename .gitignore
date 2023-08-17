@@ -1313,3 +1313,5 @@
 /Checkpoint/2/checkpoint_700.pth
 /Checkpoint/2/checkpoint_725.pth
 /Checkpoint/2/checkpoint_750.pth
+/Data/contradiction-dataset_cleaned.csv
+/Data/contradiction-dataset_cleaned_ph.csv
