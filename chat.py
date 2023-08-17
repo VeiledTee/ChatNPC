@@ -69,35 +69,34 @@ def chat(
     :param status: Social status of character
     :return: None
     """
+    save_background: bool = True
     while True:
-        QUERY: str = input("Player: ")
-
-        if QUERY.lower() == "bye":
-            break
-
         final_answer = run_query_and_generate_answer(
             namespace=namespace,
             data=data,
             receiver=receiver,
             job=job,
             status=status,
-            query=QUERY,
+            background=save_background,
         )
 
+        if final_answer is None:
+            break
+
         print(f"{receiver}: {final_answer}")
-        print(HISTORY)
+        save_background = False
 
 
 def run_query_and_generate_answer(
     namespace: str,
     data: List[str],
-    query: str,
+    background: bool,
     receiver: str,
     job: str,
     status: str,
     index_name: str = "thesis-index",
     save: bool = True,
-) -> str:
+) -> str | None:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
     :param namespace: The index namespace to operate in
@@ -110,20 +109,25 @@ def run_query_and_generate_answer(
     :param save: A bool to save to a file is Ture and print out if False. Default: True
     :return: The generated answer based on the response context.
     """
-    generate_conversation(f"Text Summaries/Summaries/{namespace.replace('-', '_')}.txt", True, query)
-
     # connect to index
     index = pinecone.Index(index_name)
 
-    # upload data and generate query embedding.
+    # upload character background
+    if background:
+        upload_background(namespace, data, index)
+
+    query: str = input("Player: ")
+
+    if query.lower() == "bye":
+        return None
+
+    generate_conversation(f"Text Summaries/Summaries/{namespace.replace('-', '_')}.txt", True, query)
+    # embed query for processing
     embedded_query = embed(query=query)
-
-    upload(namespace, data, index, "background", index_name)
-
     # query Pinecone index and get context for model prompting.
     responses = index.query(
         embedded_query,
-        top_k=3,
+        top_k=15,
         include_metadata=True,
         namespace=namespace,
         filter={
@@ -133,8 +137,6 @@ def run_query_and_generate_answer(
             ]
         },
     )
-
-    print(responses)
 
     # Filter out responses containing the string "Player:"
     context = [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
@@ -198,11 +200,42 @@ def embed(query: str) -> List[float]:
     :return: Embedding representation of the sentence
     """
     # create SentenceTransformer model and embed query
-    # model = SentenceTransformer("all-MiniLM-L6-v2")  # fast and good
-    model = SentenceTransformer("all-mpnet-base-v2")  # slow and great
+    model = SentenceTransformer("all-MiniLM-L6-v2")  # fast and good, 384
+    # model = SentenceTransformer("all-mpnet-base-v2")  # slow and great, 768
     device = "cuda" if torch.cuda.is_available() else "cpu"  # gpu check
     model = model.to(device)
     return model.encode(query).tolist()
+
+
+def upload_background(
+    namespace: str,
+    data: List[str],
+    index: pinecone.Index,
+) -> None:
+    """
+    Uploads the background of the character associated with the namespace
+    :param namespace: character to upsert vectors to
+    :param data: character's background as a list of strings (loaded from .txt file)
+    :param index: the pinecone index to upsert to
+    :return:
+    """
+    if not pinecone.list_indexes():  # check if there are any indexes
+        # create index if it doesn't exist
+        pinecone.create_index("thesis-index", dimension=384)
+    total_vectors: int = 0
+    data_vectors = []
+    for i, info in enumerate(data):
+        if i == 99:  # recommended batch limit of 100 vectors
+            index.upsert(vectors=data_vectors, namespace=namespace)
+            data_vectors = []
+        info_dict: dict = {
+            "id": str(total_vectors),
+            "metadata": {"text": info, "type": "background"},
+            "values": embed(info),
+        }
+        data_vectors.append(info_dict)
+        total_vectors += 1
+    index.upsert(vectors=data_vectors, namespace=namespace)
 
 
 def upload(
@@ -210,39 +243,31 @@ def upload(
     data: List[str],
     index: pinecone.Index,
     text_type: str = "background",
-    index_name: str = "thesis-index",
-    window: int = 3,
-    stride: int = 2,
 ) -> None:
     """
     'Upserts' text embedding vectors into pinecone DB at the specific index
-    :param namespace: the pinecone namespace to upload data to
+    :param namespace: the pinecone namespace data is uploaded to
     :param data: Data to be embedded and stored
+    :param index: pinecone index to send data to
     :param text_type: The type of text we are embedding. Choose "background", "response", or "question".
         Default value: "background"
-    :param index_name: the name of the pinecone index to save the data to
-    :param window: how many sentences are combined
-    :param stride: used to create overlap, num sentences we 'stride' over
     """
-    if not pinecone.list_indexes():  # check if there are any indexes
-        # create index if it doesn't exist
-        pinecone.create_index(index_name, dimension=384)
-
-    if namespace_exist(namespace) and text_type == "background":
-        return None
-
-    # upload data to pinecone index
-    for j in tqdm(range(0, len(data), stride)):
-        j_end = min(j + window, len(data))  # get end of batch
-        stats = index.describe_index_stats()
-        try:
-            ids = [str(stats["namespaces"][namespace]["vector_count"] + i) for i in range(j, j_end)]  # generate ID
-        except KeyError:
-            ids = [str(0 + i) for i in range(j, j_end)]  # generate ID
-        metadata = [{"text": text, "type": text_type} for text in data[j:j_end]]  # generate metadata
-        embeddings = [embed(i) for i in data[j:j_end]]  # get embeddings for each sentence
-        curr_record = zip(ids, embeddings, metadata)  # compile into single vector
-        index.upsert(vectors=curr_record, namespace=namespace)
+    total_vectors: int = index.describe_index_stats()["namespaces"][namespace][
+        "vector_count"
+    ]  # get num of vectors existing in the namespace
+    data_vectors = []
+    for i, info in enumerate(data):
+        if i == 99:  # recommended batch limit of 100 vectors
+            index.upsert(vectors=data_vectors, namespace=namespace)
+            data_vectors = []
+        info_dict: dict = {
+            "id": str(total_vectors),
+            "metadata": {"text": info, "type": text_type},
+            "values": embed(info),
+        }  # build dict for upserting
+        data_vectors.append(info_dict)
+        total_vectors += 1
+    index.upsert(vectors=data_vectors, namespace=namespace)  # upsert all remaining data
 
 
 def namespace_exist(namespace: str) -> bool:
@@ -275,17 +300,12 @@ def prompt_engineer(prompt: str, status: str, context: List[str]) -> str:
     :param context: The context to be used in the prompt
     :return: The formatted prompt
     """
-    prompt_start = (
-        f"Using {GRAMMAR[status.split()[0]]} grammar and first person, "
-        f"reply in a single sentence based on the context. When told "
-        f"new information, summarize and repeat it back to the user. "
-        f"Do not make up information. Context:"
-    )
+    prompt_start: str = f"Use {GRAMMAR[status.split()[0]]} grammar. Use first person. Reply clearly based on the context. When told new information, reiterate it back to me. Do not mention your background or the context unless asked, or that you are fictional. Do not provide facts you would deny. Context: "
     with open("tried_prompts.txt", "a+") as prompt_file:
         if prompt_start + "\n" not in prompt_file.readlines():
             prompt_file.write(prompt_start + "\n")
-    prompt_end = f"\n\nQuestion: {prompt}\nAnswer: "
-    prompt_middle = ""
+    prompt_end: str = f"\n\nQuestion: {prompt}\nAnswer: "
+    prompt_middle: str = ""
     # append contexts until hitting limit
     for c in context:
         prompt_middle += f"\n{c}"
@@ -304,7 +324,8 @@ def answer(prompt: str, chat_history: List[dict], is_chat: bool = True) -> str:
         msgs: List[dict] = chat_history
         msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
         res: str = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo-0301",
+            model="gpt-4",
+            # model="gpt-3.5-turbo-0301",
             messages=msgs,
             temperature=0,
         )  # conversation with LLM
@@ -343,8 +364,8 @@ def update_history(
     :param index_name: name of the index associated with the namespace
     :param character: the character we are conversing with
     """
-    upload(namespace, [prompt], index, "query", index_name)  # upload prompt to pinecone
-    upload(namespace, [response], index, "response", index_name)  # upload response to pinecone
+    upload(namespace, [prompt], index, "query")  # upload prompt to pinecone
+    upload(namespace, [response], index, "response")  # upload response to pinecone
 
     info_file = f"{info_file.split('/')[0]}/Chat Logs/{info_file.split('/')[-1]}"  # swap directory
     extension_index = info_file.index(".")
@@ -390,15 +411,15 @@ if __name__ == "__main__":
     # CHARACTER: str = "Evelyn Stone-Brown"  # blacksmith
     # CHARACTER: str = "Caleb Brown"  # baker
     # CHARACTER: str = 'Jack McCaster'  # fisherman
-    CHARACTER: str = "Peter Satoru"  # archer
+    # CHARACTER: str = "Peter Satoru"  # archer
     # CHARACTER: str = "Melinda Deek"  # knight
-    # CHARACTER: str = "Sarah Ratengen"  # tavern owner
+    CHARACTER: str = "Sarah Ratengen"  # tavern owner
 
     with open("Text Summaries/characters.json", "r") as f:
         names = json.load(f)
 
     PROFESSION, SOCIAL_CLASS = get_information(CHARACTER)
-    print(CHARACTER, PROFESSION)
+    print(f"Conversation with: {CHARACTER}\n\tA {PROFESSION}")
     DATA_FILE: str = f"Text Summaries/Summaries/{names[CHARACTER]}.txt"
 
     INDEX_NAME: str = "thesis-index"
