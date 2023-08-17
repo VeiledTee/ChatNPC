@@ -407,9 +407,9 @@ if __name__ == "__main__":
 
     HISTORY: List[dict] = []
 
-    CHARACTER: str = "John Pebble"  # thief
+    # CHARACTER: str = "John Pebble"  # thief
     # CHARACTER: str = "Evelyn Stone-Brown"  # blacksmith
-    # CHARACTER: str = "Caleb Brown"  # baker
+    CHARACTER: str = "Caleb Brown"  # baker
     # CHARACTER: str = 'Jack McCaster'  # fisherman
     # CHARACTER: str = "Peter Satoru"  # archer
     # CHARACTER: str = "Melinda Deek"  # knight
