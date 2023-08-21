@@ -113,15 +113,15 @@ def plot_ph_across_dimensions(ph_diagrams):
         ax.set_xlabel("\u03B5 value")
         ax.set_title(f"Persistent Homology H{d} Bar Chart")
         ax.set_xlim(0, max_epsilon)  # Set x-axis limits
+        ax.set_ylabel("Feature Index")
 
-    # Set the y-axis label for the last subplot
-    axes[-1].set_ylabel("Feature Index")
+    # Add a title to the entire figure
+    fig.suptitle("Persistent Homology Bar Charts Across Dimensions", fontsize=16)
 
-    # Adjust spacing between subplots
+    # Adjust spacing
     plt.tight_layout()
-
-    # Show the combined figure
-    plt.show()
+    fig.savefig("Figures/ph_example.svg", format="svg")
+    # fig.close()
 
 
 def persistent_homology_features(phrases: List[str]) -> List[List[np.ndarray]]:
@@ -180,8 +180,8 @@ if __name__ == "__main__":
     # print(len(ph_features[0]))  # 2 (num dimension)
     # print(len(ph_features[0][0]))  # index 0: 260 features
     # print(len(ph_features[0][0][0]))  # index 0: top 5 features for each
-    for i in ph_features[0][0][0]:
-        print(i)
+    # for i in ph_features[0][0][0]:
+    #     print(i)
     # print(len(ph_features[0][1]))  # index 1: 50 features
     # for i, ph in enumerate(ph_features):
     #     print(type(ph))
@@ -193,26 +193,25 @@ if __name__ == "__main__":
     # data: pd.DataFrame = pd.read_csv("Data/contrast-dataset.csv")
     # sentences = data["Phrase"].values
     #
-    # for phrase in sentences:
-    #     e = [get_bert_embeddings(s) for s in phrase]
-    #
-    #     # Convert the list of BERT embeddings to a numpy array
-    #     embeddings = np.array(e).T
-    #
-    #     # Compute persistent homology using ripser
-    #     result = ripser(embeddings, maxdim=1)
-    #     diagrams = result["dgms"]
-    #
-    #     k_holes: list = top_k_holes(diagrams)
-    #     for dim in k_holes:
-    #         print(f"Dim Len: {len(dim)}")
-    #         print(f"Dim shape: {dim.shape}")
-    #         for hole in dim:
-    #             hole_dim, index, birth, death, persist = hole
-    #             # print(f"Dimension: {hole_dim}, Hole Index: {index}, Birth: {birth}, Persistence: {persist}")
-    #             # print([hole[i] for i in [0, 2, 3]])
-    #     print()
-    #     # plot_ph_across_dimensions(diagrams)
+    for phrase in sentences:
+        e = [get_bert_embeddings(s) for s in phrase]
+
+        # Convert the list of BERT embeddings to a numpy array
+        embeddings = np.array(e).T
+
+        # Compute persistent homology using ripser
+        result = ripser(embeddings, maxdim=1)
+        diagrams = result["dgms"]
+
+        # k_holes: list = top_k_holes(diagrams)
+        # for dim in k_holes:
+        #     print(f"Dim Len: {len(dim)}")
+        #     print(f"Dim shape: {dim.shape}")
+        #     for hole in dim:
+        #         hole_dim, index, birth, death, persist = hole
+        #         # print(f"Dimension: {hole_dim}, Hole Index: {index}, Birth: {birth}, Persistence: {persist}")
+        #         # print([hole[i] for i in [0, 2, 3]])
+        plot_ph_across_dimensions(diagrams)
     #
     #     # print(diagrams)
     #
@@ -238,3 +237,5 @@ if __name__ == "__main__":
     #     Get longest lasting feature
     #     print and figure out shape
     #     """
+    print()
+    # plot_ph_across_dimensions(ph_features[0])
