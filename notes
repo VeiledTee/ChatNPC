@@ -101,21 +101,21 @@ MAIN IDEAS:
 	+ Context embeddings put contradicting terms close together in vector space
 	+ Embed sentences as a pair -> want to preserve the ideas from sentences so combine into one embedding
 
-+ Contradticiton Detection in Financial Reports +
-	- Additional pre-training (part-of-speech tagging) to enhance semantic capabilties (spaCy framework)
++ Contradiction Detection in Financial Reports +
+	- Additional pre-training (part-of-speech tagging) to enhance semantic capabilities (spaCy framework)
 	- XLM-RoBERTa (most general model) performs best when pretrained for POS tagging and fine tuned on SNLI and finCD datasets
 	- Architecture: 
 		* encoder + feed-forward network
-	- pre-training on finacial docs may not help with contradiction detection
+	- pre-training on financial docs may not help with contradiction detection
 	- future work, include more info as context for transformer
 	
 + Factual Inconsistency Classification +
 	- 4 model pipeline
 		* Input: Claim, Context
-		* Claim, Context > M1 > Inconsistent claim triples <S, R, T>, inconsistnet context span
+		* Claim, Context > M1 > Inconsistent claim triples <S, R, T>, inconsistent context span
 		* Claim, Context, Inconsistent claim triples <S, R, T>, inconsistent context span > M2 > Inconsistency type, Inconsistent claim component
-		* Inconsistent context span, inconsistnet claim component > M3 > coarse Inconsistent entity type
-		* Inconsistent context span, inconsistnet claim component, coarse Inconsistent entity type > M4 > Fine-grained inconsistent entity-type
+		* Inconsistent context span, inconsistent claim component > M3 > coarse Inconsistent entity type
+		* Inconsistent context span, inconsistent claim component, coarse Inconsistent entity type > M4 > Fine-grained inconsistent entity-type
 		
 + Contradiction-Specific Word Embeddings +
 	- Contradiction occurs hwen sentencews are unliekly to be correct at the same time
@@ -126,7 +126,7 @@ MAIN IDEAS:
 	- CWE Learning Model:
 		* 5 layers: lookup > linear > tanh > sum > linear
 		* Input: pair of sentences
-		* solve classificatino problem through ranking objective function
+		* solve classification problem through ranking objective function
 	- Classifier:
 		* 6 layers: lookup (embedding) > convolution > max pool > tanh > composition > softmax
 		* left side: full sentences as input, looks at sementic relation between them
@@ -143,7 +143,7 @@ https://aclanthology.org/2023.eacl-main.25.pdf
 		* model predicts [MASK] is + if p(V_pos) > p(V_neg), and - if p(V_neg) > p(V_pos)
 	- Clash prompt: mimic actual intention
 		* 5 different examples (x Actually [MASK], x In reality it was [MASK], x, As a matter of fact, it was [MASK], x To tell you the truth, it was [MASK], x In fact, it was [MASK])
-		* fact-related phrases to express (in)consistency with facts
+		* fact-related phrases to express (in)connsistency with facts
 	- Question prompt: telling the model the task is to ID sarcasm by asking a question
 		* More direct than clash prompts
 		* 3 examples (x Are you kidding? [MASK], x Are you sarastic? [MASK], x Are you ironic? [MASK])
@@ -183,7 +183,7 @@ https://aclanthology.org/2023.findings-acl.588.pdf
 https://aclanthology.org/2022.findings-acl.219.pdf
 	- OBSERVATION: MCCL (Mitigate Contradiction via Contrastive Learning) contrasts target response with negative pairs
 	- Contrastive learning: learn features of a dataset without labels by determining which data points are similar or different
-		* Train model to learn response represantation by contrasting positive pairs with negative pairs
+		* Train model to learn response representation by contrasting positive pairs with negative pairs
 		* straightforward approach: treat randomly selected responses from different conversations as semantic negative examples 
 		* helps model identify which features make output positive or negative
 	- minimizes similarity between target response and self-contradiction negative example
