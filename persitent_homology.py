@@ -120,8 +120,8 @@ def plot_ph_across_dimensions(ph_diagrams):
 
     # Adjust spacing
     plt.tight_layout()
-    fig.savefig("Figures/ph_example.svg", format="svg")
-    # fig.close()
+    # fig.savefig("Figures/ph_example_1.svg", format="svg")
+    plt.show()
 
 
 def persistent_homology_features(phrases: List[str]) -> List[List[np.ndarray]]:
@@ -138,11 +138,9 @@ def persistent_homology_features(phrases: List[str]) -> List[List[np.ndarray]]:
     with concurrent.futures.ThreadPoolExecutor() as executor:
         phrase_futures = [executor.submit(process_phrase, sentence) for sentence in phrases]
 
-        with tqdm(total=len(phrase_futures), desc="Processing phrases") as pbar:
-            for future in concurrent.futures.as_completed(phrase_futures):
-                phrase_holes: List[np.ndarray] = future.result()
-                features.append(phrase_holes)
-                pbar.update(1)
+        for future in concurrent.futures.as_completed(phrase_futures):
+            phrase_holes: List[np.ndarray] = future.result()
+            features.append(phrase_holes)
 
     return features
 
@@ -172,8 +170,9 @@ if __name__ == "__main__":
         # "Billy loves cake",
         "Josh hates cake",
     ]
-    DEVICE = torch.device("cpu")
-    ph_features: list = persistent_homology_features(phrases=sentences)  # (sentence, dimension, k embedding)
+    sentences = np.random.rand(30, 25)
+    DEVICE = torch.device("cuda")
+    # ph_features: list = persistent_homology_features(phrases=sentences)  # (sentence, dimension, k embedding)
     # print(len(sentences))
     # print(len(ph_features))
     # print(sentences[0])
@@ -193,15 +192,16 @@ if __name__ == "__main__":
     # data: pd.DataFrame = pd.read_csv("Data/contrast-dataset.csv")
     # sentences = data["Phrase"].values
     #
-    for phrase in sentences:
-        e = [get_bert_embeddings(s) for s in phrase]
-
-        # Convert the list of BERT embeddings to a numpy array
-        embeddings = np.array(e).T
+    # for phrase in sentences:
+        # e = [get_bert_embeddings(s) for s in phrase]
+        #
+        # # Convert the list of BERT embeddings to a numpy array
+        # embeddings = np.array(e).T
+        # print(embeddings.shape)
 
         # Compute persistent homology using ripser
-        result = ripser(embeddings, maxdim=1)
-        diagrams = result["dgms"]
+    result = ripser(sentences, maxdim=1)
+    diagrams = result["dgms"]
 
         # k_holes: list = top_k_holes(diagrams)
         # for dim in k_holes:
@@ -210,8 +210,8 @@ if __name__ == "__main__":
         #     for hole in dim:
         #         hole_dim, index, birth, death, persist = hole
         #         # print(f"Dimension: {hole_dim}, Hole Index: {index}, Birth: {birth}, Persistence: {persist}")
-        #         # print([hole[i] for i in [0, 2, 3]])
-        plot_ph_across_dimensions(diagrams)
+    #         # print([hole[i] for i in [0, 2, 3]])
+    plot_ph_across_dimensions(diagrams)
     #
     #     # print(diagrams)
     #
