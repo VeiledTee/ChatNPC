@@ -28,50 +28,68 @@ import csv
 
 
 def embed_and_ph(df_for_cleaning: pd.DataFrame, output_csv_path: str) -> None:
+    """
+    Given a dataframe, retrieve the data's BERT embeddings and PH features for dimensions 0 and 1, then save it. If the
+    output file already exists, pick up where it left off
+    :param df_for_cleaning: df containing data
+    :param output_csv_path: The path to the output file
+    :return: None
+    """
+    # Check if the output CSV file already exists
+    existing_records = 0
+    try:
+        with open(output_csv_path, 'r') as csvfile:
+            reader = csv.reader(csvfile)
+            # Count the number of rows in the existing CSV file
+            existing_records = sum(1 for _ in reader) - 1  # Subtract 1 for the header
+    except FileNotFoundError:
+        existing_records = 0
+
     for i, row in tqdm(df_for_cleaning.iterrows(), total=len(df_for_cleaning)):
-        label = 1 if row['gold_label'].lower() == 'contradiction' else 0
+        if i >= existing_records:
+            label = 1 if row['gold_label'].lower() == 'contradiction' else 0
 
-        # Apply the get_sentence_embedding function to generate embeddings
-        if 'sentence1_embeddings' not in row:
-            row['sentence1_embeddings'] = get_sentence_embedding(row['sentence1'])
+            # Apply the get_sentence_embedding function to generate embeddings
+            if 'sentence1_embeddings' not in row:
+                row['sentence1_embeddings'] = get_sentence_embedding(row['sentence1'])
 
-        if 'sentence2_embeddings' not in row:
-            row['sentence2_embeddings'] = get_sentence_embedding(row['sentence2'])
+            if 'sentence2_embeddings' not in row:
+                row['sentence2_embeddings'] = get_sentence_embedding(row['sentence2'])
 
-        if 'sentence1_ph_a' not in row:
-            s1_ph_features = persistent_homology_features([row['sentence1']])
-            row['sentence1_ph_a'] = s1_ph_features[0][0]
-            row['sentence1_ph_b'] = s1_ph_features[0][1]
+            if 'sentence1_ph_a' not in row:
+                s1_ph_features = persistent_homology_features([row['sentence1']])
+                row['sentence1_ph_a'] = s1_ph_features[0][0]
+                row['sentence1_ph_b'] = s1_ph_features[0][1]
 
-        if 'sentence2_ph_a' not in row:
-            s2_ph_features = persistent_homology_features([row['sentence2']])
-            row['sentence2_ph_a'] = s2_ph_features[0][0]
-            row['sentence2_ph_b'] = s2_ph_features[0][1]
+            if 'sentence2_ph_a' not in row:
+                s2_ph_features = persistent_homology_features([row['sentence2']])
+                row['sentence2_ph_a'] = s2_ph_features[0][0]
+                row['sentence2_ph_b'] = s2_ph_features[0][1]
 
-        # Calculate negation count
-        negation_count = count_negations([row['sentence1'], row['sentence2']])
+            # Calculate negation count
+            negation_count = count_negations([row['sentence1'], row['sentence2']])
 
-        # Create a new row for the result DataFrame
-        result_row = {
-            "label": label,
-            "sentence1_embeddings": row['sentence1_embeddings'],
-            "sentence2_embeddings": row['sentence2_embeddings'],
-            "sentence1_ph_a": row['sentence1_ph_a'],
-            "sentence1_ph_b": row['sentence1_ph_b'],
-            "sentence2_ph_a": row['sentence2_ph_a'],
-            "sentence2_ph_b": row['sentence2_ph_b'],
-            "negation": negation_count
-        }
+            # Create a new row for the result DataFrame
+            result_row = {
+                "label": label,
+                "sentence1_embeddings": row['sentence1_embeddings'],
+                "sentence2_embeddings": row['sentence2_embeddings'],
+                "sentence1_ph_a": row['sentence1_ph_a'],
+                "sentence1_ph_b": row['sentence1_ph_b'],
+                "sentence2_ph_a": row['sentence2_ph_a'],
+                "sentence2_ph_b": row['sentence2_ph_b'],
+                "negation": negation_count
+            }
 
-        with open(output_csv_path, 'a', newline='') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=result_row.keys())
-            if i == 0:
-                writer.writeheader()  # Write the header only for the first row
-            writer.writerow(result_row)
+            with open(output_csv_path, 'a', newline='') as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames=result_row.keys())
+                if i == 0:
+                    writer.writeheader()  # Write the header only for the first row
+                writer.writerow(result_row)
 
 
 if __name__ == "__main__":
-    TO_CLEAN: list = ["Data/mismatch_cleaned.csv", "Data/match.csv"]
+    TO_CLEAN: list = ["Data/SemEval2014T1/test.csv", "Data/SemEval2014T1/valid.csv", "Data/SemEval2014T1/test.csv", "Data/mismatch_cleaned.csv", "Data/match.csv"]
     for file in TO_CLEAN:
         print(f"\tIn Progress: {file}")
         df = pd.read_csv(file)
