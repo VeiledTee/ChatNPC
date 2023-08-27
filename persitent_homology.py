@@ -193,23 +193,23 @@ if __name__ == "__main__":
     # sentences = data["Phrase"].values
     #
     # for phrase in sentences:
-        # e = [get_bert_embeddings(s) for s in phrase]
-        #
-        # # Convert the list of BERT embeddings to a numpy array
-        # embeddings = np.array(e).T
-        # print(embeddings.shape)
+    # e = [get_bert_embeddings(s) for s in phrase]
+    #
+    # # Convert the list of BERT embeddings to a numpy array
+    # embeddings = np.array(e).T
+    # print(embeddings.shape)
 
-        # Compute persistent homology using ripser
+    # Compute persistent homology using ripser
     result = ripser(sentences, maxdim=1)
     diagrams = result["dgms"]
 
-        # k_holes: list = top_k_holes(diagrams)
-        # for dim in k_holes:
-        #     print(f"Dim Len: {len(dim)}")
-        #     print(f"Dim shape: {dim.shape}")
-        #     for hole in dim:
-        #         hole_dim, index, birth, death, persist = hole
-        #         # print(f"Dimension: {hole_dim}, Hole Index: {index}, Birth: {birth}, Persistence: {persist}")
+    # k_holes: list = top_k_holes(diagrams)
+    # for dim in k_holes:
+    #     print(f"Dim Len: {len(dim)}")
+    #     print(f"Dim shape: {dim.shape}")
+    #     for hole in dim:
+    #         hole_dim, index, birth, death, persist = hole
+    #         # print(f"Dimension: {hole_dim}, Hole Index: {index}, Birth: {birth}, Persistence: {persist}")
     #         # print([hole[i] for i in [0, 2, 3]])
     plot_ph_across_dimensions(diagrams)
     #
