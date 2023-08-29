@@ -13,15 +13,14 @@
         </div>
 
         <!-- Dropdown menu with character names -->
-        <label for="character-select" class="character-label">Select a Character:</label>
-        <select id="character-select">
-            <option value="" disabled selected>Select a character</option>
-            <option value="caleb-brown">Caleb Brown</option>
-            <option value="john-pebble">John Pebble</option>
-            <option value="peter-satoru">Peter Satoru</option>
-        </select>
-
         <form id="chat-form">
+            <label for="character-select" class="character-label">Select a Character:</label>
+            <select id="character-select" name="character_select">
+                <option value="" disabled selected>Select a character</option>
+                <option value="caleb-brown">Caleb Brown</option>
+                <option value="john-pebble">John Pebble</option>
+                <option value="peter-satoru">Peter Satoru</option>
+            </select>
             <input type="text" id="user-input" name="user_input" placeholder="Type your message..." disabled>
             <input type="submit" value="Send" disabled>
         </form>
