@@ -300,7 +300,9 @@ def map_words_to_glove_embeddings(sentence, embeddings, max_length: int = 64):
     return torch.tensor(padded_sentence_embedding)
 
 
-def plot_training_history(train_accuracy_list: list, val_accuracy_list: list, train_f1_list: list, val_f1_list: list, number_of_epochs: int):
+def plot_training_history(
+    train_accuracy_list: list, val_accuracy_list: list, train_f1_list: list, val_f1_list: list, number_of_epochs: int
+):
     # Create x-axis values (epochs)
     x_axis: list = list(range(1, number_of_epochs + 1))
 
@@ -309,20 +311,20 @@ def plot_training_history(train_accuracy_list: list, val_accuracy_list: list, tr
 
     # Training accuracy plot
     plt.subplot(1, 2, 1)
-    plt.plot(x_axis, train_accuracy_list, label='Training Accuracy', marker='o')
-    plt.plot(x_axis, val_accuracy_list, label='Validation Accuracy', marker='o')
-    plt.xlabel('Epochs')
-    plt.ylabel('Accuracy')
-    plt.title('Training and Validation Accuracy')
+    plt.plot(x_axis, train_accuracy_list, label="Training Accuracy", marker="o")
+    plt.plot(x_axis, val_accuracy_list, label="Validation Accuracy", marker="o")
+    plt.xlabel("Epochs")
+    plt.ylabel("Accuracy")
+    plt.title("Training and Validation Accuracy")
     plt.legend()
 
     # Training F1-score plot
     plt.subplot(1, 2, 2)
-    plt.plot(x_axis, train_f1_list, label='Training F1 Score', marker='o')
-    plt.plot(x_axis, val_f1_list, label='Validation F1 Score', marker='o')
-    plt.xlabel('Epochs')
-    plt.ylabel('F1 Score')
-    plt.title('Training and Validation F1 Score')
+    plt.plot(x_axis, train_f1_list, label="Training F1 Score", marker="o")
+    plt.plot(x_axis, val_f1_list, label="Validation F1 Score", marker="o")
+    plt.xlabel("Epochs")
+    plt.ylabel("F1 Score")
+    plt.title("Training and Validation F1 Score")
     plt.legend()
 
     plt.tight_layout()
@@ -703,7 +705,6 @@ if __name__ == "__main__":
         tests_f1.append(train_f1)
         print(f"Test Accuracy: {train_accuracy:.4f}, Test F1 Score: {train_f1:.4f}")
         print(f"Percent of positive class: {sum(true_labels) / len(true_labels):.4f}%")
-
 
     # print(f"Avg acc over 30 runs: {sum(tests_acc) / len(tests_acc)}")
     # print(f"Best Accuracy:        {max(tests_acc)}")
