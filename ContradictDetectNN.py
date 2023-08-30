@@ -28,6 +28,7 @@ import matplotlib.pyplot as plt
 
 logging.getLogger("transformers").setLevel(logging.ERROR)
 
+
 # SEED = 42
 # torch.manual_seed(SEED)
 # torch.backends.cudnn.deterministic = True
@@ -300,9 +301,8 @@ def map_words_to_glove_embeddings(sentence, embeddings, max_length: int = 64):
     return torch.tensor(padded_sentence_embedding)
 
 
-def plot_training_history(
-    train_accuracy_list: list, val_accuracy_list: list, train_f1_list: list, val_f1_list: list, number_of_epochs: int
-):
+def plot_training_history(train_accuracy_list: list, val_accuracy_list: list, train_f1_list: list, val_f1_list: list,
+                          number_of_epochs: int):
     # Create x-axis values (epochs)
     x_axis: list = list(range(1, number_of_epochs + 1))
 
@@ -311,20 +311,20 @@ def plot_training_history(
 
     # Training accuracy plot
     plt.subplot(1, 2, 1)
-    plt.plot(x_axis, train_accuracy_list, label="Training Accuracy", marker="o")
-    plt.plot(x_axis, val_accuracy_list, label="Validation Accuracy", marker="o")
-    plt.xlabel("Epochs")
-    plt.ylabel("Accuracy")
-    plt.title("Training and Validation Accuracy")
+    plt.plot(x_axis, train_accuracy_list, label='Training Accuracy', marker='o')
+    plt.plot(x_axis, val_accuracy_list, label='Validation Accuracy', marker='o')
+    plt.xlabel('Epochs')
+    plt.ylabel('Accuracy')
+    plt.title('Training and Validation Accuracy')
     plt.legend()
 
     # Training F1-score plot
     plt.subplot(1, 2, 2)
-    plt.plot(x_axis, train_f1_list, label="Training F1 Score", marker="o")
-    plt.plot(x_axis, val_f1_list, label="Validation F1 Score", marker="o")
-    plt.xlabel("Epochs")
-    plt.ylabel("F1 Score")
-    plt.title("Training and Validation F1 Score")
+    plt.plot(x_axis, train_f1_list, label='Training F1 Score', marker='o')
+    plt.plot(x_axis, val_f1_list, label='Validation F1 Score', marker='o')
+    plt.xlabel('Epochs')
+    plt.ylabel('F1 Score')
+    plt.title('Training and Validation F1 Score')
     plt.legend()
 
     plt.tight_layout()
@@ -546,6 +546,9 @@ if __name__ == "__main__":
         train_df = pd.read_csv("Data/match_cleaned.csv")
         valid_df = pd.read_csv("Data/mismatch_cleaned.csv")
         test_df = pd.read_csv("Data/contradiction-dataset_cleaned_ph.csv")
+        # train_df = pd.read_csv("Data/SemEval2014T1/train_cleaned.csv")
+        # valid_df = pd.read_csv("Data/SemEval2014T1/valid_cleaned.csv")
+        # test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned.csv")
 
     # correctly format tensors
     train_df["sentence1_embeddings"] = train_df["sentence1_embeddings"].apply(str_to_tensor)
@@ -563,156 +566,159 @@ if __name__ == "__main__":
     test_bert_embeddings_sentence2 = torch.stack(list(test_df["sentence2_embeddings"]), dim=0)
 
     # Initialize empty lists to store training and validation metrics
-    train_accuracy_values = []
-    train_f1_values = []
-    val_accuracy_values = []
-    val_f1_values = []
     tests_acc: list = []
     tests_f1: list = []
 
-    # for _ in range(2500):  # stat significance testing
-    # load model
-    model = SentenceClassifier()
-    device = torch.device(DEVICE)
-    model = model.to(device)
-    criterion = nn.BCEWithLogitsLoss().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    for _ in range(30):  # stat significance testing
+        # load model
+        model = SentenceClassifier()
+        device = torch.device(DEVICE)
+        model = model.to(device)
+        criterion = nn.BCEWithLogitsLoss().to(device)
+        optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    print(f"Model on {device}")
+        # initialize data containers for plotting
+        train_accuracy_values = []
+        train_f1_values = []
+        val_accuracy_values = []
+        val_f1_values = []
 
-    for epoch in range(num_epochs):
-        model.train()  # Set the model to training mode
-        running_loss = 0.0
-        all_predicted_labels = []
-        all_true_labels = []
+        print(f"Model on {device}")
 
-        for i in range(0, len(train_df), batch_size):
-            # Prepare the batch
-            s1_embedding = train_bert_embeddings_sentence1[i : i + batch_size]
-            s2_embedding = train_bert_embeddings_sentence2[i : i + batch_size]
-            # Get the corresponding labels for this batch
-            batch_labels = train_df["label"].iloc[i : i + batch_size].values
-            batch_labels = torch.tensor(batch_labels.astype(float), dtype=torch.float32).view(-1, 1)
-            # Get additional feature values
-            num_negations = train_df["negation"].iloc[i : i + batch_size].values
-            batch_negations = torch.tensor(num_negations.astype(float), dtype=torch.float32).view(-1, 1)
+        for epoch in range(num_epochs):
+            model.train()  # Set the model to training mode
+            running_loss = 0.0
+            all_predicted_labels = []
+            all_true_labels = []
 
-            # s1_ph_features = persistent_homology_features(list(train_df["sentence1"].iloc[i : i + batch_size]))
-            # dim_0_s1_features = [item[0] for item in s1_ph_features]
-            # # dim_1_s1_features = [item[1] for item in s1_ph_features]
-            # batch_s1_feature_a = torch.tensor(np.array(dim_0_s1_features)).to(device)
-            # # batch_s1_feature_b = torch.tensor(np.array(dim_1_s1_features)).to(device)
-            # print(batch_s1_feature_a.shape)
-            # print(batch_s1_feature_b.shape)
+            for i in range(0, len(train_df), batch_size):
+                # Prepare the batch
+                s1_embedding = train_bert_embeddings_sentence1[i: i + batch_size]
+                s2_embedding = train_bert_embeddings_sentence2[i: i + batch_size]
+                # Get the corresponding labels for this batch
+                batch_labels = train_df["label"].iloc[i: i + batch_size].values
+                batch_labels = torch.tensor(batch_labels.astype(float), dtype=torch.float32).view(-1, 1)
+                # Get additional feature values
+                num_negations = train_df["negation"].iloc[i: i + batch_size].values
+                batch_negations = torch.tensor(num_negations.astype(float), dtype=torch.float32).view(-1, 1)
 
-            # s2_ph_features = persistent_homology_features(list(train_df["sentence2"].iloc[i : i + batch_size]))
-            # dim_0_s2_features = [item[0] for item in s2_ph_features]
-            # # dim_1_s2_features = [item[1] for item in s2_ph_features]
-            # batch_s2_feature_a = torch.tensor(np.array(dim_0_s2_features)).to(device)
-            # # batch_s2_feature_b = torch.tensor(np.array(dim_1_s2_features)).to(device)
-            # print(batch_s2_feature_a.shape)
-            # print(batch_s2_feature_b.shape)
+                # s1_ph_features = persistent_homology_features(list(train_df["sentence1"].iloc[i : i + batch_size]))
+                # dim_0_s1_features = [item[0] for item in s1_ph_features]
+                # # dim_1_s1_features = [item[1] for item in s1_ph_features]
+                # batch_s1_feature_a = torch.tensor(np.array(dim_0_s1_features)).to(device)
+                # # batch_s1_feature_b = torch.tensor(np.array(dim_1_s1_features)).to(device)
+                # print(batch_s1_feature_a.shape)
+                # print(batch_s1_feature_b.shape)
 
-            # Move tensors to the device
-            s1_embedding = s1_embedding.to(device)
-            s2_embedding = s2_embedding.to(device)
-            batch_labels = batch_labels.to(device)
-            batch_negations = batch_negations.to(device)
-            # Forward pass
-            # outputs = model([s1_embedding, s2_embedding, batch_negations, batch_s1_feature_a, batch_s1_feature_b, batch_s2_feature_a, batch_s2_feature_b])
-            outputs = model([s1_embedding, s2_embedding, batch_negations])
-            # Compute the loss
-            loss = criterion(outputs, batch_labels)
-            # Backpropagation
-            optimizer.zero_grad()  # Clear accumulated gradients
-            loss.backward()
-            # Optimize (update model parameters)
-            optimizer.step()
-            # Update running loss
-            running_loss += loss.item()
-            # Convert outputs to binary predictions (0 or 1)
-            predicted_labels = (outputs >= 0.5).float().view(-1).cpu().numpy()
-            true_labels = batch_labels.view(-1).cpu().numpy()
-            all_predicted_labels.extend(predicted_labels)
-            all_true_labels.extend(true_labels)
-        # Calculate training accuracy and F1-score
-        train_accuracy = accuracy_score(all_true_labels, all_predicted_labels)
-        train_f1 = f1_score(all_true_labels, all_predicted_labels)
-
-        # Print training metrics for this epoch
-        average_loss = running_loss / (len(train_df) / batch_size)
-
-        # Validation
-        model.eval()  # Set the model to evaluation mode
-        all_val_predicted_labels = []
-
-        with torch.no_grad():
-            for i in range(0, len(valid_df), batch_size):
-                # Prepare the batch for validation
-                s1_embedding = valid_bert_embeddings_sentence1[i : i + batch_size]
-                s2_embedding = valid_bert_embeddings_sentence2[i : i + batch_size]
-                batch_negations = valid_df["negation"].iloc[i : i + batch_size].values
+                # s2_ph_features = persistent_homology_features(list(train_df["sentence2"].iloc[i : i + batch_size]))
+                # dim_0_s2_features = [item[0] for item in s2_ph_features]
+                # # dim_1_s2_features = [item[1] for item in s2_ph_features]
+                # batch_s2_feature_a = torch.tensor(np.array(dim_0_s2_features)).to(device)
+                # # batch_s2_feature_b = torch.tensor(np.array(dim_1_s2_features)).to(device)
+                # print(batch_s2_feature_a.shape)
+                # print(batch_s2_feature_b.shape)
 
                 # Move tensors to the device
                 s1_embedding = s1_embedding.to(device)
                 s2_embedding = s2_embedding.to(device)
-                batch_negations = (
-                    torch.tensor(batch_negations.astype(float), dtype=torch.float32).view(-1, 1).to(device)
-                )
+                batch_labels = batch_labels.to(device)
+                batch_negations = batch_negations.to(device)
+                # Forward pass
+                # outputs = model([s1_embedding, s2_embedding, batch_negations, batch_s1_feature_a, batch_s1_feature_b, batch_s2_feature_a, batch_s2_feature_b])
+                outputs = model([s1_embedding, s2_embedding, batch_negations])
+                # Compute the loss
+                loss = criterion(outputs, batch_labels)
+                # Backpropagation
+                optimizer.zero_grad()  # Clear accumulated gradients
+                loss.backward()
+                # Optimize (update model parameters)
+                optimizer.step()
+                # Update running loss
+                running_loss += loss.item()
+                # Convert outputs to binary predictions (0 or 1)
+                predicted_labels = (outputs >= 0.5).float().view(-1).cpu().numpy()
+                true_labels = batch_labels.view(-1).cpu().numpy()
+                all_predicted_labels.extend(predicted_labels)
+                all_true_labels.extend(true_labels)
+            # Calculate training accuracy and F1-score
+            train_accuracy = accuracy_score(all_true_labels, all_predicted_labels)
+            train_f1 = f1_score(all_true_labels, all_predicted_labels)
 
-                # Forward pass for validation
-                val_outputs = model([s1_embedding, s2_embedding, batch_negations])
+            # Print training metrics for this epoch
+            average_loss = running_loss / (len(train_df) / batch_size)
 
-                # Convert validation outputs to binary predictions (0 or 1)
-                val_predicted_labels = (val_outputs >= 0.5).float().view(-1).cpu().numpy()
-                all_val_predicted_labels.extend(val_predicted_labels)
+            # Validation
+            model.eval()  # Set the model to evaluation mode
+            all_val_predicted_labels = []
 
-        # Calculate validation accuracy and F1-score
-        val_accuracy = accuracy_score(valid_df["label"], all_val_predicted_labels)
-        val_f1 = f1_score(valid_df["label"], all_val_predicted_labels)
-        print(f"Epoch [{epoch + 1}/{num_epochs}]")
-        print(f"\tTraining   | Accuracy: {train_accuracy:.4f}, F1 Score: {train_f1:.4f}, Loss: {average_loss:.4f}")
-        print(f"\tValidation | Accuracy: {val_accuracy:.4f}, F1 Score: {val_f1:.4f}")
-        train_accuracy_values.append(train_accuracy)
-        train_f1_values.append(train_f1)
-        val_accuracy_values.append(val_accuracy)
-        val_f1_values.append(val_f1)
+            with torch.no_grad():
+                for i in range(0, len(valid_df), batch_size):
+                    # Prepare the batch for validation
+                    s1_embedding = valid_bert_embeddings_sentence1[i: i + batch_size]
+                    s2_embedding = valid_bert_embeddings_sentence2[i: i + batch_size]
+                    batch_negations = valid_df["negation"].iloc[i: i + batch_size].values
 
-    plot_training_history(train_accuracy_values, val_accuracy_values, train_f1_values, val_f1_values, num_epochs)
+                    # Move tensors to the device
+                    s1_embedding = s1_embedding.to(device)
+                    s2_embedding = s2_embedding.to(device)
+                    batch_negations = (
+                        torch.tensor(batch_negations.astype(float), dtype=torch.float32).view(-1, 1).to(device)
+                    )
 
-    # model_save_path: str = "Models/test1.pt"
-    # torch.save(model.state_dict(), model_save_path)
-    # model.load_state_dict(torch.load(model_save_path))
+                    # Forward pass for validation
+                    val_outputs = model([s1_embedding, s2_embedding, batch_negations])
 
-    with torch.no_grad():
-        model.eval()  # Set the model to evaluation mode
-        predictions = np.array([])
-        for i in range(0, len(test_df), batch_size):
-            # Prepare the batch
-            s1_embedding = test_bert_embeddings_sentence1[i : i + batch_size].to(device)
-            s2_embedding = test_bert_embeddings_sentence2[i : i + batch_size].to(device)
-            # Get additional feature values
-            num_negations = test_df["negation"].iloc[i : i + batch_size].values
-            batch_negations = torch.tensor(num_negations.astype(float), dtype=torch.float32).view(-1, 1).to(device)
-            output = model([s1_embedding, s2_embedding, batch_negations])
-            predicted_labels = (output >= 0.5).float().cpu().numpy()
-            predictions = np.append(predictions, predicted_labels)
+                    # Convert validation outputs to binary predictions (0 or 1)
+                    val_predicted_labels = (val_outputs >= 0.5).float().view(-1).cpu().numpy()
+                    all_val_predicted_labels.extend(val_predicted_labels)
 
-        true_labels = test_df["label"].values
-        train_accuracy = accuracy_score(true_labels, predictions)
-        train_f1 = f1_score(true_labels, predictions)
-        tests_acc.append(train_accuracy)
-        tests_f1.append(train_f1)
-        print(f"Test Accuracy: {train_accuracy:.4f}, Test F1 Score: {train_f1:.4f}")
-        print(f"Percent of positive class: {sum(true_labels) / len(true_labels):.4f}%")
+            # Calculate validation accuracy and F1-score
+            val_accuracy = accuracy_score(valid_df["label"], all_val_predicted_labels)
+            val_f1 = f1_score(valid_df["label"], all_val_predicted_labels)
+            # print(f"Epoch [{epoch + 1}/{num_epochs}]")
+            # print(f"\tTraining   | Accuracy: {train_accuracy:.4f}, F1 Score: {train_f1:.4f}, Loss: {average_loss:.4f}")
+            # print(f"\tValidation | Accuracy: {val_accuracy:.4f}, F1 Score: {val_f1:.4f}")
+            train_accuracy_values.append(train_accuracy)
+            train_f1_values.append(train_f1)
+            val_accuracy_values.append(val_accuracy)
+            val_f1_values.append(val_f1)
 
-    # print(f"Avg acc over 30 runs: {sum(tests_acc) / len(tests_acc)}")
+        # plot_training_history(train_accuracy_values, val_accuracy_values, train_f1_values, val_f1_values, num_epochs)
+
+        # model_save_path: str = "Models/test1.pt"
+        # torch.save(model.state_dict(), model_save_path)
+        # model.load_state_dict(torch.load(model_save_path))
+
+        with torch.no_grad():
+            model.eval()  # Set the model to evaluation mode
+            predictions = np.array([])
+            for i in range(0, len(test_df), batch_size):
+                # Prepare the batch
+                s1_embedding = test_bert_embeddings_sentence1[i: i + batch_size].to(device)
+                s2_embedding = test_bert_embeddings_sentence2[i: i + batch_size].to(device)
+                # Get additional feature values
+                num_negations = test_df["negation"].iloc[i: i + batch_size].values
+                batch_negations = torch.tensor(num_negations.astype(float), dtype=torch.float32).view(-1, 1).to(device)
+                output = model([s1_embedding, s2_embedding, batch_negations])
+                predicted_labels = (output >= 0.5).float().cpu().numpy()
+                predictions = np.append(predictions, predicted_labels)
+
+            true_labels = test_df["label"].values
+            train_accuracy = accuracy_score(true_labels, predictions)
+            train_f1 = f1_score(true_labels, predictions)
+            tests_acc.append(train_accuracy)
+            tests_f1.append(train_f1)
+            print(f"Test Accuracy: {train_accuracy:.4f}, Test F1 Score: {train_f1:.4f}")
+            print(f"Percent of positive class: {sum(true_labels) / len(true_labels):.4f}%")
+
+    # print(f"Avg acc over {len(tests_acc)} runs: {sum(tests_acc) / len(tests_acc)}")
     # print(f"Best Accuracy:        {max(tests_acc)}")
     # print(f"Worst Accuracy:       {min(tests_acc)}")
-    # print(f"Avg f1 over 30 runs:  {sum(tests_f1) / len(tests_f1)}")
+    # print(f"Avg f1 over {len(tests_acc)} runs:  {sum(tests_f1) / len(tests_f1)}")
     # print(f"Best F1 Score:        {max(tests_f1)}")
     # print(f"Worst F1 Score:       {min(tests_f1)}")
     """
+    match-mismatch-contradiction
     Avg acc over 30 runs: 0.7149188514357054
     Best Accuracy:        0.7640449438202247
     Worst Accuracy:       0.649812734082397
@@ -720,11 +726,15 @@ if __name__ == "__main__":
     Best F1 Score:        0.8630434782608696
     Worst F1 Score:       0.7823050058207216
     """
-    # print(f"=====\n\tAccuracy Breakdown\n=====")
-    # analyze_float_list(tests_acc)
-    # print(f"=====\n\tF1 Score Breakdown\n=====")
-    # analyze_float_list(tests_f1)
     """
+    semeval train-valid-test
+    """
+    print(f"=====\n\tAccuracy Breakdown\n=====")
+    analyze_float_list(tests_acc)
+    print(f"=====\n\tF1 Score Breakdown\n=====")
+    analyze_float_list(tests_f1)
+    """
+    match-mismatch-contradiction 1
     =====
     	Accuracy Breakdown
     =====
@@ -751,6 +761,64 @@ if __name__ == "__main__":
     Kurtosis:             2.01
     25th Percentile:      0.80
     75th Percentile:      0.84
+    """
+    """
+    match-mismatch-contradiction Aug 30 7:30am
+    =====
+        Accuracy Breakdown
+    =====
+    Mean:                 0.70
+    Median:               0.71
+    Minimum:              0.57
+    Maximum:              0.78
+    Standard Deviation:   0.05
+    Variance:             0.00
+    Skewness:             -0.92
+    Kurtosis:             1.28
+    25th Percentile:      0.69
+    75th Percentile:      0.72
+    =====
+        F1 Score Breakdown
+    =====
+    Mean:                 0.82
+    Median:               0.82
+    Minimum:              0.71
+    Maximum:              0.88
+    Standard Deviation:   0.03
+    Variance:             0.00
+    Skewness:             -1.19
+    Kurtosis:             1.90
+    25th Percentile:      0.81
+    75th Percentile:      0.83
+    """
+    """
+    semeval train-semeval valid-semeval test
+    =====
+	    Accuracy Breakdown
+    =====
+    Mean:                 0.86
+    Median:               0.86
+    Minimum:              0.85
+    Maximum:              0.86
+    Standard Deviation:   0.00
+    Variance:             0.00
+    Skewness:             0.57
+    Kurtosis:             -0.47
+    25th Percentile:      0.85
+    75th Percentile:      0.86
+    =====
+        F1 Score Breakdown
+    =====
+    Mean:                 0.09
+    Median:               0.08
+    Minimum:              0.00
+    Maximum:              0.24
+    Standard Deviation:   0.06
+    Variance:             0.00
+    Skewness:             0.77
+    Kurtosis:             -0.01
+    25th Percentile:      0.04
+    75th Percentile:      0.12
     """
     # num_epochs = 10
     # batch_size = 64
