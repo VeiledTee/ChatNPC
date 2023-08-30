@@ -736,7 +736,7 @@ if __name__ == "__main__":
     """
     match-mismatch-contradiction 1
     =====
-    	Accuracy Breakdown
+        Accuracy Breakdown
     =====
     Mean:                 0.70
     Median:               0.71
