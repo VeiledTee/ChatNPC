@@ -22,7 +22,7 @@ NOTES:
 - 4-5 more topics
 	- fact based
 - Topological Data Analysis
-	- https://web.archive.org/web/20220712055205id_/https://dl.acm.org/doi/pdf/10.1145/3477495.3531881
+	- https://web.archive.org/web/20220712055205id_/https://dl.acm.org/doi/pdf/10.1145/3477495.3531881 (MultiNLI)
 	- http://bigdataieee.org/BigData2020/files/IEEE_BigData_2020_Tutorial5_TDA_Tutorial.pdf
 	- Dataset: https://cims.nyu.edu/~sbowman/multinli/
 - Contradictory event pairs
@@ -118,6 +118,8 @@ MAIN IDEAS:
 		* Inconsistent context span, inconsistent claim component, coarse Inconsistent entity type > M4 > Fine-grained inconsistent entity-type
 		
 + Contradiction-Specific Word Embeddings +
+https://www.mdpi.com/1999-4893/10/2/59#:~:text=Contradiction%2Dspecific%20word%20embedding%20(CWE,in%20the%20new%20semantic%20space. 
+	- Data: SemEval 2014
 	- Contradiction occurs hwen sentencews are unliekly to be correct at the same time
 	- PROBLEM: Contradicting words and sentences are very close in vector space
 	- CONTRIBUTION: Data constructino method to generate large-scale corpus for contradiction specific word embeddings (CWE)
@@ -136,6 +138,7 @@ MAIN IDEAS:
 	
 + Sarcasm Recognition +
 https://aclanthology.org/2023.eacl-main.25.pdf
+	- Data: SemEval 2018
 	- Uses prompt template
 		* given x='best pizza ever!', x_p = x it is [MASK].
 		* Verbalizer maps from label word set to label space
