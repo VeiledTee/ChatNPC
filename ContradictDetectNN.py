@@ -301,8 +301,9 @@ def map_words_to_glove_embeddings(sentence, embeddings, max_length: int = 64):
     return torch.tensor(padded_sentence_embedding)
 
 
-def plot_training_history(train_accuracy_list: list, val_accuracy_list: list, train_f1_list: list, val_f1_list: list,
-                          number_of_epochs: int):
+def plot_training_history(
+    train_accuracy_list: list, val_accuracy_list: list, train_f1_list: list, val_f1_list: list, number_of_epochs: int
+):
     # Create x-axis values (epochs)
     x_axis: list = list(range(1, number_of_epochs + 1))
 
@@ -311,20 +312,20 @@ def plot_training_history(train_accuracy_list: list, val_accuracy_list: list, tr
 
     # Training accuracy plot
     plt.subplot(1, 2, 1)
-    plt.plot(x_axis, train_accuracy_list, label='Training Accuracy', marker='o')
-    plt.plot(x_axis, val_accuracy_list, label='Validation Accuracy', marker='o')
-    plt.xlabel('Epochs')
-    plt.ylabel('Accuracy')
-    plt.title('Training and Validation Accuracy')
+    plt.plot(x_axis, train_accuracy_list, label="Training Accuracy", marker="o")
+    plt.plot(x_axis, val_accuracy_list, label="Validation Accuracy", marker="o")
+    plt.xlabel("Epochs")
+    plt.ylabel("Accuracy")
+    plt.title("Training and Validation Accuracy")
     plt.legend()
 
     # Training F1-score plot
     plt.subplot(1, 2, 2)
-    plt.plot(x_axis, train_f1_list, label='Training F1 Score', marker='o')
-    plt.plot(x_axis, val_f1_list, label='Validation F1 Score', marker='o')
-    plt.xlabel('Epochs')
-    plt.ylabel('F1 Score')
-    plt.title('Training and Validation F1 Score')
+    plt.plot(x_axis, train_f1_list, label="Training F1 Score", marker="o")
+    plt.plot(x_axis, val_f1_list, label="Validation F1 Score", marker="o")
+    plt.xlabel("Epochs")
+    plt.ylabel("F1 Score")
+    plt.title("Training and Validation F1 Score")
     plt.legend()
 
     plt.tight_layout()
@@ -593,13 +594,13 @@ if __name__ == "__main__":
 
             for i in range(0, len(train_df), batch_size):
                 # Prepare the batch
-                s1_embedding = train_bert_embeddings_sentence1[i: i + batch_size]
-                s2_embedding = train_bert_embeddings_sentence2[i: i + batch_size]
+                s1_embedding = train_bert_embeddings_sentence1[i : i + batch_size]
+                s2_embedding = train_bert_embeddings_sentence2[i : i + batch_size]
                 # Get the corresponding labels for this batch
-                batch_labels = train_df["label"].iloc[i: i + batch_size].values
+                batch_labels = train_df["label"].iloc[i : i + batch_size].values
                 batch_labels = torch.tensor(batch_labels.astype(float), dtype=torch.float32).view(-1, 1)
                 # Get additional feature values
-                num_negations = train_df["negation"].iloc[i: i + batch_size].values
+                num_negations = train_df["negation"].iloc[i : i + batch_size].values
                 batch_negations = torch.tensor(num_negations.astype(float), dtype=torch.float32).view(-1, 1)
 
                 # s1_ph_features = persistent_homology_features(list(train_df["sentence1"].iloc[i : i + batch_size]))
@@ -654,9 +655,9 @@ if __name__ == "__main__":
             with torch.no_grad():
                 for i in range(0, len(valid_df), batch_size):
                     # Prepare the batch for validation
-                    s1_embedding = valid_bert_embeddings_sentence1[i: i + batch_size]
-                    s2_embedding = valid_bert_embeddings_sentence2[i: i + batch_size]
-                    batch_negations = valid_df["negation"].iloc[i: i + batch_size].values
+                    s1_embedding = valid_bert_embeddings_sentence1[i : i + batch_size]
+                    s2_embedding = valid_bert_embeddings_sentence2[i : i + batch_size]
+                    batch_negations = valid_df["negation"].iloc[i : i + batch_size].values
 
                     # Move tensors to the device
                     s1_embedding = s1_embedding.to(device)
@@ -694,10 +695,10 @@ if __name__ == "__main__":
             predictions = np.array([])
             for i in range(0, len(test_df), batch_size):
                 # Prepare the batch
-                s1_embedding = test_bert_embeddings_sentence1[i: i + batch_size].to(device)
-                s2_embedding = test_bert_embeddings_sentence2[i: i + batch_size].to(device)
+                s1_embedding = test_bert_embeddings_sentence1[i : i + batch_size].to(device)
+                s2_embedding = test_bert_embeddings_sentence2[i : i + batch_size].to(device)
                 # Get additional feature values
-                num_negations = test_df["negation"].iloc[i: i + batch_size].values
+                num_negations = test_df["negation"].iloc[i : i + batch_size].values
                 batch_negations = torch.tensor(num_negations.astype(float), dtype=torch.float32).view(-1, 1).to(device)
                 output = model([s1_embedding, s2_embedding, batch_negations])
                 predicted_labels = (output >= 0.5).float().cpu().numpy()
@@ -794,7 +795,7 @@ if __name__ == "__main__":
     """
     semeval train-semeval valid-semeval test
     =====
-	    Accuracy Breakdown
+        Accuracy Breakdown
     =====
     Mean:                 0.86
     Median:               0.86
