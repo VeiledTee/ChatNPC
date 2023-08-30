@@ -68,12 +68,12 @@ def embed_and_ph(df_for_cleaning: pd.DataFrame, output_csv_path: str) -> None:
                 row["sentence2_ph_b"] = s2_ph_features[0][1]
 
             # Calculate negation count
-            if 'negation' not in row:
-                row['negation'] = count_negations([row["sentence1"], row["sentence2"]])
+            if "negation" not in row:
+                row["negation"] = count_negations([row["sentence1"], row["sentence2"]])
 
             # Create a new row for the result DataFrame
             result_row = {
-                "gold_label": row['gold_label'].strip(),
+                "gold_label": row["gold_label"].strip(),
                 "sentence1": row["sentence1"].strip(),
                 "sentence2": row["sentence2"].strip(),
                 "label": label,
@@ -83,7 +83,7 @@ def embed_and_ph(df_for_cleaning: pd.DataFrame, output_csv_path: str) -> None:
                 "sentence1_ph_b": row["sentence1_ph_b"],
                 "sentence2_ph_a": row["sentence2_ph_a"],
                 "sentence2_ph_b": row["sentence2_ph_b"],
-                "negation": row['negation'],
+                "negation": row["negation"],
             }
 
             with open(output_csv_path, "a", newline="") as csvfile:

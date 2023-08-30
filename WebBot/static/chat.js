@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const userMessage = userInput.value;
 
-        // Append the user's message to the chatbox
+        // Append the user's message to the chatbox with the Player label
         chatbox.innerHTML += `<p><strong>Player:</strong> ${userMessage}</p>`;
 
         // Clear the input field
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Send the user's message to the server for processing
         fetch('/chat', {
             method: 'POST',
-            body: JSON.stringify({ user_input: userMessage }),
+            body: JSON.stringify({ user_input: userMessage, character_select: selectedCharacter }), // Include selected character
             headers: {
                 'Content-Type': 'application/json'
             }
@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(response => response.text())
         .then(data => {
             // Append the character's name and response to the chatbox
-            chatbox.innerHTML += `<p>${selectedCharacter}: ${data}</p>`;
+            chatbox.innerHTML += `<p><strong>${selectedCharacter}:</strong> ${data}</p>`;
 
             // Scroll to the bottom of the chatbox
             chatbox.scrollTop = chatbox.scrollHeight;
