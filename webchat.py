@@ -8,6 +8,14 @@ import torch
 from sentence_transformers import SentenceTransformer
 from tqdm.auto import tqdm
 
+with open("keys.txt", "r") as key_file:
+    api_keys = [key.strip() for key in key_file.readlines()]
+    openai.api_key = api_keys[0]
+    pinecone.init(
+        api_key=api_keys[1],
+        environment=api_keys[2],
+    )
+
 
 def get_information(character_name) -> None | tuple:
     """
@@ -15,7 +23,7 @@ def get_information(character_name) -> None | tuple:
     :param character_name: name of character
     :return: None if character doesn't exist | profession and social status if they do exist
     """
-    with open("Text Summaries/character_objects.json", "r") as character_file:
+    with open("WebBot/character_objects.json", "r") as character_file:
         data = json.load(character_file)
 
     for character in data["characters"]:
@@ -89,9 +97,8 @@ def chat(
 
 
 def run_query_and_generate_answer(
-    namespace: str,
-    data: List[str],
     background: bool,
+    query: str,
     receiver: str,
     job: str,
     status: str,
@@ -100,8 +107,7 @@ def run_query_and_generate_answer(
 ) -> str | None:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
-    :param namespace: The index namespace to operate in
-    :param data: The data to be used for the query.
+    :param background: If the background info of the character needs to be saved
     :param query: The query to be run on the index.
     :param receiver: The character being prompted
     :param job: The profession of the receiver
@@ -110,6 +116,25 @@ def run_query_and_generate_answer(
     :param save: A bool to save to a file is Ture and print out if False. Default: True
     :return: The generated answer based on the response context.
     """
+    GRAMMAR: dict = {
+        "lower": "poor",
+        "middle": "satisfactory",
+        "high": "formal",
+    }
+
+    history: List[dict] = []
+
+    with open("WebBot/characters.json", "r") as f:
+        names = json.load(f)
+
+    PROFESSION, SOCIAL_CLASS = get_information(CHARACTER)
+    print(f"Conversation with: {CHARACTER} (a {PROFESSION})")
+    DATA_FILE: str = f"WebBot/summaries/{names[CHARACTER]}.txt"
+
+    namespace: str = extract_name(DATA_FILE).lower()
+
+    data = load_file_information(DATA_FILE)
+
     # connect to index
     index = pinecone.Index(index_name)
 
@@ -117,18 +142,16 @@ def run_query_and_generate_answer(
     if background:
         upload_background(namespace, data, index)
 
-    query: str = input("Player: ")
-
     if query.lower() == "bye":
         return None
 
-    generate_conversation(f"Text Summaries/Summaries/{namespace.replace('-', '_')}.txt", True, query)
+    history = generate_conversation(f"WebBot/summaries/{namespace.replace('-', '_')}.txt", history, True, query)
     # embed query for processing
     embedded_query = embed(query=query)
     # query Pinecone index and get context for model prompting.
     responses = index.query(
         embedded_query,
-        top_k=15,
+        top_k=3,
         include_metadata=True,
         namespace=namespace,
         filter={
@@ -146,11 +169,11 @@ def run_query_and_generate_answer(
     clean_prompt = prompt_engineer(query, status, context)
     save_prompt: str = clean_prompt.replace("\n", " ")
 
-    generated_answer = answer(clean_prompt, HISTORY)
+    generated_answer = answer(clean_prompt, history)
 
     if save:
         # save results to file and return generated answer.
-        with open("prompt_response.txt", "a") as save_file:
+        with open("WebBot/prompt_response.txt", "a") as save_file:
             save_file.write("\n" + "=" * 120 + "\n")
             save_file.write(f"Prompt: {save_prompt}\n")
             save_file.write(f"To: {receiver}, a {job}\n")
@@ -161,9 +184,10 @@ def run_query_and_generate_answer(
         print(generated_answer)
 
     generate_conversation(
-        f"Text Summaries/Summaries/{namespace.replace('-', '_')}.txt",
-        False,
-        generated_answer,
+        f"WebBot/summaries/{namespace.replace('-', '_')}.txt",
+        chat_history=history,
+        player=False,
+        next_phrase=generated_answer,
     )
 
     update_history(
@@ -173,25 +197,28 @@ def run_query_and_generate_answer(
     return generated_answer
 
 
-def generate_conversation(character_file: str, player: bool, next_phrase: str) -> None:
+def generate_conversation(character_file: str, chat_history: list, player: bool, next_phrase: str) -> List[dict]:
     """
     Generate a record of the conversation a user has had with the system for feeding into gpt 3.5 turbo
     :param character_file: The file associated with a character's background, not required unless
         first execution of function to 'set the stage'
+    :param chat_history:
     :param player: is the player the one delivering the phrase
     :param next_phrase: the most recent phrase of the conversation
     :return: A list of dictionaries
     """
-    if not HISTORY:
+    if not chat_history:
         with open(character_file) as char_file:
             background: str = f"You are {CHARACTER}. Your background:"
             for line in char_file.readlines():
                 background += " " + line.strip()
-        HISTORY.append({"role": "system", "content": background})
-    if player:
-        HISTORY.append({"role": "user", "content": next_phrase})
+        chat_history.append({"role": "system", "content": background})
     else:
-        HISTORY.append({"role": "assistant", "content": next_phrase})
+        if player:
+            chat_history.append({"role": "user", "content": next_phrase})
+        else:
+            chat_history.append({"role": "assistant", "content": next_phrase})
+    return chat_history
 
 
 def embed(query: str) -> List[float]:
@@ -325,8 +352,8 @@ def answer(prompt: str, chat_history: List[dict], is_chat: bool = True) -> str:
         msgs: List[dict] = chat_history
         msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
         res: str = openai.ChatCompletion.create(
-            model="gpt-4",
-            # model="gpt-3.5-turbo-0301",
+            # model="gpt-4",
+            model="gpt-3.5-turbo-0301",
             messages=msgs,
             temperature=0,
         )  # conversation with LLM
@@ -352,7 +379,6 @@ def update_history(
     prompt: str,
     response: str,
     index: pinecone.Index,
-    index_name: str = "thesis_index",
     character: str = "Player",
 ) -> None:
     """
@@ -368,7 +394,7 @@ def update_history(
     upload(namespace, [prompt], index, "query")  # upload prompt to pinecone
     upload(namespace, [response], index, "response")  # upload response to pinecone
 
-    info_file = f"{info_file.split('/')[0]}/Chat Logs/{info_file.split('/')[-1]}"  # swap directory
+    info_file = f"{info_file.split('/')[0]}/chat logs/{info_file.split('/')[-1]}"  # swap directory
     extension_index = info_file.index(".")
     new_filename = info_file[:extension_index] + "_chat" + info_file[extension_index:]  # generate new filename
 
@@ -378,7 +404,7 @@ def update_history(
         )  # save chat logs
 
 
-def name_conversion(to_snake: bool, to_convert: str) -> str:
+def name_conversion(to_snake: bool, to_HISTORYconvert: str) -> str:
     if to_snake:
         text = to_convert.lower().split(" ")
         converted: str = text[0]
@@ -428,14 +454,6 @@ def random_sentence():
 
 
 if __name__ == "__main__":
-    GRAMMAR: dict = {
-        "lower": "poor",
-        "middle": "satisfactory",
-        "high": "formal",
-    }
-
-    HISTORY: List[dict] = []
-
     # CHARACTER: str = "John Pebble"  # thief
     # CHARACTER: str = "Evelyn Stone-Brown"  # blacksmith
     CHARACTER: str = "Caleb Brown"  # baker
@@ -444,12 +462,20 @@ if __name__ == "__main__":
     # CHARACTER: str = "Melinda Deek"  # knight
     # CHARACTER: str = "Sarah Ratengen"  # tavern owner
 
-    with open("Text Summaries/characters.json", "r") as f:
+    GRAMMAR: dict = {
+        "lower": "poor",
+        "middle": "satisfactory",
+        "high": "formal",
+    }
+
+    HISTORY: List[dict] = []
+
+    with open("WebBot/characters.json", "r") as f:
         names = json.load(f)
 
     PROFESSION, SOCIAL_CLASS = get_information(CHARACTER)
     print(f"Conversation with: {CHARACTER} (a {PROFESSION})")
-    DATA_FILE: str = f"Text Summaries/Summaries/{names[CHARACTER]}.txt"
+    DATA_FILE: str = f"WebBot/summaries/{names[CHARACTER]}.txt"
 
     INDEX_NAME: str = "thesis-index"
     NAMESPACE: str = extract_name(DATA_FILE).lower()
