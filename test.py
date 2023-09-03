@@ -148,12 +148,12 @@ if __name__ == "__main__":
     v = 2
     t = 2
     if n is not None and v is not None and t is not None:
-        train_df = pd.read_csv("Data/match_cleaned.csv").head(n)
-        valid_df = pd.read_csv("Data/mismatch_cleaned.csv").head(v)
+        train_df = pd.read_csv("Data/MultiNLI/match_cleaned.csv").head(n)
+        valid_df = pd.read_csv("Data/MultiNLI/mismatch_cleaned.csv").head(v)
         test_df = pd.read_csv("Data/contradiction-dataset_cleaned.csv").head(t)
     else:
-        train_df = pd.read_csv("Data/match_cleaned.csv")
-        valid_df = pd.read_csv("Data/mismatch_cleaned.csv")
+        train_df = pd.read_csv("Data/MultiNLI/match_cleaned.csv")
+        valid_df = pd.read_csv("Data/MultiNLI/mismatch_cleaned.csv")
         test_df = pd.read_csv("Data/contradiction-dataset_cleaned.csv")
 
     # correctly format tensors

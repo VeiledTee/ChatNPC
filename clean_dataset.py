@@ -120,7 +120,10 @@ if __name__ == "__main__":
         # "Data/SemEval2014T1/valid_cleaned.csv",
         # "Data/mismatch_cleaned.csv",
         # "Data/match_cleaned.csv",
-        "Data/train.csv"
+        'Data/SNLI/train.csv',
+        'Data/SNLI/valid.csv',
+        'Data/SNLI/test.csv',
+        "Data/MultiNLI/train.csv",
     ]
     for file in TO_CLEAN:
         print(f"\tIn Progress: {file}")

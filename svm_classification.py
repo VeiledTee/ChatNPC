@@ -51,6 +51,7 @@ if BERT:
         pair_x = [s.strip() for s in test_df["sentence1"]]
         pair_y = [s.strip() for s in test_df["sentence2"]]
         test_labels = test_df["label"].tolist()
+        print(f"Percent Positive: {100 * sum(test_labels) / len(test_labels):.4f}")
         test_embeddings = np.array([encode_sentence(f"{x} [SEP] {y}") for x, y in zip(pair_x, pair_y)])
 else:
     # Load the Sentence-BERT model

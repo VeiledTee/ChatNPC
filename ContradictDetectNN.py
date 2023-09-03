@@ -10,7 +10,7 @@ from sklearn.metrics import f1_score, accuracy_score
 import pandas as pd
 import torch
 from transformers import BertTokenizer, BertModel
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 import torch
@@ -1028,22 +1028,22 @@ if __name__ == "__main__":
     #         tests_f1.append(train_f1)
     #         print(f"Test Accuracy: {train_accuracy:.4f}, Test F1 Score: {train_f1:.4f}")
     #         print(f"Percent of positive class: {sum(true_labels) / len(true_labels):.4f}%")
-    for name, model in [("SoloBERT", ConvBBU()), ("NegationBERT", ConvBBUNeg())]:
+    for name, model in [("ConvBBU", ConvBBU()), ("ConvBBUNeg", ConvBBUNeg())]:
         if n is not None and v is not None and t is not None:
-            train_df = pd.read_csv("Data/match_cleaned.csv").head(n)
-            valid_df = pd.read_csv("Data/mismatch_cleaned.csv").head(v)
+            train_df = pd.read_csv("Data/MultiNLI/match_cleaned.csv").head(n)
+            valid_df = pd.read_csv("Data/MultiNLI/mismatch_cleaned.csv").head(v)
             test_df = pd.read_csv("Data/contradiction-dataset_cleaned_ph.csv").head(t)
         else:
             # train_df = pd.concat([
-            #     # pd.read_csv("Data/match_cleaned.csv"),
-            #     pd.read_csv("Data/mismatch_cleaned.csv"),
-            #     # pd.read_csv("Data/SemEval2014T1/train_cleaned_ph.csv"),
-            #     # pd.read_csv("Data/SemEval2014T1/valid_cleaned.csv"),
+            #     pd.read_csv("Data/MultiNLI/match_cleaned.csv"),
+            #     pd.read_csv("Data/MultiNLI/mismatch_cleaned.csv"),
+            #     pd.read_csv("Data/SemEval2014T1/train_cleaned_ph.csv"),
+            #     pd.read_csv("Data/SemEval2014T1/valid_cleaned.csv"),
             # ], ignore_index=True)
             # valid_df = pd.read_csv("Data/contradiction-dataset_cleaned_ph.csv")
             # test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned.csv")
-            # train_df = pd.read_csv("Data/match_cleaned.csv")
-            # valid_df = pd.read_csv("Data/mismatch_cleaned.csv")
+            # train_df = pd.read_csv("Data/MultiNLI/match_cleaned.csv")
+            # valid_df = pd.read_csv("Data/MultiNLI/mismatch_cleaned.csv")
             # test_df = pd.read_csv("Data/contradiction-dataset_cleaned_ph.csv")
             train_df = pd.read_csv("Data/SemEval2014T1/train_cleaned_ph.csv")
             valid_df = pd.read_csv("Data/SemEval2014T1/valid_cleaned.csv")
@@ -1051,10 +1051,17 @@ if __name__ == "__main__":
         train_accuracy, train_f1, valid_accuracy, valid_f1 = model.train_model(
             train_df, valid_df, BATCH_SIZE, NUM_EPOCHS, DEVICE, verbose=False
         )
+        model_save_path: str = f"Models/{name}.pt"
+        torch.save(model.state_dict(), model_save_path)
+        model.load_state_dict(torch.load(model_save_path))
+
         predictions = model.predict(test_df, BATCH_SIZE, DEVICE)
         print(f"==========\n{name}")
-        print(f"Accuracy: {accuracy_score(test_df['label'].values, predictions):.4f}")
-        print(f"F1-Score: {f1_score(test_df['label'].values, predictions):.4f}")
+        print(f"Accuracy:  {accuracy_score(test_df['label'].values, predictions):.4f}")
+        print(f"F1-Score:  {f1_score(test_df['label'].values, predictions):.4f}")
+        print(f"Precision: {precision_score(test_df['label'].values, predictions):.4f}")
+        print(f"Recall:    {recall_score(test_df['label'].values, predictions):.4f}")
+
     # print(f"Avg acc over {len(tests_acc)} runs: {sum(tests_acc) / len(tests_acc)}")
     # print(f"Best Accuracy:        {max(tests_acc)}")
     # print(f"Worst Accuracy:       {min(tests_acc)}")

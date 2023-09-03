@@ -1315,8 +1315,8 @@
 /Checkpoint/2/checkpoint_750.pth
 /Data/contradiction-dataset_cleaned.csv
 /Data/contradiction-dataset_cleaned_ph.csv
-/Data/match_cleaned.csv
-/Data/mismatch_cleaned.csv
+/Data/MultiNLI/match_cleaned.csv
+/Data/MultiNLI/mismatch_cleaned.csv
 /Data/MultiNLI/multinli_1.0_dev_matched.txt
 /Data/MultiNLI/multinli_1.0_dev_mismatched.txt
 /Data/MultiNLI/multinli_1.0_train.txt
