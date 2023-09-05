@@ -142,10 +142,10 @@ def embedding_to_tensor(string: Any) -> torch.Tensor:
 
 def ph_to_tensor(array_str):
     # Remove newline characters and strip brackets
-    array_str = array_str.replace('\n', '').strip('[]')
+    array_str = array_str.replace("\n", "").strip("[]")
 
     # Split rows and convert to a list of lists of floats
-    rows = [list(map(float, row.split())) for row in array_str.split('] [')]
+    rows = [list(map(float, row.split())) for row in array_str.split("] [")]
 
     # Check for 'inf' values and replace them
     for row in rows:
@@ -410,113 +410,113 @@ class ConvBBUTri(nn.Module):
         return final_layer_output
 
     def train_model(
-            self,
-            training_data: pd.DataFrame,
-            validation_data: pd.DataFrame,
-            batch_size: int,
-            num_epochs: int,
-            device: str,
-            verbose: bool = False,
-        ) -> Tuple[List[float], List[float], List[float], List[float]]:
-            # Clean data
-            training_data["sentence1_embeddings"] = training_data["sentence1_embeddings"].apply(embedding_to_tensor)
-            training_data["sentence2_embeddings"] = training_data["sentence2_embeddings"].apply(embedding_to_tensor)
-            validation_data["sentence1_embeddings"] = validation_data["sentence1_embeddings"].apply(embedding_to_tensor)
-            validation_data["sentence2_embeddings"] = validation_data["sentence2_embeddings"].apply(embedding_to_tensor)
-            # Stack embeddings for batch processing
-            sentence1_training_embeddings: torch.Tensor = torch.stack(list(training_data["sentence1_embeddings"]), dim=0)
-            sentence2_training_embeddings: torch.Tensor = torch.stack(list(training_data["sentence2_embeddings"]), dim=0)
-            sentence1_validation_embeddings: torch.Tensor = torch.stack(
-                list(validation_data["sentence1_embeddings"]), dim=0
-            )
-            sentence2_validation_embeddings: torch.Tensor = torch.stack(
-                list(validation_data["sentence2_embeddings"]), dim=0
-            )
+        self,
+        training_data: pd.DataFrame,
+        validation_data: pd.DataFrame,
+        batch_size: int,
+        num_epochs: int,
+        device: str,
+        verbose: bool = False,
+    ) -> Tuple[List[float], List[float], List[float], List[float]]:
+        # Clean data
+        training_data["sentence1_embeddings"] = training_data["sentence1_embeddings"].apply(embedding_to_tensor)
+        training_data["sentence2_embeddings"] = training_data["sentence2_embeddings"].apply(embedding_to_tensor)
+        validation_data["sentence1_embeddings"] = validation_data["sentence1_embeddings"].apply(embedding_to_tensor)
+        validation_data["sentence2_embeddings"] = validation_data["sentence2_embeddings"].apply(embedding_to_tensor)
+        # Stack embeddings for batch processing
+        sentence1_training_embeddings: torch.Tensor = torch.stack(list(training_data["sentence1_embeddings"]), dim=0)
+        sentence2_training_embeddings: torch.Tensor = torch.stack(list(training_data["sentence2_embeddings"]), dim=0)
+        sentence1_validation_embeddings: torch.Tensor = torch.stack(
+            list(validation_data["sentence1_embeddings"]), dim=0
+        )
+        sentence2_validation_embeddings: torch.Tensor = torch.stack(
+            list(validation_data["sentence2_embeddings"]), dim=0
+        )
 
-            device = torch.device(device)
-            self.to(device)
-            criterion: nn.BCEWithLogitsLoss = nn.BCEWithLogitsLoss().to(device)
-            optimizer: optim.Adam = optim.Adam(self.parameters(), lr=0.001)
+        device = torch.device(device)
+        self.to(device)
+        criterion: nn.BCEWithLogitsLoss = nn.BCEWithLogitsLoss().to(device)
+        optimizer: optim.Adam = optim.Adam(self.parameters(), lr=0.001)
 
-            # initialize data containers for plotting
-            train_accuracy_values: list = []
-            train_f1_values: list = []
-            val_accuracy_values: list = []
-            val_f1_values: list = []
+        # initialize data containers for plotting
+        train_accuracy_values: list = []
+        train_f1_values: list = []
+        val_accuracy_values: list = []
+        val_f1_values: list = []
 
-            for epoch in range(num_epochs):
-                self.train()  # Set the model to training mode
-                running_loss: float = 0.0
-                all_predicted_labels: list = []
-                all_true_labels: list = []
-                for i in range(0, len(training_data), batch_size):
-                    # Prepare the batch
-                    s1_embedding: torch.Tensor = sentence1_training_embeddings[i : i + batch_size]
-                    s2_embedding: torch.Tensor = sentence2_training_embeddings[i : i + batch_size]
-                    # Get the corresponding labels for this batch
-                    batch_labels: np.ndarray = training_data["label"].iloc[i : i + batch_size].values
-                    batch_labels: torch.Tensor = (
-                        torch.tensor(batch_labels.astype(float), dtype=torch.float32).view(-1, 1).to(device)
-                    )
+        for epoch in range(num_epochs):
+            self.train()  # Set the model to training mode
+            running_loss: float = 0.0
+            all_predicted_labels: list = []
+            all_true_labels: list = []
+            for i in range(0, len(training_data), batch_size):
+                # Prepare the batch
+                s1_embedding: torch.Tensor = sentence1_training_embeddings[i : i + batch_size]
+                s2_embedding: torch.Tensor = sentence2_training_embeddings[i : i + batch_size]
+                # Get the corresponding labels for this batch
+                batch_labels: np.ndarray = training_data["label"].iloc[i : i + batch_size].values
+                batch_labels: torch.Tensor = (
+                    torch.tensor(batch_labels.astype(float), dtype=torch.float32).view(-1, 1).to(device)
+                )
+
+                # Move tensors to the device
+                s1_embedding: torch.Tensor = s1_embedding.to(device)
+                s2_embedding: torch.Tensor = s2_embedding.to(device)
+                # Forward pass
+                # outputs: torch.Tensor = model([s1_embedding, s2_embedding, batch_negations, batch_s1_feature_a, batch_s1_feature_b, batch_s2_feature_a, batch_s2_feature_b])
+                outputs: torch.Tensor = model([s1_embedding, s2_embedding])
+                # Compute the loss
+                loss: float = criterion(outputs, batch_labels)
+                # Backpropagation
+                optimizer.zero_grad()  # Clear accumulated gradients
+                loss.backward()
+                # Optimize (update model parameters)
+                optimizer.step()
+                # Update running loss
+                running_loss += loss.item()
+                # Convert outputs to binary predictions (0 or 1)
+                predicted_labels: np.ndarray = (outputs >= 0.5).float().view(-1).cpu().numpy()
+                true_labels: np.ndarray = batch_labels.view(-1).cpu().numpy()
+                all_predicted_labels.extend(predicted_labels)
+                all_true_labels.extend(true_labels)
+                # Calculate training accuracy and F1-score
+                training_accuracy: float = accuracy_score(all_true_labels, all_predicted_labels)
+                training_f1: float = f1_score(all_true_labels, all_predicted_labels)
+
+                train_accuracy_values.append(training_accuracy)
+                train_f1_values.append(training_f1)
+
+            average_loss: float = running_loss / (len(training_data) / batch_size)
+            # Validation
+            self.eval()  # Set the model to evaluation mode
+            all_val_predicted_labels: np.ndarray = []
+
+            with torch.no_grad():
+                for i in range(0, len(validation_data), batch_size):
+                    # Prepare the batch for validation
+                    s1_embedding: torch.Tensor = sentence1_validation_embeddings[i : i + batch_size]
+                    s2_embedding: torch.Tensor = sentence2_validation_embeddings[i : i + batch_size]
 
                     # Move tensors to the device
                     s1_embedding: torch.Tensor = s1_embedding.to(device)
                     s2_embedding: torch.Tensor = s2_embedding.to(device)
-                    # Forward pass
-                    # outputs: torch.Tensor = model([s1_embedding, s2_embedding, batch_negations, batch_s1_feature_a, batch_s1_feature_b, batch_s2_feature_a, batch_s2_feature_b])
-                    outputs: torch.Tensor = model([s1_embedding, s2_embedding])
-                    # Compute the loss
-                    loss: float = criterion(outputs, batch_labels)
-                    # Backpropagation
-                    optimizer.zero_grad()  # Clear accumulated gradients
-                    loss.backward()
-                    # Optimize (update model parameters)
-                    optimizer.step()
-                    # Update running loss
-                    running_loss += loss.item()
-                    # Convert outputs to binary predictions (0 or 1)
-                    predicted_labels: np.ndarray = (outputs >= 0.5).float().view(-1).cpu().numpy()
-                    true_labels: np.ndarray = batch_labels.view(-1).cpu().numpy()
-                    all_predicted_labels.extend(predicted_labels)
-                    all_true_labels.extend(true_labels)
-                    # Calculate training accuracy and F1-score
-                    training_accuracy: float = accuracy_score(all_true_labels, all_predicted_labels)
-                    training_f1: float = f1_score(all_true_labels, all_predicted_labels)
 
-                    train_accuracy_values.append(training_accuracy)
-                    train_f1_values.append(training_f1)
+                    # Forward pass for validation
+                    val_outputs: torch.Tensor = model([s1_embedding, s2_embedding])
 
-                average_loss: float = running_loss / (len(training_data) / batch_size)
-                # Validation
-                self.eval()  # Set the model to evaluation mode
-                all_val_predicted_labels: np.ndarray = []
+                    # Convert validation outputs to binary predictions (0 or 1)
+                    val_predicted_labels: np.ndarray = (val_outputs >= 0.5).float().view(-1).cpu().numpy()
+                    all_val_predicted_labels.extend(val_predicted_labels)
 
-                with torch.no_grad():
-                    for i in range(0, len(validation_data), batch_size):
-                        # Prepare the batch for validation
-                        s1_embedding: torch.Tensor = sentence1_validation_embeddings[i : i + batch_size]
-                        s2_embedding: torch.Tensor = sentence2_validation_embeddings[i : i + batch_size]
-
-                        # Move tensors to the device
-                        s1_embedding: torch.Tensor = s1_embedding.to(device)
-                        s2_embedding: torch.Tensor = s2_embedding.to(device)
-
-                        # Forward pass for validation
-                        val_outputs: torch.Tensor = model([s1_embedding, s2_embedding])
-
-                        # Convert validation outputs to binary predictions (0 or 1)
-                        val_predicted_labels: np.ndarray = (val_outputs >= 0.5).float().view(-1).cpu().numpy()
-                        all_val_predicted_labels.extend(val_predicted_labels)
-
-                # Calculate validation accuracy and F1-score
-                val_accuracy: float = accuracy_score(validation_data["label"], all_val_predicted_labels)
-                val_f1: float = f1_score(validation_data["label"], all_val_predicted_labels)
-                if verbose:
-                    print(
-                        f"\tTraining   | Accuracy: {training_accuracy:.4f}, F1 Score: {training_f1:.4f}, Loss: {average_loss:.4f}"
-                    )
-                    print(f"\tValidation | Accuracy: {val_accuracy:.4f}, F1 Score: {val_f1:.4f}")
-            return train_accuracy_values, train_f1_values, val_accuracy_values, val_f1_values
+            # Calculate validation accuracy and F1-score
+            val_accuracy: float = accuracy_score(validation_data["label"], all_val_predicted_labels)
+            val_f1: float = f1_score(validation_data["label"], all_val_predicted_labels)
+            if verbose:
+                print(
+                    f"\tTraining   | Accuracy: {training_accuracy:.4f}, F1 Score: {training_f1:.4f}, Loss: {average_loss:.4f}"
+                )
+                print(f"\tValidation | Accuracy: {val_accuracy:.4f}, F1 Score: {val_f1:.4f}")
+        return train_accuracy_values, train_f1_values, val_accuracy_values, val_f1_values
 
     def predict(self, test_data: pd.DataFrame, batch_size: int, device: str) -> np.ndarray:
         # Clean data
@@ -755,8 +755,9 @@ class ConvBBUPH(nn.Module):
         phb_concat_reshaped = phb_concat.view(x_concat.shape[0], -1)  # Reshape to [x, 50*3]
 
         # Now you can concatenate x_concat, pha_concat_reshaped, and phb_concat_reshaped along dimension 1
-        final_input = torch.cat((x_concat, pha_concat_reshaped, phb_concat_reshaped),
-                                dim=1)  # [x, 256 + 260*3 + 50*3] ([x, 1186])
+        final_input = torch.cat(
+            (x_concat, pha_concat_reshaped, phb_concat_reshaped), dim=1
+        )  # [x, 256 + 260*3 + 50*3] ([x, 1186])
 
         # Feed to forward composition layers
         x = self.fc1(final_input)
@@ -779,7 +780,7 @@ class ConvBBUPH(nn.Module):
         training_data["sentence2_embeddings"] = training_data["sentence2_embeddings"].apply(embedding_to_tensor)
         validation_data["sentence1_embeddings"] = validation_data["sentence1_embeddings"].apply(embedding_to_tensor)
         validation_data["sentence2_embeddings"] = validation_data["sentence2_embeddings"].apply(embedding_to_tensor)
-        for column in ['sentence1_ph_a', 'sentence1_ph_b', 'sentence2_ph_a', 'sentence2_ph_b']:
+        for column in ["sentence1_ph_a", "sentence1_ph_b", "sentence2_ph_a", "sentence2_ph_b"]:
             # Training cleaning
             training_data[column] = training_data[column].apply(ph_to_tensor)
             # Validation cleaning
@@ -813,22 +814,39 @@ class ConvBBUPH(nn.Module):
             all_true_labels: list = []
             for i in range(0, len(training_data), batch_size):
                 # Prepare the batch
-                s1_embedding: torch.Tensor = torch.Tensor(sentence1_training_embeddings[i: i + batch_size]).to(device)
-                s2_embedding: torch.Tensor = torch.Tensor(sentence2_training_embeddings[i: i + batch_size]).to(device)
+                s1_embedding: torch.Tensor = torch.Tensor(sentence1_training_embeddings[i : i + batch_size]).to(device)
+                s2_embedding: torch.Tensor = torch.Tensor(sentence2_training_embeddings[i : i + batch_size]).to(device)
                 # Get the corresponding labels for this batch
-                batch_labels: np.ndarray = training_data["label"].iloc[i: i + batch_size].values
+                batch_labels: np.ndarray = training_data["label"].iloc[i : i + batch_size].values
                 batch_labels: torch.Tensor = (
                     torch.tensor(batch_labels.astype(float), dtype=torch.float32).view(-1, 1).to(device)
                 )
 
                 # Prepare PH vectors
-                batch_s1_feature_a = torch.stack(training_data['sentence1_ph_a'].values.tolist()[i: i + batch_size], dim=0).to(device)
-                batch_s1_feature_b = torch.stack(training_data['sentence1_ph_b'].values.tolist()[i: i + batch_size], dim=0).to(device)
-                batch_s2_feature_a = torch.stack(training_data['sentence2_ph_a'].values.tolist()[i: i + batch_size], dim=0).to(device)
-                batch_s2_feature_b = torch.stack(training_data['sentence2_ph_b'].values.tolist()[i: i + batch_size], dim=0).to(device)
+                batch_s1_feature_a = torch.stack(
+                    training_data["sentence1_ph_a"].values.tolist()[i : i + batch_size], dim=0
+                ).to(device)
+                batch_s1_feature_b = torch.stack(
+                    training_data["sentence1_ph_b"].values.tolist()[i : i + batch_size], dim=0
+                ).to(device)
+                batch_s2_feature_a = torch.stack(
+                    training_data["sentence2_ph_a"].values.tolist()[i : i + batch_size], dim=0
+                ).to(device)
+                batch_s2_feature_b = torch.stack(
+                    training_data["sentence2_ph_b"].values.tolist()[i : i + batch_size], dim=0
+                ).to(device)
 
                 # Forward pass
-                outputs: torch.Tensor = model([s1_embedding, s2_embedding, batch_s1_feature_a, batch_s1_feature_b, batch_s2_feature_a, batch_s2_feature_b])
+                outputs: torch.Tensor = model(
+                    [
+                        s1_embedding,
+                        s2_embedding,
+                        batch_s1_feature_a,
+                        batch_s1_feature_b,
+                        batch_s2_feature_a,
+                        batch_s2_feature_b,
+                    ]
+                )
                 # Compute the loss
                 loss: float = criterion(outputs, batch_labels)
                 # Backpropagation
@@ -858,23 +876,34 @@ class ConvBBUPH(nn.Module):
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
                     # Prepare the batch for validation
-                    s1_embedding: torch.Tensor = sentence1_validation_embeddings[i: i + batch_size].to(device)
-                    s2_embedding: torch.Tensor = sentence2_validation_embeddings[i: i + batch_size].to(device)
+                    s1_embedding: torch.Tensor = sentence1_validation_embeddings[i : i + batch_size].to(device)
+                    s2_embedding: torch.Tensor = sentence2_validation_embeddings[i : i + batch_size].to(device)
 
                     # Prepare PH vectors
-                    batch_s1_feature_a = torch.stack(validation_data['sentence1_ph_a'].values.tolist()[i: i + batch_size],
-                                                     dim=0).to(device)
-                    batch_s1_feature_b = torch.stack(validation_data['sentence1_ph_b'].values.tolist()[i: i + batch_size],
-                                                     dim=0).to(device)
-                    batch_s2_feature_a = torch.stack(validation_data['sentence2_ph_a'].values.tolist()[i: i + batch_size],
-                                                     dim=0).to(device)
-                    batch_s2_feature_b = torch.stack(validation_data['sentence2_ph_b'].values.tolist()[i: i + batch_size],
-                                                     dim=0).to(device)
+                    batch_s1_feature_a = torch.stack(
+                        validation_data["sentence1_ph_a"].values.tolist()[i : i + batch_size], dim=0
+                    ).to(device)
+                    batch_s1_feature_b = torch.stack(
+                        validation_data["sentence1_ph_b"].values.tolist()[i : i + batch_size], dim=0
+                    ).to(device)
+                    batch_s2_feature_a = torch.stack(
+                        validation_data["sentence2_ph_a"].values.tolist()[i : i + batch_size], dim=0
+                    ).to(device)
+                    batch_s2_feature_b = torch.stack(
+                        validation_data["sentence2_ph_b"].values.tolist()[i : i + batch_size], dim=0
+                    ).to(device)
 
                     # Forward pass
                     val_outputs: torch.Tensor = model(
-                        [s1_embedding, s2_embedding, batch_s1_feature_a, batch_s1_feature_b, batch_s2_feature_a,
-                         batch_s2_feature_b])
+                        [
+                            s1_embedding,
+                            s2_embedding,
+                            batch_s1_feature_a,
+                            batch_s1_feature_b,
+                            batch_s2_feature_a,
+                            batch_s2_feature_b,
+                        ]
+                    )
 
                     # Convert validation outputs to binary predictions (0 or 1)
                     val_predicted_labels: np.ndarray = (val_outputs >= 0.5).float().view(-1).cpu().numpy()
@@ -894,7 +923,7 @@ class ConvBBUPH(nn.Module):
         # Clean data
         test_data["sentence1_embeddings"] = test_data["sentence1_embeddings"].apply(embedding_to_tensor)
         test_data["sentence2_embeddings"] = test_data["sentence2_embeddings"].apply(embedding_to_tensor)
-        for column in ['sentence1_ph_a', 'sentence1_ph_b', 'sentence2_ph_a', 'sentence2_ph_b']:
+        for column in ["sentence1_ph_a", "sentence1_ph_b", "sentence2_ph_a", "sentence2_ph_b"]:
             # Test cleaning
             test_data[column] = test_data[column].apply(ph_to_tensor)
 
@@ -914,15 +943,28 @@ class ConvBBUPH(nn.Module):
                 s1_embedding: torch.Tensor = sentence1_testing_embeddings[i : i + batch_size].to(device)
                 s2_embedding: torch.Tensor = sentence2_testing_embeddings[i : i + batch_size].to(device)
                 # Prepare PH vectors
-                batch_s1_feature_a = torch.stack(test_data['sentence1_ph_a'].values.tolist()[i: i + batch_size],
-                                                 dim=0).to(device)
-                batch_s1_feature_b = torch.stack(test_data['sentence1_ph_b'].values.tolist()[i: i + batch_size],
-                                                 dim=0).to(device)
-                batch_s2_feature_a = torch.stack(test_data['sentence2_ph_a'].values.tolist()[i: i + batch_size],
-                                                 dim=0).to(device)
-                batch_s2_feature_b = torch.stack(test_data['sentence2_ph_b'].values.tolist()[i: i + batch_size],
-                                                 dim=0).to(device)
-                output: torch.Tensor = model([s1_embedding, s2_embedding, batch_s1_feature_a, batch_s1_feature_b, batch_s2_feature_a, batch_s2_feature_b])
+                batch_s1_feature_a = torch.stack(
+                    test_data["sentence1_ph_a"].values.tolist()[i : i + batch_size], dim=0
+                ).to(device)
+                batch_s1_feature_b = torch.stack(
+                    test_data["sentence1_ph_b"].values.tolist()[i : i + batch_size], dim=0
+                ).to(device)
+                batch_s2_feature_a = torch.stack(
+                    test_data["sentence2_ph_a"].values.tolist()[i : i + batch_size], dim=0
+                ).to(device)
+                batch_s2_feature_b = torch.stack(
+                    test_data["sentence2_ph_b"].values.tolist()[i : i + batch_size], dim=0
+                ).to(device)
+                output: torch.Tensor = model(
+                    [
+                        s1_embedding,
+                        s2_embedding,
+                        batch_s1_feature_a,
+                        batch_s1_feature_b,
+                        batch_s2_feature_a,
+                        batch_s2_feature_b,
+                    ]
+                )
                 predicted_labels: np.ndarray = (output >= 0.5).float().cpu().numpy()
                 final_predictions = np.append(final_predictions, predicted_labels)
             return final_predictions
@@ -1266,7 +1308,7 @@ if __name__ == "__main__":
     #         print(f"Test Accuracy: {train_accuracy:.4f}, Test F1 Score: {train_f1:.4f}")
     #         print(f"Percent of positive class: {sum(true_labels) / len(true_labels):.4f}%")
     for name, model in [("ConvBBUPH", ConvBBUPH())]:
-    # for name, model in [("ConvBBU", ConvBBU()), ("ConvBBUTri", ConvBBUTri())]:
+        # for name, model in [("ConvBBU", ConvBBU()), ("ConvBBUTri", ConvBBUTri())]:
         if n is not None and v is not None and t is not None:
             train_df = pd.read_csv("Data/MultiNLI/match_cleaned.csv").head(n)
             valid_df = pd.read_csv("Data/MultiNLI/mismatch_cleaned.csv").head(v)

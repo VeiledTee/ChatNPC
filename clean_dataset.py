@@ -62,7 +62,7 @@ def embed_and_ph(df_for_cleaning: pd.DataFrame, output_csv_path: str) -> None:
             if "negation" not in row:
                 row["negation"] = count_negations([row["sentence1"].strip(), row["sentence2"].strip()])
 
-            if output_csv_path[-6:-4] == 'ph':
+            if output_csv_path[-6:-4] == "ph":
                 if "sentence1_ph_a" not in row:
                     s1_ph_features = persistent_homology_features([row["sentence1"].strip()])
                     row["sentence1_ph_a"] = s1_ph_features[0][0]
@@ -106,8 +106,8 @@ def embed_and_ph(df_for_cleaning: pd.DataFrame, output_csv_path: str) -> None:
                 try:
                     writer.writerow(result_row)
                 except UnicodeError:
-                    print(row['sentence1'])
-                    print(row['sentence2'])
+                    print(row["sentence1"])
+                    print(row["sentence2"])
                     raise UnicodeError
 
 
@@ -118,12 +118,12 @@ if __name__ == "__main__":
         # "Data/SemEval2014T1/valid_cleaned.csv",
         # "Data/mismatch_cleaned.csv",
         # "Data/match_cleaned.csv",
-        'Data/SNLI/train.csv',
-        'Data/SNLI/valid.csv',
-        'Data/SNLI/test.csv',
+        "Data/SNLI/train.csv",
+        "Data/SNLI/valid.csv",
+        "Data/SNLI/test.csv",
         "Data/MultiNLI/train.csv",
     ]
     for file in TO_CLEAN:
         print(f"\tIn Progress: {file}")
         df = pd.read_csv(file)
-        embed_and_ph(df, f"{file[:-4]}_cleaned.csv" if file[-11:-4] != 'cleaned' else f"{file[:-4]}_ph.csv")
+        embed_and_ph(df, f"{file[:-4]}_cleaned.csv" if file[-11:-4] != "cleaned" else f"{file[:-4]}_ph.csv")

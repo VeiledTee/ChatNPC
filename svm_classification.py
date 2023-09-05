@@ -15,15 +15,15 @@ BERT: bool = True
 
 
 def encode_sentence(sentence):
-    tokens = tokenizer(sentence, return_tensors='pt', padding=True, truncation=True).to(DEVICE)
+    tokens = tokenizer(sentence, return_tensors="pt", padding=True, truncation=True).to(DEVICE)
     with torch.no_grad():
         outputs = model(**tokens)
     return outputs.last_hidden_state.mean(dim=1).squeeze().cpu().numpy()
 
 
 if BERT:
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    model = BertModel.from_pretrained('bert-base-uncased').to(DEVICE)
+    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    model = BertModel.from_pretrained("bert-base-uncased").to(DEVICE)
 
     dataset_descriptors: list = ["match", "mismatch"]
     dataframes: list = []
@@ -34,7 +34,7 @@ if BERT:
 
     # Concatenate all the dataframes into a final dataframe
     multinli_df = pd.concat(dataframes, ignore_index=True)
-    train_labels = multinli_df['label'].tolist()
+    train_labels = multinli_df["label"].tolist()
 
     pair_x = [s.strip() for s in multinli_df["sentence1"]]
     pair_y = [s.strip() for s in multinli_df["sentence2"]]
