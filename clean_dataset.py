@@ -49,8 +49,6 @@ def embed_and_ph(df_for_cleaning: pd.DataFrame, output_csv_path: str) -> None:
 
     for i, row in tqdm(df_for_cleaning.iterrows(), total=len(df_for_cleaning)):
         if i >= existing_records:
-            # print(row['sentence1'])
-            # print(row['sentence2'])
             label = 1 if row["gold_label"].lower() == "contradiction" else 0
 
             # Apply the get_sentence_embedding function to generate embeddings
@@ -107,10 +105,10 @@ def embed_and_ph(df_for_cleaning: pd.DataFrame, output_csv_path: str) -> None:
                     writer.writeheader()  # Write the header only for the first row
                 try:
                     writer.writerow(result_row)
-                except UnicodeEncodeError:
+                except UnicodeError:
                     print(row['sentence1'])
                     print(row['sentence2'])
-                    raise UnicodeEncodeError
+                    raise UnicodeError
 
 
 if __name__ == "__main__":
