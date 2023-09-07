@@ -8,9 +8,10 @@ from bilstm_training import load_txt_file_to_dataframe
 import torch
 from variables import DEVICE
 from transformers import BertTokenizer, BertModel
+from sklearn.model_selection import validation_curve
+import matplotlib.pyplot as plt
 
 
-CUSTOM_TEST_DATA: bool = False
 BERT: bool = True
 
 
@@ -21,117 +22,120 @@ def encode_sentence(sentence):
     return outputs.last_hidden_state.mean(dim=1).squeeze().cpu().numpy()
 
 
-if BERT:
-    tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-    model = BertModel.from_pretrained("bert-base-uncased").to(DEVICE)
+for b in [True, False]:
+    print(b)
+    if b:
+        tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+        model = BertModel.from_pretrained("bert-base-uncased").to(DEVICE)
 
-    dataset_descriptors: list = ["match", "mismatch"]
-    dataframes: list = []
+        dataset_descriptors: list = ["match", "mismatch"]
+        dataframes: list = []
 
-    for descriptor in dataset_descriptors:
-        df = pd.read_csv(f"Data/{descriptor}_cleaned.csv")
-        dataframes.append(df)
+        # for descriptor in dataset_descriptors:
+        #     df = pd.read_csv(f"Data/{descriptor}_cleaned.csv")
+        #     dataframes.append(df)
 
-    # Concatenate all the dataframes into a final dataframe
-    multinli_df = pd.concat(dataframes, ignore_index=True)
-    train_labels = multinli_df["label"].tolist()
+        # Concatenate all the dataframes into a final dataframe
+        # multinli_df = pd.concat(dataframes, ignore_index=True)
+        multinli_df = pd.read_csv("train.csv")
+        train_labels = multinli_df["gold_label"].tolist()
 
-    pair_x = [s.strip() for s in multinli_df["sentence1"]]
-    pair_y = [s.strip() for s in multinli_df["sentence2"]]
+        pair_x = [s.strip() for s in multinli_df["sentence1"]]
+        pair_y = [s.strip() for s in multinli_df["sentence2"]]
 
-    # Encode your sentence pairs using BERT
-    train_embeddings = np.array([encode_sentence(f"{x} [SEP] {y}") for x, y in zip(pair_x, pair_y)])
+        # Encode your sentence pairs using BERT
+        train_embeddings = np.array([encode_sentence(f"{x} [SEP] {y}") for x, y in zip(pair_x, pair_y)])
 
-    if CUSTOM_TEST_DATA:
-        test_df = pd.read_csv("Data/contradiction-dataset.csv")
-        test_labels = test_df["gold_label"].apply(lambda x: 1 if x.lower() == "contradiction" else 0).tolist()
-        test_embeddings = np.array([encode_sentence(f"{x} [SEP] {y}") for x, y in zip(pair_x, pair_y)])
-    else:
-        test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned.csv")
+        test_df = pd.read_csv("test.csv")
         pair_x = [s.strip() for s in test_df["sentence1"]]
         pair_y = [s.strip() for s in test_df["sentence2"]]
-        test_labels = test_df["label"].tolist()
-        print(f"Percent Positive: {100 * sum(test_labels) / len(test_labels):.4f}")
+        test_labels = test_df["gold_label"].tolist()
+        print(f"Percent Positive: {100 * sum([1 if int(i) == 2 else 0 for i in test_labels]) / len(test_labels):.4f}%")
         test_embeddings = np.array([encode_sentence(f"{x} [SEP] {y}") for x, y in zip(pair_x, pair_y)])
-else:
-    # Load the Sentence-BERT model
-    model = SentenceTransformer("all-MiniLM-L6-v2")
-
-    dataset_descriptors: list = ["match", "mismatch"]
-    dataframes: list = []
-
-    for descriptor in dataset_descriptors:
-        df = load_txt_file_to_dataframe(descriptor)
-        dataframes.append(df)
-
-    # Concatenate all the dataframes into a final dataframe
-    multinli_df = pd.concat(dataframes, ignore_index=True)
-    train_labels = [1 if y == "contradiction" else 0 for y in multinli_df["gold_label"]]
-
-    pair_x = [s.strip() for s in multinli_df["sentence1"]]
-    pair_y = [s.strip() for s in multinli_df["sentence2"]]
-
-    sentences = [(x, y) for x, y in zip(pair_x, pair_y)]
-
-    # Generate embeddings for sentence pairs
-    train_embeddings = model.encode(sentences)
-
-    if CUSTOM_TEST_DATA:
-        test_df: pd.DataFrame = pd.read_csv("Data/contradiction-dataset.csv")
-        pair_x: list = [s.strip() for s in test_df["sentence1"]]
-        pair_y: list = [s.strip() for s in test_df["sentence2"]]
-
-        sentences: list = [(x, y) for x, y in zip(pair_x, pair_y)]
-        test_labels: list = [1 if y.lower() == "contradiction" else 0 for y in test_df["gold_label"]]
-
-        # Generate embeddings for sentence pairs
-        test_embeddings = model.encode(sentences)
-        print(f"Custom test shape: {test_embeddings.shape}")
     else:
-        test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned.csv")
-        test_labels = test_df["label"].tolist()
+        # Load the Sentence-BERT model
+        model = SentenceTransformer("all-MiniLM-L6-v2")
 
+        dataset_descriptors: list = ["match", "mismatch"]
+        dataframes: list = []
+
+        # for descriptor in dataset_descriptors:
+        #     df = load_txt_file_to_dataframe(descriptor)
+        #     dataframes.append(df)
+        #
+        # # Concatenate all the dataframes into a final dataframe
+        # multinli_df = pd.concat(dataframes, ignore_index=True)
+        # train_labels = [1 if y == "contradiction" else 0 for y in multinli_df["gold_label"]]
+        multinli_df = pd.read_csv("train.csv")
+        train_labels = multinli_df["gold_label"].tolist()
+
+        pair_x = [s.strip() for s in multinli_df["sentence1"]]
+        pair_y = [s.strip() for s in multinli_df["sentence2"]]
+
+        sentences = [(x, y) for x, y in zip(pair_x, pair_y)]
+
+        # Generate embeddings for sentence pairs
+        train_embeddings = model.encode(sentences)
+
+        test_df = pd.read_csv("test.csv")
+        sentences: list = [(x, y) for x, y in zip(pair_x, pair_y)]
         pair_x: list = [s.strip() for s in test_df["sentence1"]]
         pair_y: list = [s.strip() for s in test_df["sentence2"]]
-
-        sentences: list = [(x, y) for x, y in zip(pair_x, pair_y)]
-        # Generate embeddings for sentence pairs
+        test_labels = test_df["gold_label"].tolist()
+        print(f"Percent Positive: {100 * sum([1 if int(i) == 2 else 0 for i in test_labels]) / len(test_labels):.4f}%")
         test_embeddings = model.encode(sentences)
-        print(f"Custom test shape: {test_embeddings.shape}")
+
+    # Define a range of C values to test
+    C_range = np.logspace(-10, 10, 21)
+
+    # Calculate training and validation scores at different C values
+    train_scores, valid_scores = validation_curve(SVC(), train_embeddings, train_labels, param_name="C",
+                                                  param_range=C_range, cv=5)
+
+    # Plot the validation curve
+    plt.figure(figsize=(10, 6))
+    plt.semilogx(C_range, np.mean(train_scores, axis=1), label='Training score', marker='o')
+    plt.semilogx(C_range, np.mean(valid_scores, axis=1), label='Validation score', marker='o')
+    plt.xlabel('C')
+    plt.ylabel('Score')
+    plt.legend()
+    plt.grid()
+    plt.savefig(f"Figures/{b}_validation_curve.svg", format='svg')
 
 accuracies = []
 f1_scores = []
-for i in range(30):
-    if CUSTOM_TEST_DATA:
-        X_train = train_embeddings
-        y_train = train_labels
-        X_test = test_embeddings
-        y_test = test_labels
-    else:
-        # Split the data into training and test sets, and get the indices
-        X_train, X_test, y_train, y_test = train_test_split(train_embeddings, train_labels, test_size=0.2)
+# for i in range(30):
+#     if CUSTOM_TEST_DATA:
+#         X_train = train_embeddings
+#         y_train = train_labels
+#         X_test = test_embeddings
+#         y_test = test_labels
+#     else:
+#         # Split the data into training and test sets, and get the indices
+#         X_train, X_test, y_train, y_test = train_test_split(train_embeddings, train_labels, test_size=0.2)
+#
+#     # Train the SVM classifier
+#     svm_classifier = SVC(kernel="linear", C=float(15 / int(i + 1)))
+#     svm_classifier.fit(X_train, y_train)
+#
+#     # Make predictions on the test set
+#     y_pred = svm_classifier.predict(X_test)
+#
+#     # Evaluate the SVM classifier
+#     accuracy = accuracy_score(y_test, y_pred)
+#     # report = classification_report(y_test, y_pred)
+#     f1 = f1_score(y_test, y_pred)
+#     print(f"\tIteration: {i} | C={15/(i+1)}")
+#     print("Accuracy:", accuracy)
+#     accuracies.append(accuracy)
+#     print("F1 score:", f1)
+#     f1_scores.append(f1)
+# print(f"\nAvg Acc: {sum(accuracies) / len(accuracies)}")
+# print(
+#     f"Best Acc: {max(accuracies)} | Index: {accuracies.index(max(accuracies))} | C: {15/(accuracies.index(max(accuracies)) + 1)}"
+# )
+# print(f"Avg F1:  {sum(f1_scores) / len(f1_scores)}")
+# print(
+#     f"Best F1: {max(f1_scores)} | Index: {f1_scores.index(max(f1_scores))} | C: {15/(f1_scores.index(max(f1_scores)) + 1)}"
+# )
 
-    # Train the SVM classifier
-    svm_classifier = SVC(kernel="linear", C=float(15 / int(i + 1)))
-    svm_classifier.fit(X_train, y_train)
-
-    # Make predictions on the test set
-    y_pred = svm_classifier.predict(X_test)
-
-    # Evaluate the SVM classifier
-    accuracy = accuracy_score(y_test, y_pred)
-    # report = classification_report(y_test, y_pred)
-    f1 = f1_score(y_test, y_pred)
-    print(f"\tIteration: {i} | C={15/(i+1)}")
-    print("Accuracy:", accuracy)
-    accuracies.append(accuracy)
-    print("F1 score:", f1)
-    f1_scores.append(f1)
-print(f"\nAvg Acc: {sum(accuracies) / len(accuracies)}")
-print(
-    f"Best Acc: {max(accuracies)} | Index: {accuracies.index(max(accuracies))} | C: {15/(accuracies.index(max(accuracies)) + 1)}"
-)
-print(f"Avg F1:  {sum(f1_scores) / len(f1_scores)}")
-print(
-    f"Best F1: {max(f1_scores)} | Index: {f1_scores.index(max(f1_scores))} | C: {15/(f1_scores.index(max(f1_scores)) + 1)}"
-)
