@@ -37,21 +37,23 @@ for b in [True, False]:
 
         # Concatenate all the dataframes into a final dataframe
         # multinli_df = pd.concat(dataframes, ignore_index=True)
-        multinli_df = pd.read_csv("train.csv")
-        train_labels = multinli_df["gold_label"].tolist()
-
-        pair_x = [s.strip() for s in multinli_df["sentence1"]]
-        pair_y = [s.strip() for s in multinli_df["sentence2"]]
-
-        # Encode your sentence pairs using BERT
-        train_embeddings = np.array([encode_sentence(f"{x} [SEP] {y}") for x, y in zip(pair_x, pair_y)])
-
+        train_df = pd.read_csv("train.csv")
+        valid_df = pd.read_csv("valid.csv")
         test_df = pd.read_csv("test.csv")
+
+        pair_x = [s.strip() for s in train_df["sentence1"]]
+        pair_y = [s.strip() for s in train_df["sentence2"]]
+        X_train = np.array([encode_sentence(f"{x} [SEP] {y}") for x, y in zip(pair_x, pair_y)])
+        y_train = train_df["gold_label"].tolist()
+        pair_x = [s.strip() for s in valid_df["sentence1"]]
+        pair_y = [s.strip() for s in valid_df["sentence2"]]
+        X_val = np.array([encode_sentence(f"{x} [SEP] {y}") for x, y in zip(pair_x, pair_y)])
+        y_val = valid_df["gold_label"].tolist()
         pair_x = [s.strip() for s in test_df["sentence1"]]
         pair_y = [s.strip() for s in test_df["sentence2"]]
-        test_labels = test_df["gold_label"].tolist()
-        print(f"Percent Positive: {100 * sum([1 if int(i) == 2 else 0 for i in test_labels]) / len(test_labels):.4f}%")
-        test_embeddings = np.array([encode_sentence(f"{x} [SEP] {y}") for x, y in zip(pair_x, pair_y)])
+        X_test = np.array([encode_sentence(f"{x} [SEP] {y}") for x, y in zip(pair_x, pair_y)])
+        y_test = test_df["gold_label"].tolist()
+        print(f"Percent Positive: {100 * sum([1 if int(i) == 2 else 0 for i in y_test]) / len(y_test):.4f}%")
 
         # Create an SVM classifier with a linear kernel and C=10^1
         clf = SVC(kernel="linear", C=10**1)
@@ -72,7 +74,7 @@ for b in [True, False]:
         print(f"Test Accuracy with C=10^1: {test_accuracy:.2f}")
 
         # Generate a classification report
-        class_report = classification_report(y_test, y_test_pred, target_names=iris.target_names)
+        class_report = classification_report(y_test, y_test_pred, target_names=['neutral', 'entailment', 'contradiction'])
         print("Classification Report:\n", class_report)
 
     else:
@@ -82,49 +84,62 @@ for b in [True, False]:
         dataset_descriptors: list = ["match", "mismatch"]
         dataframes: list = []
 
-        # for descriptor in dataset_descriptors:
-        #     df = load_txt_file_to_dataframe(descriptor)
-        #     dataframes.append(df)
-        #
-        # # Concatenate all the dataframes into a final dataframe
-        # multinli_df = pd.concat(dataframes, ignore_index=True)
-        # train_labels = [1 if y == "contradiction" else 0 for y in multinli_df["gold_label"]]
-        multinli_df = pd.read_csv("train.csv")
-        train_labels = multinli_df["gold_label"].tolist()
-
-        pair_x = [s.strip() for s in multinli_df["sentence1"]]
-        pair_y = [s.strip() for s in multinli_df["sentence2"]]
-
-        sentences = [(x, y) for x, y in zip(pair_x, pair_y)]
-
-        # Generate embeddings for sentence pairs
-        train_embeddings = model.encode(sentences)
-
+        train_df = pd.read_csv("train.csv")
+        valid_df = pd.read_csv("valid.csv")
         test_df = pd.read_csv("test.csv")
-        sentences: list = [(x, y) for x, y in zip(pair_x, pair_y)]
-        pair_x: list = [s.strip() for s in test_df["sentence1"]]
-        pair_y: list = [s.strip() for s in test_df["sentence2"]]
-        test_labels = test_df["gold_label"].tolist()
-        print(f"Percent Positive: {100 * sum([1 if int(i) == 2 else 0 for i in test_labels]) / len(test_labels):.4f}%")
-        test_embeddings = model.encode(sentences)
 
-    # Define a range of C values to test
-    C_range = np.logspace(-10, 10, 21)
+        train_x = model.encode([s.strip() for s in train_df["sentence1"]])
+        train_y = model.encode([s.strip() for s in train_df["sentence2"]])
+        X_train = [(x, y) for x, y in zip(train_x, train_y)]
+        y_train = train_df["gold_label"].tolist()
+        val_x = model.encode([s.strip() for s in train_df["sentence1"]])
+        val_y = model.encode([s.strip() for s in train_df["sentence2"]])
+        X_val = [(x, y) for x, y in zip(val_x, val_y)]
+        y_val = train_df["gold_label"].tolist()
+        test_x = model.encode([s.strip() for s in train_df["sentence1"]])
+        test_y = model.encode([s.strip() for s in train_df["sentence2"]])
+        X_test = [(x, y) for x, y in zip(test_x, test_y)]
+        y_test = train_df["gold_label"].tolist()
+        print(f"Percent Positive: {100 * sum([1 if int(i) == 2 else 0 for i in y_test]) / len(y_test):.4f}%")
 
-    # Calculate training and validation scores at different C values
-    train_scores, valid_scores = validation_curve(
-        SVC(), train_embeddings, train_labels, param_name="C", param_range=C_range, cv=10
-    )
+        clf = SVC(kernel="linear", C=10**1)
+        clf.fit(X_train, y_train)
 
-    # Plot the validation curve
-    plt.figure(figsize=(10, 6))
-    plt.semilogx(C_range, np.mean(train_scores, axis=1), label="Training score", marker="o")
-    plt.semilogx(C_range, np.mean(valid_scores, axis=1), label="Validation score", marker="o")
-    plt.xlabel("C")
-    plt.ylabel("Score")
-    plt.legend()
-    plt.grid()
-    plt.savefig(f"Figures/{b}_validation_curve.svg", format="svg")
+        # Validate the model on the validation set
+        y_val_pred = clf.predict(X_val)
+
+        # Calculate accuracy on the validation set
+        val_accuracy = accuracy_score(y_val, y_val_pred)
+        print(f"Validation Accuracy with C=10^1: {val_accuracy:.2f}")
+
+        # Predict on the test set
+        y_test_pred = clf.predict(X_test)
+
+        # Calculate accuracy on the test set
+        test_accuracy = accuracy_score(y_test, y_test_pred)
+        print(f"Test Accuracy with C=10^1: {test_accuracy:.2f}")
+
+        # Generate a classification report
+        class_report = classification_report(y_test, y_test_pred, target_names=['neutral', 'entailment', 'contradiction'])
+        print("Classification Report:\n", class_report)
+
+    # # Define a range of C values to test
+    # C_range = np.logspace(-10, 10, 21)
+    #
+    # # Calculate training and validation scores at different C values
+    # train_scores, valid_scores = validation_curve(
+    #     SVC(), train_embeddings, train_labels, param_name="C", param_range=C_range, cv=10
+    # )
+    #
+    # # Plot the validation curve
+    # plt.figure(figsize=(10, 6))
+    # plt.semilogx(C_range, np.mean(train_scores, axis=1), label="Training score", marker="o")
+    # plt.semilogx(C_range, np.mean(valid_scores, axis=1), label="Validation score", marker="o")
+    # plt.xlabel("C")
+    # plt.ylabel("Score")
+    # plt.legend()
+    # plt.grid()
+    # plt.savefig(f"Figures/{b}_validation_curve.svg", format="svg")
 
 accuracies = []
 f1_scores = []
