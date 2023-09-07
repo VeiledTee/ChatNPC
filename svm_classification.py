@@ -52,6 +52,29 @@ for b in [True, False]:
         test_labels = test_df["gold_label"].tolist()
         print(f"Percent Positive: {100 * sum([1 if int(i) == 2 else 0 for i in test_labels]) / len(test_labels):.4f}%")
         test_embeddings = np.array([encode_sentence(f"{x} [SEP] {y}") for x, y in zip(pair_x, pair_y)])
+
+        # Create an SVM classifier with a linear kernel and C=10^1
+        clf = SVC(kernel="linear", C=10**1)
+        clf.fit(X_train, y_train)
+
+        # Validate the model on the validation set
+        y_val_pred = clf.predict(X_val)
+
+        # Calculate accuracy on the validation set
+        val_accuracy = accuracy_score(y_val, y_val_pred)
+        print(f"Validation Accuracy with C=10^1: {val_accuracy:.2f}")
+
+        # Predict on the test set
+        y_test_pred = clf.predict(X_test)
+
+        # Calculate accuracy on the test set
+        test_accuracy = accuracy_score(y_test, y_test_pred)
+        print(f"Test Accuracy with C=10^1: {test_accuracy:.2f}")
+
+        # Generate a classification report
+        class_report = classification_report(y_test, y_test_pred, target_names=iris.target_names)
+        print("Classification Report:\n", class_report)
+
     else:
         # Load the Sentence-BERT model
         model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -89,18 +112,19 @@ for b in [True, False]:
     C_range = np.logspace(-10, 10, 21)
 
     # Calculate training and validation scores at different C values
-    train_scores, valid_scores = validation_curve(SVC(), train_embeddings, train_labels, param_name="C",
-                                                  param_range=C_range, cv=5)
+    train_scores, valid_scores = validation_curve(
+        SVC(), train_embeddings, train_labels, param_name="C", param_range=C_range, cv=10
+    )
 
     # Plot the validation curve
     plt.figure(figsize=(10, 6))
-    plt.semilogx(C_range, np.mean(train_scores, axis=1), label='Training score', marker='o')
-    plt.semilogx(C_range, np.mean(valid_scores, axis=1), label='Validation score', marker='o')
-    plt.xlabel('C')
-    plt.ylabel('Score')
+    plt.semilogx(C_range, np.mean(train_scores, axis=1), label="Training score", marker="o")
+    plt.semilogx(C_range, np.mean(valid_scores, axis=1), label="Validation score", marker="o")
+    plt.xlabel("C")
+    plt.ylabel("Score")
     plt.legend()
     plt.grid()
-    plt.savefig(f"Figures/{b}_validation_curve.svg", format='svg')
+    plt.savefig(f"Figures/{b}_validation_curve.svg", format="svg")
 
 accuracies = []
 f1_scores = []
@@ -138,4 +162,3 @@ f1_scores = []
 # print(
 #     f"Best F1: {max(f1_scores)} | Index: {f1_scores.index(max(f1_scores))} | C: {15/(f1_scores.index(max(f1_scores)) + 1)}"
 # )
-
