@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
 from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, classification_report, f1_score
+from sklearn.metrics import accuracy_score, classification_report, f1_score, precision_score, recall_score
 from bilstm_training import load_txt_file_to_dataframe
 import torch
 from variables import DEVICE
@@ -31,12 +31,6 @@ for b in [True, False]:
         dataset_descriptors: list = ["match", "mismatch"]
         dataframes: list = []
 
-        # for descriptor in dataset_descriptors:
-        #     df = pd.read_csv(f"Data/{descriptor}_cleaned.csv")
-        #     dataframes.append(df)
-
-        # Concatenate all the dataframes into a final dataframe
-        # multinli_df = pd.concat(dataframes, ignore_index=True)
         train_df = pd.read_csv("train.csv")
         valid_df = pd.read_csv("valid.csv")
         test_df = pd.read_csv("test.csv")
@@ -55,23 +49,47 @@ for b in [True, False]:
         y_test = test_df["gold_label"].tolist()
         print(f"Percent Positive: {100 * sum([1 if int(i) == 2 else 0 for i in y_test]) / len(y_test):.4f}%")
 
-        # Create an SVM classifier with a linear kernel and C=10^1
-        clf = SVC(kernel="linear", C=10**1)
-        clf.fit(X_train, y_train)
+        # Define the hyperparameter grid for C values
+        param_grid = {'C': [0.1, 1, 10, 100]}
 
-        # Validate the model on the validation set
-        y_val_pred = clf.predict(X_val)
+        # Initialize lists to store results
+        validation_accuracies = []
+        validation_precisions = []
+        validation_recalls = []
+        validation_f1_scores = []
+        test_accuracies = []
 
-        # Calculate accuracy on the validation set
-        val_accuracy = accuracy_score(y_val, y_val_pred)
-        print(f"Validation Accuracy with C=10^1: {val_accuracy:.2f}")
+        final_clf = SVC(kernel='linear', C=0.1)
 
-        # Predict on the test set
-        y_test_pred = clf.predict(X_test)
+        # Train the final model on the entire training dataset
+        final_clf.fit(X_train, y_train)
+        y_val_pred = final_clf.predict(X_val)
+        # Calculate evaluation metrics
+        validation_accuracy = accuracy_score(y_val, y_val_pred)
+        validation_precision = precision_score(y_val, y_val_pred, average='weighted')
+        validation_recall = recall_score(y_val, y_val_pred, average='weighted')
+        validation_f1 = f1_score(y_val, y_val_pred, average='weighted')
+        # print(f'Validation Accuracy: {validation_accuracy:.2f}')
+        # print(f'Validation Precision: {validation_precision:.2f}')
+        # print(f'Validation Recall: {validation_recall:.2f}')
+        # print(f'Validation F1-Score: {validation_f1:.2f}')
 
-        # Calculate accuracy on the test set
+        # Evaluate the final model on the test set (unseen data)
+        y_test_pred = final_clf.predict(X_test)
+        # Count unique values and their counts
+        unique_values, counts = np.unique(y_test_pred, return_counts=True)
+        # Print unique values and their counts
+        for value, count in zip(unique_values, counts):
+            print(f'Class {value}: {count} predictions')
+        # Calculate test set evaluation metrics
         test_accuracy = accuracy_score(y_test, y_test_pred)
-        print(f"Test Accuracy with C=10^1: {test_accuracy:.2f}")
+        test_precision = precision_score(y_test, y_test_pred, average='weighted')
+        test_recall = recall_score(y_test, y_test_pred, average='weighted')
+        test_f1 = f1_score(y_test, y_test_pred, average='weighted')
+        # print(f'Test Accuracy: {test_accuracy:.2f}')
+        # print(f'Test Precision: {test_precision:.2f}')
+        # print(f'Test Recall: {test_recall:.2f}')
+        # print(f'Test F1-Score: {test_f1:.2f}')
 
         # Generate a classification report
         class_report = classification_report(y_test, y_test_pred, target_names=['neutral', 'entailment', 'contradiction'])
@@ -88,42 +106,57 @@ for b in [True, False]:
         valid_df = pd.read_csv("valid.csv")
         test_df = pd.read_csv("test.csv")
 
-        train_x = model.encode([s.strip() for s in train_df["sentence1"]])
-        train_y = model.encode([s.strip() for s in train_df["sentence2"]])
-        X_train = [(x, y) for x, y in zip(train_x, train_y)]
+        pair_x = [s.strip() for s in train_df["sentence1"]]
+        pair_y = [s.strip() for s in train_df["sentence2"]]
+        X_train = model.encode([(x, y) for x, y in zip(pair_x, pair_y)])
         y_train = train_df["gold_label"].tolist()
-        val_x = model.encode([s.strip() for s in train_df["sentence1"]])
-        val_y = model.encode([s.strip() for s in train_df["sentence2"]])
-        X_val = [(x, y) for x, y in zip(val_x, val_y)]
-        y_val = train_df["gold_label"].tolist()
-        test_x = model.encode([s.strip() for s in train_df["sentence1"]])
-        test_y = model.encode([s.strip() for s in train_df["sentence2"]])
-        X_test = [(x, y) for x, y in zip(test_x, test_y)]
-        y_test = train_df["gold_label"].tolist()
+        pair_x = [s.strip() for s in valid_df["sentence1"]]
+        pair_y = [s.strip() for s in valid_df["sentence2"]]
+        X_val = model.encode([(x, y) for x, y in zip(pair_x, pair_y)])
+        y_val = valid_df["gold_label"].tolist()
+        pair_x = [s.strip() for s in test_df["sentence1"]]
+        pair_y = [s.strip() for s in test_df["sentence2"]]
+        X_test = model.encode([(x, y) for x, y in zip(pair_x, pair_y)])
+        y_test = test_df["gold_label"].tolist()
         print(f"Percent Positive: {100 * sum([1 if int(i) == 2 else 0 for i in y_test]) / len(y_test):.4f}%")
 
-        clf = SVC(kernel="linear", C=10**1)
-        clf.fit(X_train, y_train)
+        # Create the final SVM classifier with the best hyperparameters
+        final_clf = SVC(kernel='linear', C=1)
 
-        # Validate the model on the validation set
-        y_val_pred = clf.predict(X_val)
+        # Train the final model on the entire training dataset
+        final_clf.fit(X_train, y_train)
+        y_val_pred = final_clf.predict(X_val)
+        # Calculate evaluation metrics
+        validation_accuracy = accuracy_score(y_val, y_val_pred)
+        validation_precision = precision_score(y_val, y_val_pred, average='weighted')
+        validation_recall = recall_score(y_val, y_val_pred, average='weighted')
+        validation_f1 = f1_score(y_val, y_val_pred, average='weighted')
+        # print(f'Validation Accuracy: {validation_accuracy:.2f}')
+        # print(f'Validation Precision: {validation_precision:.2f}')
+        # print(f'Validation Recall: {validation_recall:.2f}')
+        # print(f'Validation F1-Score: {validation_f1:.2f}')
 
-        # Calculate accuracy on the validation set
-        val_accuracy = accuracy_score(y_val, y_val_pred)
-        print(f"Validation Accuracy with C=10^1: {val_accuracy:.2f}")
-
-        # Predict on the test set
-        y_test_pred = clf.predict(X_test)
-
-        # Calculate accuracy on the test set
+        # Evaluate the final model on the test set (unseen data)
+        y_test_pred = final_clf.predict(X_test)
+        # Count unique values and their counts
+        unique_values, counts = np.unique(y_test_pred, return_counts=True)
+        # Print unique values and their counts
+        for value, count in zip(unique_values, counts):
+            print(f'Class {value}: {count} predictions')
+        # Calculate test set evaluation metrics
         test_accuracy = accuracy_score(y_test, y_test_pred)
-        print(f"Test Accuracy with C=10^1: {test_accuracy:.2f}")
+        test_precision = precision_score(y_test, y_test_pred, average='weighted')
+        test_recall = recall_score(y_test, y_test_pred, average='weighted')
+        test_f1 = f1_score(y_test, y_test_pred, average='weighted')
+        # print(f'Test Accuracy: {test_accuracy:.2f}')
+        # print(f'Test Precision: {test_precision:.2f}')
+        # print(f'Test Recall: {test_recall:.2f}')
+        # print(f'Test F1-Score: {test_f1:.2f}')
 
         # Generate a classification report
         class_report = classification_report(y_test, y_test_pred, target_names=['neutral', 'entailment', 'contradiction'])
         print("Classification Report:\n", class_report)
-
-    # # Define a range of C values to test
+# # Define a range of C values to test
     # C_range = np.logspace(-10, 10, 21)
     #
     # # Calculate training and validation scores at different C values
