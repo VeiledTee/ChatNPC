@@ -50,7 +50,7 @@ for b in [True, False]:
         print(f"Percent Positive: {100 * sum([1 if int(i) == 2 else 0 for i in y_test]) / len(y_test):.4f}%")
 
         # Define the hyperparameter grid for C values
-        param_grid = {'C': [0.1, 1, 10, 100]}
+        param_grid = {"C": [0.1, 1, 10, 100]}
 
         # Initialize lists to store results
         validation_accuracies = []
@@ -59,16 +59,16 @@ for b in [True, False]:
         validation_f1_scores = []
         test_accuracies = []
 
-        final_clf = SVC(kernel='linear', C=0.1)
+        final_clf = SVC(kernel="linear", C=0.1)
 
         # Train the final model on the entire training dataset
         final_clf.fit(X_train, y_train)
         y_val_pred = final_clf.predict(X_val)
         # Calculate evaluation metrics
         validation_accuracy = accuracy_score(y_val, y_val_pred)
-        validation_precision = precision_score(y_val, y_val_pred, average='weighted')
-        validation_recall = recall_score(y_val, y_val_pred, average='weighted')
-        validation_f1 = f1_score(y_val, y_val_pred, average='weighted')
+        validation_precision = precision_score(y_val, y_val_pred, average="weighted")
+        validation_recall = recall_score(y_val, y_val_pred, average="weighted")
+        validation_f1 = f1_score(y_val, y_val_pred, average="weighted")
         # print(f'Validation Accuracy: {validation_accuracy:.2f}')
         # print(f'Validation Precision: {validation_precision:.2f}')
         # print(f'Validation Recall: {validation_recall:.2f}')
@@ -80,19 +80,21 @@ for b in [True, False]:
         unique_values, counts = np.unique(y_test_pred, return_counts=True)
         # Print unique values and their counts
         for value, count in zip(unique_values, counts):
-            print(f'Class {value}: {count} predictions')
+            print(f"Class {value}: {count} predictions")
         # Calculate test set evaluation metrics
         test_accuracy = accuracy_score(y_test, y_test_pred)
-        test_precision = precision_score(y_test, y_test_pred, average='weighted')
-        test_recall = recall_score(y_test, y_test_pred, average='weighted')
-        test_f1 = f1_score(y_test, y_test_pred, average='weighted')
+        test_precision = precision_score(y_test, y_test_pred, average="weighted")
+        test_recall = recall_score(y_test, y_test_pred, average="weighted")
+        test_f1 = f1_score(y_test, y_test_pred, average="weighted")
         # print(f'Test Accuracy: {test_accuracy:.2f}')
         # print(f'Test Precision: {test_precision:.2f}')
         # print(f'Test Recall: {test_recall:.2f}')
         # print(f'Test F1-Score: {test_f1:.2f}')
 
         # Generate a classification report
-        class_report = classification_report(y_test, y_test_pred, target_names=['neutral', 'entailment', 'contradiction'])
+        class_report = classification_report(
+            y_test, y_test_pred, target_names=["neutral", "entailment", "contradiction"]
+        )
         print("Classification Report:\n", class_report)
 
     else:
@@ -121,16 +123,16 @@ for b in [True, False]:
         print(f"Percent Positive: {100 * sum([1 if int(i) == 2 else 0 for i in y_test]) / len(y_test):.4f}%")
 
         # Create the final SVM classifier with the best hyperparameters
-        final_clf = SVC(kernel='linear', C=1)
+        final_clf = SVC(kernel="linear", C=1)
 
         # Train the final model on the entire training dataset
         final_clf.fit(X_train, y_train)
         y_val_pred = final_clf.predict(X_val)
         # Calculate evaluation metrics
         validation_accuracy = accuracy_score(y_val, y_val_pred)
-        validation_precision = precision_score(y_val, y_val_pred, average='weighted')
-        validation_recall = recall_score(y_val, y_val_pred, average='weighted')
-        validation_f1 = f1_score(y_val, y_val_pred, average='weighted')
+        validation_precision = precision_score(y_val, y_val_pred, average="weighted")
+        validation_recall = recall_score(y_val, y_val_pred, average="weighted")
+        validation_f1 = f1_score(y_val, y_val_pred, average="weighted")
         # print(f'Validation Accuracy: {validation_accuracy:.2f}')
         # print(f'Validation Precision: {validation_precision:.2f}')
         # print(f'Validation Recall: {validation_recall:.2f}')
@@ -142,37 +144,39 @@ for b in [True, False]:
         unique_values, counts = np.unique(y_test_pred, return_counts=True)
         # Print unique values and their counts
         for value, count in zip(unique_values, counts):
-            print(f'Class {value}: {count} predictions')
+            print(f"Class {value}: {count} predictions")
         # Calculate test set evaluation metrics
         test_accuracy = accuracy_score(y_test, y_test_pred)
-        test_precision = precision_score(y_test, y_test_pred, average='weighted')
-        test_recall = recall_score(y_test, y_test_pred, average='weighted')
-        test_f1 = f1_score(y_test, y_test_pred, average='weighted')
+        test_precision = precision_score(y_test, y_test_pred, average="weighted")
+        test_recall = recall_score(y_test, y_test_pred, average="weighted")
+        test_f1 = f1_score(y_test, y_test_pred, average="weighted")
         # print(f'Test Accuracy: {test_accuracy:.2f}')
         # print(f'Test Precision: {test_precision:.2f}')
         # print(f'Test Recall: {test_recall:.2f}')
         # print(f'Test F1-Score: {test_f1:.2f}')
 
         # Generate a classification report
-        class_report = classification_report(y_test, y_test_pred, target_names=['neutral', 'entailment', 'contradiction'])
+        class_report = classification_report(
+            y_test, y_test_pred, target_names=["neutral", "entailment", "contradiction"]
+        )
         print("Classification Report:\n", class_report)
 # # Define a range of C values to test
-    # C_range = np.logspace(-10, 10, 21)
-    #
-    # # Calculate training and validation scores at different C values
-    # train_scores, valid_scores = validation_curve(
-    #     SVC(), train_embeddings, train_labels, param_name="C", param_range=C_range, cv=10
-    # )
-    #
-    # # Plot the validation curve
-    # plt.figure(figsize=(10, 6))
-    # plt.semilogx(C_range, np.mean(train_scores, axis=1), label="Training score", marker="o")
-    # plt.semilogx(C_range, np.mean(valid_scores, axis=1), label="Validation score", marker="o")
-    # plt.xlabel("C")
-    # plt.ylabel("Score")
-    # plt.legend()
-    # plt.grid()
-    # plt.savefig(f"Figures/{b}_validation_curve.svg", format="svg")
+# C_range = np.logspace(-10, 10, 21)
+#
+# # Calculate training and validation scores at different C values
+# train_scores, valid_scores = validation_curve(
+#     SVC(), train_embeddings, train_labels, param_name="C", param_range=C_range, cv=10
+# )
+#
+# # Plot the validation curve
+# plt.figure(figsize=(10, 6))
+# plt.semilogx(C_range, np.mean(train_scores, axis=1), label="Training score", marker="o")
+# plt.semilogx(C_range, np.mean(valid_scores, axis=1), label="Validation score", marker="o")
+# plt.xlabel("C")
+# plt.ylabel("Score")
+# plt.legend()
+# plt.grid()
+# plt.savefig(f"Figures/{b}_validation_curve.svg", format="svg")
 
 accuracies = []
 f1_scores = []
