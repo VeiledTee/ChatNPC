@@ -2286,7 +2286,7 @@ if __name__ == "__main__":
         tests_f1: list = []
         tests_precision: list = []
         tests_recall: list = []
-        for i in range(1):
+        for i in range(30):
             if n is not None and v is not None and t is not None:
                 train_df = pd.read_csv("Data/MultiNLI/match_cleaned.csv").head(n)
                 valid_df = pd.read_csv("Data/MultiNLI/mismatch_cleaned.csv").head(v)
