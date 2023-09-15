@@ -759,10 +759,10 @@ if __name__ == "__main__":
             predictions: np.ndarray = sequenceBERT.predict(test_data=test_df, batch_size=BATCH_SIZE, device=DEVICE)
             final_labels: np.ndarray = test_df["label"].values
 
-            unique_values, counts = np.unique(predictions, return_counts=True)
-            # Print unique values and their counts
-            for value, count in zip(unique_values, counts):
-                print(f"Class {value}: {count} predictions")
+            # unique_values, counts = np.unique(predictions, return_counts=True)
+            # # Print unique values and their counts
+            # for value, count in zip(unique_values, counts):
+            #     print(f"Class {value}: {count} predictions")
 
             test_accuracy = accuracy_score(final_labels, predictions)
             test_precision = precision_score(final_labels, predictions, average="weighted")
