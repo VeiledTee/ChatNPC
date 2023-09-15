@@ -8,13 +8,13 @@ import torch
 from sentence_transformers import SentenceTransformer
 from tqdm.auto import tqdm
 
-with open("keys.txt", "r") as key_file:
-    api_keys = [key.strip() for key in key_file.readlines()]
-    openai.api_key = api_keys[0]
-    pinecone.init(
-        api_key=api_keys[1],
-        environment=api_keys[2],
-    )
+# with open("keys.txt", "r") as key_file:
+#     api_keys = [key.strip() for key in key_file.readlines()]
+#     openai.api_key = api_keys[0]
+#     pinecone.init(
+#         api_key=api_keys[1],
+#         environment=api_keys[2],
+#     )
 
 
 def get_information(character_name) -> None | tuple:

@@ -120,11 +120,11 @@ MAIN IDEAS:
 + Contradiction-Specific Word Embeddings +
 https://www.mdpi.com/1999-4893/10/2/59#:~:text=Contradiction%2Dspecific%20word%20embedding%20(CWE,in%20the%20new%20semantic%20space. 
 	- Data: SemEval 2014
-	- Contradiction occurs hwen sentencews are unliekly to be correct at the same time
+	- Contradiction occurs when sentences are unlikely to be correct at the same time
 	- PROBLEM: Contradicting words and sentences are very close in vector space
-	- CONTRIBUTION: Data constructino method to generate large-scale corpus for contradiction specific word embeddings (CWE)
+	- CONTRIBUTION: Data construction method to generate large-scale corpus for contradiction specific word embeddings (CWE)
 	- CONTRIBUTION: Neural net for CWE
-	- CONTRIBUTION: apply CWE in smeantic relation representation to detect contradiction (+6.11% above SotA)
+	- CONTRIBUTION: apply CWE in semantic relation representation to detect contradiction (+6.11% above SotA)
 	- CWE Learning Model:
 		* 5 layers: lookup > linear > tanh > sum > linear
 		* Input: pair of sentences
