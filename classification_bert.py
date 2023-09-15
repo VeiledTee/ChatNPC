@@ -16,13 +16,13 @@ class SeqBBU:
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
 
     def train_model(
-        self,
-        training_data: pd.DataFrame,
-        validation_data: pd.DataFrame,
-        batch_size: int,
-        num_epochs: int,
-        device: str,
-        verbose: bool = False,
+            self,
+            training_data: pd.DataFrame,
+            validation_data: pd.DataFrame,
+            batch_size: int,
+            num_epochs: int,
+            device: str,
+            verbose: bool = False,
     ) -> None:
         self.model.to(device)
 
@@ -41,10 +41,10 @@ class SeqBBU:
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i : i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i : i + batch_size]
+                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
+                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
                 batch_labels = torch.tensor(
-                    training_data["label"].values.tolist()[i : i + batch_size], dtype=torch.long
+                    training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
 
                 # Tokenize and encode the batch
@@ -95,10 +95,10 @@ class SeqBBU:
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i : i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i : i + batch_size]
+                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
+                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
                     batch_labels = torch.tensor(
-                        validation_data["label"].values.tolist()[i : i + batch_size], dtype=torch.long
+                        validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                     )
 
                     # Tokenize and encode the batch
@@ -134,8 +134,8 @@ class SeqBBU:
 
         with torch.no_grad():  # Disable gradient tracking during testing
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i : i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i : i + batch_size]
+                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
+                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
                 inputs = self.tokenizer(
                     batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
                 ).to(device)
@@ -159,13 +159,13 @@ class SeqRoBERTaB:
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
 
     def train_model(
-        self,
-        training_data: pd.DataFrame,
-        validation_data: pd.DataFrame,
-        batch_size: int,
-        num_epochs: int,
-        device: str,
-        verbose: bool = False,
+            self,
+            training_data: pd.DataFrame,
+            validation_data: pd.DataFrame,
+            batch_size: int,
+            num_epochs: int,
+            device: str,
+            verbose: bool = False,
     ) -> None:
         self.model.to(device)
 
@@ -184,10 +184,10 @@ class SeqRoBERTaB:
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i : i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i : i + batch_size]
+                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
+                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
                 batch_labels = torch.tensor(
-                    training_data["label"].values.tolist()[i : i + batch_size], dtype=torch.long
+                    training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
 
                 # Tokenize and encode the batch
@@ -238,10 +238,10 @@ class SeqRoBERTaB:
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i : i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i : i + batch_size]
+                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
+                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
                     batch_labels = torch.tensor(
-                        validation_data["label"].values.tolist()[i : i + batch_size], dtype=torch.long
+                        validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                     )
 
                     # Tokenize and encode the batch
@@ -277,8 +277,8 @@ class SeqRoBERTaB:
 
         with torch.no_grad():  # Disable gradient tracking during testing
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i : i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i : i + batch_size]
+                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
+                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
 
                 inputs = self.tokenizer(
                     batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
@@ -303,13 +303,13 @@ class SeqRoBERTaL:
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
 
     def train_model(
-        self,
-        training_data: pd.DataFrame,
-        validation_data: pd.DataFrame,
-        batch_size: int,
-        num_epochs: int,
-        device: str,
-        verbose: bool = False,
+            self,
+            training_data: pd.DataFrame,
+            validation_data: pd.DataFrame,
+            batch_size: int,
+            num_epochs: int,
+            device: str,
+            verbose: bool = False,
     ) -> None:
         self.model.to(device)
 
@@ -328,10 +328,10 @@ class SeqRoBERTaL:
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i : i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i : i + batch_size]
+                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
+                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
                 batch_labels = torch.tensor(
-                    training_data["label"].values.tolist()[i : i + batch_size], dtype=torch.long
+                    training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
 
                 # Tokenize and encode the batch
@@ -382,10 +382,10 @@ class SeqRoBERTaL:
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i : i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i : i + batch_size]
+                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
+                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
                     batch_labels = torch.tensor(
-                        validation_data["label"].values.tolist()[i : i + batch_size], dtype=torch.long
+                        validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                     )
 
                     # Tokenize and encode the batch
@@ -421,8 +421,8 @@ class SeqRoBERTaL:
 
         with torch.no_grad():  # Disable gradient tracking during testing
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i : i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i : i + batch_size]
+                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
+                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
 
                 inputs = self.tokenizer(
                     batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
@@ -447,13 +447,13 @@ class SeqT5:
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
 
     def train_model(
-        self,
-        training_data: pd.DataFrame,
-        validation_data: pd.DataFrame,
-        batch_size: int,
-        num_epochs: int,
-        device: str,
-        verbose: bool = False,
+            self,
+            training_data: pd.DataFrame,
+            validation_data: pd.DataFrame,
+            batch_size: int,
+            num_epochs: int,
+            device: str,
+            verbose: bool = False,
     ) -> None:
         self.model.to(device)
 
@@ -472,10 +472,10 @@ class SeqT5:
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i : i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i : i + batch_size]
+                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
+                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
                 batch_labels = torch.tensor(
-                    training_data["label"].values.tolist()[i : i + batch_size], dtype=torch.long
+                    training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
 
                 # Tokenize and encode the batch
@@ -526,10 +526,10 @@ class SeqT5:
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i : i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i : i + batch_size]
+                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
+                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
                     batch_labels = torch.tensor(
-                        validation_data["label"].values.tolist()[i : i + batch_size], dtype=torch.long
+                        validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                     )
 
                     # Tokenize and encode the batch
@@ -565,8 +565,8 @@ class SeqT5:
 
         with torch.no_grad():  # Disable gradient tracking during testing
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i : i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i : i + batch_size]
+                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
+                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
 
                 inputs = self.tokenizer(
                     batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
@@ -591,13 +591,13 @@ class SeqGPT2:
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
 
     def train_model(
-        self,
-        training_data: pd.DataFrame,
-        validation_data: pd.DataFrame,
-        batch_size: int,
-        num_epochs: int,
-        device: str,
-        verbose: bool = False,
+            self,
+            training_data: pd.DataFrame,
+            validation_data: pd.DataFrame,
+            batch_size: int,
+            num_epochs: int,
+            device: str,
+            verbose: bool = False,
     ) -> None:
         self.model.to(device)
 
@@ -616,10 +616,10 @@ class SeqGPT2:
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i : i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i : i + batch_size]
+                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
+                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
                 batch_labels = torch.tensor(
-                    training_data["label"].values.tolist()[i : i + batch_size], dtype=torch.long
+                    training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
 
                 # Tokenize and encode the batch
@@ -670,10 +670,10 @@ class SeqGPT2:
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i : i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i : i + batch_size]
+                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
+                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
                     batch_labels = torch.tensor(
-                        validation_data["label"].values.tolist()[i : i + batch_size], dtype=torch.long
+                        validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                     )
 
                     # Tokenize and encode the batch
@@ -709,8 +709,8 @@ class SeqGPT2:
 
         with torch.no_grad():  # Disable gradient tracking during testing
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i : i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i : i + batch_size]
+                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
+                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
 
                 inputs = self.tokenizer(
                     batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
@@ -732,8 +732,8 @@ if __name__ == "__main__":
     BATCH_SIZE: int = 64
     NUM_CLASSES: int = 3
     for name, model in [
-        # ("SeqBBU", SeqBBU(NUM_CLASSES)),
-        # ('SeqRoBERTaB', SeqRoBERTaB(NUM_CLASSES)),
+        ("SeqBBU", SeqBBU(NUM_CLASSES)),
+        ('SeqRoBERTaB', SeqRoBERTaB(NUM_CLASSES)),
         ("SeqRoBERTaL", SeqRoBERTaL(NUM_CLASSES)),
         # ("SeqT5", SeqT5(NUM_CLASSES)),
         # ('SeqGPT2', SeqGPT2(NUM_CLASSES)),
@@ -743,7 +743,6 @@ if __name__ == "__main__":
         precision = []
         recall = []
         for i in range(30):
-            print(i)
             train_df = pd.read_csv("Data/SemEval2014T1/train_cleaned_ph.csv")
             valid_df = pd.read_csv("Data/SemEval2014T1/valid_cleaned_ph.csv")
             test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned_ph.csv")
