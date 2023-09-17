@@ -231,7 +231,7 @@ for threshold in np.linspace(0.75, 1, 100):
 if __name__ == '__main__':
     NUM_EPOCHS: int = 10
     BATCH_SIZE: int = 64
-    for threshold in np.arange(0.5, 1.01, 0.01):
+    for threshold in np.arange(0.95, 1.01, 0.01):
         acc: list = []
         f1: list = []
         precision: list = []

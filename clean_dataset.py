@@ -7,26 +7,6 @@ from tqdm import tqdm
 import csv
 
 
-# def embed_and_ph(df: pd.DataFrame) -> pd.DataFrame:
-#     df["label"] = df["gold_label"].str.lower()
-#     df["label"] = np.where(df["label"] == "contradiction", 1, 0)
-#     print("labels complete")
-#
-#     s1_ph_features = persistent_homology_features(list(df["sentence1"]))
-#     df["sentence1_ph_a"] = [item[0] for item in s1_ph_features]
-#     df["sentence1_ph_b"] = [item[1] for item in s1_ph_features]
-#     print("sentence1_features complete")
-#
-#     s2_ph_features = persistent_homology_features(list(df["sentence2"]))
-#     df["sentence2_ph_a"] = [item[0] for item in s2_ph_features]
-#     df["sentence2_ph_b"] = [item[1] for item in s2_ph_features]
-#     print("sentence2_features complete")
-#     # Apply the count_negations function to generate negation counts
-#     df["negation"] = df[["sentence1", "sentence2"]].apply(lambda x: count_negations(x.tolist()), axis=1)
-#     print("negation complete")
-#     return df
-
-
 def embed_and_ph(df_for_cleaning: pd.DataFrame, output_csv_path: str) -> None:
     """
     Given a dataframe, retrieve the data's BERT embeddings and PH features for dimensions 0 and 1, then save it. If the
