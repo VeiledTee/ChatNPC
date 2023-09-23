@@ -7,6 +7,28 @@ from tqdm import tqdm
 import csv
 
 
+def create_subset_with_ratio(input_df, subset_percentage, label_column):
+    # Calculate the size of the desired subset
+    total_count = input_df[label_column].count()
+    subset_size = int(subset_percentage * total_count)
+
+    # Create an empty DataFrame to store the subset
+    subset_df = pd.DataFrame(columns=input_df.columns)
+
+    # Iterate through the unique labels and sample data based on the proportion of the original count
+    unique_labels = input_df[label_column].unique()
+    for label in unique_labels:
+        if label != "-":
+            label_subset_count = int((input_df[label_column] == label).sum() * subset_percentage)
+            label_subset = input_df[input_df[label_column] == label].sample(label_subset_count)
+            subset_df = pd.concat([subset_df, label_subset], ignore_index=True)
+
+    # Shuffle the subset DataFrame to randomize the order
+    subset_df = subset_df.sample(frac=1).reset_index(drop=True)
+
+    return subset_df
+
+
 def embed_and_ph(df_for_cleaning: pd.DataFrame, output_csv_path: str) -> None:
     """
     Given a dataframe, retrieve the data's BERT embeddings and PH features for dimensions 0 and 1, then save it. If the
@@ -98,10 +120,10 @@ if __name__ == "__main__":
         # "Data/SemEval2014T1/valid_cleaned.csv",
         # "Data/mismatch_cleaned.csv",
         # "Data/match_cleaned.csv",
-        "Data/SNLI/train.csv",
-        "Data/SNLI/valid.csv",
-        "Data/SNLI/test.csv",
-        "Data/MultiNLI/train.csv",
+        "Data/SNLI/valid_cleaned.csv",
+        "Data/SNLI/test_cleaned.csv",
+        "Data/SNLI/train_cleaned.csv",
+        # "Data/MultiNLI/train.csv",
     ]
     for file in TO_CLEAN:
         print(f"\tIn Progress: {file}")

@@ -76,9 +76,9 @@ precision: List[float] = []
 recall: List[float] = []
 for i in range(30):
     # Load your data (assuming you have a DataFrame with 'sentence1', 'sentence2', and 'label' columns)
-    train_df = pd.read_csv("Data/SemEval2014T1/train_cleaned_ph.csv")
-    valid_df = pd.read_csv("Data/SemEval2014T1/valid_cleaned_ph.csv")
-    test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned_ph.csv")
+    train_df = pd.read_csv("Data/SNLI/train_cleaned.csv")
+    valid_df = pd.read_csv("Data/SNLI/valid_cleaned.csv")
+    test_df = pd.read_csv("Data/SNLI/test_cleaned.csv")
 
     train_df["sentence1_embeddings"] = train_df["sentence1_embeddings"].apply(embedding_to_tensor)
     train_df["sentence2_embeddings"] = train_df["sentence2_embeddings"].apply(embedding_to_tensor)
@@ -106,7 +106,8 @@ for i in range(30):
     y_test: torch.Tensor = torch.tensor(test_df["label"].values, dtype=torch.long)
 
     # Train an XGBoost classifier
-    model: xgb.XGBClassifier = xgb.XGBClassifier(objective="multi:softmax", num_class=3, n_jobs=-1, learning_rate=0.2, max_depth=4, n_estimators=500)
+    model: xgb.XGBClassifier = xgb.XGBClassifier(objective="multi:softmax", num_class=3, n_jobs=-1, learning_rate=0.2,
+                                                 max_depth=4, n_estimators=500)
     model.fit(X_train, y_train, eval_set=[(X_valid, y_valid)])
     predictions: np.ndarray = model.predict(X_test)
 

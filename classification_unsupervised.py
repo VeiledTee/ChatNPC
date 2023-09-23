@@ -231,53 +231,53 @@ for threshold in np.linspace(0.75, 1, 100):
 if __name__ == '__main__':
     NUM_EPOCHS: int = 10
     BATCH_SIZE: int = 64
-    for threshold in np.arange(0.95, 1.01, 0.01):
-        acc: list = []
-        f1: list = []
-        precision: list = []
-        recall: list = []
-        for i in range(30):
-            for name, model_class in [
-                ("Siamese", SiameseContrastiveModel()),
-            ]:
-                train_df = pd.read_csv("Data/SemEval2014T1/train_cleaned_ph.csv")
-                train_df['label'] = train_df['label'].replace(1, 0)
-                train_df['label'] = train_df['label'].replace(2, 1)
-                valid_df = pd.read_csv("Data/SemEval2014T1/valid_cleaned_ph.csv")
-                valid_df['label'] = valid_df['label'].replace(1, 0)
-                valid_df['label'] = valid_df['label'].replace(2, 1)
-                test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned_ph.csv")
-                test_df['label'] = test_df['label'].replace(1, 0)
-                test_df['label'] = test_df['label'].replace(2, 1)
+    acc: list = []
+    f1: list = []
+    precision: list = []
+    recall: list = []
+    for i in range(3):
+        print(i)
+        for name, model_class in [
+            ("Siamese", SiameseContrastiveModel()),
+        ]:
+            train_df = pd.read_csv("Data/SNLI/train_cleaned.csv")
+            train_df['label'] = train_df['label'].replace(1, 0)
+            train_df['label'] = train_df['label'].replace(2, 1)
+            valid_df = pd.read_csv("Data/SNLI/train_cleaned.csv")
+            valid_df['label'] = valid_df['label'].replace(1, 0)
+            valid_df['label'] = valid_df['label'].replace(2, 1)
+            test_df = pd.read_csv("Data/SNLI/train_cleaned.csv")
+            test_df['label'] = test_df['label'].replace(1, 0)
+            test_df['label'] = test_df['label'].replace(2, 1)
 
-                model = model_class
+            model = model_class
 
-                train_loss = model.fit(train_df, batch_size=64, num_epochs=10, device="cuda", margin=0.5, verbose=False)
+            train_loss = model.fit(train_df, batch_size=64, num_epochs=10, device="cuda", margin=0.5, verbose=False)
 
-                # Predict using the model
-                predictions = model.predict(test_df, batch_size=64, device="cuda", similarity_threshold=threshold)
-                # print(predictions)
+            # Predict using the model
+            predictions = model.predict(test_df, batch_size=64, device="cuda", similarity_threshold=0.95)
+            # print(predictions)
 
-                # Assuming you have true labels for the test data
-                true_labels = test_df["label"].values  # Replace "true_labels" with the actual column name
+            # Assuming you have true labels for the test data
+            true_labels = test_df["label"].values  # Replace "true_labels" with the actual column name
 
-                # model_save_path: str = f"Models/{name}.pt"
-                # torch.save(model.state_dict(), model_save_path)
-                # model.load_state_dict(torch.load(model_save_path))
+            # model_save_path: str = f"Models/{name}.pt"
+            # torch.save(model.state_dict(), model_save_path)
+            # model.load_state_dict(torch.load(model_save_path))
 
-                # unique_values, counts = np.unique(predictions, return_counts=True)
-                # for value, count in zip(unique_values, counts):
-                #     print(f"Class {value}: {count} predictions")
+            # unique_values, counts = np.unique(predictions, return_counts=True)
+            # for value, count in zip(unique_values, counts):
+            #     print(f"Class {value}: {count} predictions")
 
-                # print(f"Accuracy:  {100 * accuracy_score(test_df['label'].values, predictions):.2f}")
-                # print(f"F1-Score:  {f1_score(test_df['label'].values, predictions, average='macro'):.4f}")
-                # print(f"Precision: {precision_score(test_df['label'].values, predictions, average='macro'):.4f}")
-                # print(f"Recall:    {recall_score(test_df['label'].values, predictions, average='macro'):.4f}")
-                acc.append(accuracy_score(test_df["label"].values, predictions))
-                f1.append(f1_score(test_df["label"].values, predictions, average="macro"))
-                precision.append(precision_score(test_df["label"].values, predictions, average="macro"))
-                recall.append(recall_score(test_df["label"].values, predictions, average="macro"))
-        print(f"\t{name} | {threshold}")
-        print(
-            f"{100 * sum(acc) / len(acc):.2f}% | F1: {sum(f1) / len(f1):.4f} | P: {sum(precision) / len(precision):.4f} | R: {sum(recall) / len(recall):.4f}"
-        )
+            # print(f"Accuracy:  {100 * accuracy_score(test_df['label'].values, predictions):.2f}")
+            # print(f"F1-Score:  {f1_score(test_df['label'].values, predictions, average='macro'):.4f}")
+            # print(f"Precision: {precision_score(test_df['label'].values, predictions, average='macro'):.4f}")
+            # print(f"Recall:    {recall_score(test_df['label'].values, predictions, average='macro'):.4f}")
+            acc.append(accuracy_score(test_df["label"].values, predictions))
+            f1.append(f1_score(test_df["label"].values, predictions, average="macro"))
+            precision.append(precision_score(test_df["label"].values, predictions, average="macro"))
+            recall.append(recall_score(test_df["label"].values, predictions, average="macro"))
+    print(f"\t{name} | {0.95}")
+    print(
+        f"{100 * sum(acc) / len(acc):.2f}% | F1: {sum(f1) / len(f1):.4f} | P: {sum(precision) / len(precision):.4f} | R: {sum(recall) / len(recall):.4f}"
+    )

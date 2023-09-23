@@ -9,15 +9,16 @@ from ContradictDetectNN import count_negations, ph_to_tensor
 from variables import DEVICE
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 import time
+from clean_dataset import create_subset_with_ratio
 
 
-def label_mapping(df: pd.DataFrame) -> pd.DataFrame:
+def label_mapping(df: pd.DataFrame, from_col: str = 'gold_label', to_col: str = 'label') -> pd.DataFrame:
     mapping = {
         'neutral': 0,
         'entailment': 1,
         'contradiction': 2,
     }
-    df['label'] = df['gold_label'].map(mapping)
+    df[to_col] = df[from_col].map(mapping)
     return df
 
 
@@ -123,6 +124,389 @@ class SeqBBU:
 
                     # Forward pass
                     outputs = self.model(input_ids, attention_mask=attention_mask)
+
+                    # Convert outputs to class predictions
+                    class_probabilities = torch.softmax(outputs.logits, dim=1)  # Apply softmax to logits
+                    val_predicted_classes = torch.argmax(class_probabilities, dim=1)
+
+                    # extend bookkeeping lists
+                    val_predictions.extend(val_predicted_classes.cpu().numpy())
+                    val_true_labels.extend(batch_labels.view(-1).cpu().numpy())
+
+            # Calculate validation accuracy and F1-score
+            val_accuracy: float = accuracy_score(val_true_labels, val_predictions)
+            val_f1: float = f1_score(
+                val_true_labels, val_predictions, average="macro"
+            )  # You can choose 'micro' or 'weighted' as well
+            if verbose:
+                print(f"\tValidation | Accuracy: {val_accuracy:.4f}, F1 Score: {val_f1:.4f}")
+
+    def predict(self, test_data: pd.DataFrame, batch_size: int, device: str) -> np.ndarray:
+        self.model.to(device)
+        self.model.eval()  # Set the model to evaluation mode
+        test_predictions = np.array([])
+
+        with torch.no_grad():  # Disable gradient tracking during testing
+            for i in range(0, len(test_data), batch_size):
+                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
+                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
+                inputs = self.tokenizer(
+                    batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
+                ).to(device)
+                input_ids = inputs["input_ids"]
+                attention_mask = inputs["attention_mask"]
+
+                outputs = self.model(input_ids, attention_mask=attention_mask)
+                class_probabilities = torch.softmax(outputs.logits, dim=1)  # Apply softmax to logits
+                predicted_classes = torch.argmax(class_probabilities, dim=1).cpu().numpy()
+
+                test_predictions = np.append(test_predictions, predicted_classes)
+
+        return test_predictions
+
+
+class SeqBBUNeg:
+    def __init__(self, num_classes: int, model_name: str = "bert-base-uncased"):
+        self.num_classes = num_classes
+        self.model_name = model_name
+        self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name, num_labels=self.num_classes)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+
+    def fit(
+            self,
+            training_data: pd.DataFrame,
+            validation_data: pd.DataFrame,
+            batch_size: int,
+            num_epochs: int,
+            device: str,
+            verbose: bool = False,
+    ) -> None:
+        self.model.to(device)
+
+        optimizer = torch.optim.AdamW(self.model.parameters(), lr=2e-5)
+        criterion = torch.nn.CrossEntropyLoss().to(device)
+
+        if 'negation' not in training_data.columns:
+            training_negations = [count_negations([row["sentence1"].strip(), row["sentence2"].strip()]) for index, row
+                                  in
+                                  training_data.iterrows()]
+            training_data["negation"] = training_negations
+            validation_negations = [count_negations([row["sentence1"].strip(), row["sentence2"].strip()]) for index, row
+                                    in
+                                    validation_data.iterrows()]
+            validation_data["negation"] = validation_negations
+
+        # train_accuracy_values: list = []
+        # train_f1_values: list = []
+        # val_accuracy_values: list = []
+        # val_f1_values: list = []
+        for epoch in range(num_epochs):
+            if verbose:
+                print(f"Epoch: [ {epoch} / {num_epochs} ]")
+            self.model.train()  # Set the model to training mode
+            running_loss: float = 0.0
+            all_true_labels: list = []
+            all_predicted_labels: list = []
+            for i in range(0, len(training_data), batch_size):
+                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
+                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_negation = torch.tensor(
+                    training_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
+                ).to(device)
+                batch_labels = torch.tensor(
+                    training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
+                ).to(device)
+
+                # Tokenize and encode the batch
+                inputs = self.tokenizer(
+                    batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
+                ).to(device)
+                input_ids = inputs["input_ids"]
+                attention_mask = inputs["attention_mask"]
+                # Concatenate the extra feature to the input_ids
+                input_ids_with_extra_feature = torch.cat([input_ids, batch_negation.unsqueeze(1)], dim=1)
+                # Concatenate the extra feature to the input_ids
+                extra_feature_attention_mask = torch.ones_like(batch_negation)
+                # Combine the attention_mask for input_ids and the extra feature
+                combined_attention_mask = torch.cat([attention_mask, extra_feature_attention_mask.unsqueeze(1)], dim=1)
+                # print(input_ids.shape)  # torch.Size([64, 40])
+                # print(attention_mask.shape)  # torch.Size([64, 40])
+                # print(batch_negation.unsqueeze(1).shape)  # torch.Size([64, 1])
+                # print(input_ids_with_extra_feature.shape)  # torch.Size([64, 41])
+                # print(combined_attention_mask.shape)  # torch.Size([64, 41])
+                # Forward pass up to the last layer
+                outputs = self.model(input_ids_with_extra_feature, attention_mask=combined_attention_mask)
+                last_hidden_state = outputs[0]  # Get the last hidden state from the outputs [batch_size, num _classes]
+                # Calculate the loss
+                loss = criterion(last_hidden_state, batch_labels)
+                running_loss += loss.item()
+
+                # Backpropagation and optimization
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                # Convert outputs to class predictions
+                class_probabilities = torch.softmax(last_hidden_state, dim=1)
+                predicted_classes = torch.argmax(class_probabilities, dim=1)
+                true_labels = batch_labels.view(-1).cpu().numpy()
+
+                all_true_labels.extend(true_labels)
+                all_predicted_labels.extend(predicted_classes.cpu().numpy())
+
+            average_loss: float = running_loss / (len(train_df) / batch_size)
+
+            # Calculate training accuracy and F1-score
+            training_accuracy: float = accuracy_score(all_true_labels, all_predicted_labels)
+            training_f1: float = f1_score(
+                all_true_labels, all_predicted_labels, average="macro"
+            )  # You can choose 'micro' or 'weighted' as well
+
+            if verbose:
+                print(
+                    f"\tTraining   | Accuracy: {training_accuracy:.4f}, F1 Score: {training_f1:.4f}, Loss: {average_loss:.4f}"
+                )
+
+            # Validation
+            self.model.eval()  # Set the model to evaluation mode
+            val_predictions = []
+            val_true_labels = []
+
+            with torch.no_grad():
+                for i in range(0, len(validation_data), batch_size):
+                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
+                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
+                    batch_negation = torch.tensor(
+                        validation_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
+                    ).to(device)
+                    batch_labels = torch.tensor(
+                        validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
+                    ).to(device)
+
+                    # Tokenize and encode the batch
+                    inputs = self.tokenizer(
+                        batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
+                    ).to(device)
+                    input_ids = inputs["input_ids"]
+                    attention_mask = inputs["attention_mask"]
+                    # Concatenate the extra feature to the input_ids
+                    input_ids_with_extra_feature = torch.cat([input_ids, batch_negation.unsqueeze(1)], dim=1)
+                    # Concatenate the extra feature to the input_ids
+                    extra_feature_attention_mask = torch.ones_like(batch_negation)
+                    # Combine the attention_mask for input_ids and the extra feature
+                    combined_attention_mask = torch.cat([attention_mask, extra_feature_attention_mask.unsqueeze(1)],
+                                                        dim=1)
+
+                    # Forward pass up to the last layer
+                    outputs = self.model(input_ids_with_extra_feature, attention_mask=combined_attention_mask)
+                    # Extract the last hidden state from the model's output
+                    last_hidden_state = outputs[0]
+                    # Convert outputs to class predictions
+                    class_probabilities = torch.softmax(last_hidden_state, dim=1)  # Apply softmax to output
+                    val_predicted_classes = torch.argmax(class_probabilities, dim=1)
+
+                    # extend bookkeeping lists
+                    val_predictions.extend(val_predicted_classes.cpu().numpy())
+                    val_true_labels.extend(batch_labels.view(-1).cpu().numpy())
+
+            # Calculate validation accuracy and F1-score
+            val_accuracy: float = accuracy_score(val_true_labels, val_predictions)
+            val_f1: float = f1_score(
+                val_true_labels, val_predictions, average="macro"
+            )  # You can choose 'micro' or 'weighted' as well
+            if verbose:
+                print(f"\tValidation | Accuracy: {val_accuracy:.4f}, F1 Score: {val_f1:.4f}")
+
+    def predict(self, test_data: pd.DataFrame, batch_size: int, device: str) -> np.ndarray:
+        self.model.to(device)
+        self.model.eval()
+        test_predictions = np.array([])
+
+        testing_negations = [count_negations([row["sentence1"].strip(), row["sentence2"].strip()]) for index, row in
+                             test_data.iterrows()]
+        test_data["negation"] = testing_negations
+
+        with torch.no_grad():
+            for i in range(0, len(test_data), batch_size):
+                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
+                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_negation = torch.tensor(
+                    test_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
+                ).to(device)
+
+                # Tokenize and encode the batch
+                inputs = self.tokenizer(
+                    batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
+                ).to(device)
+                input_ids = inputs["input_ids"]
+                attention_mask = inputs["attention_mask"]
+                # Concatenate the extra feature to the input_ids
+                input_ids_with_extra_feature = torch.cat([input_ids, batch_negation.unsqueeze(1)], dim=1)
+                # Concatenate the extra feature to the input_ids
+                extra_feature_attention_mask = torch.ones_like(batch_negation)
+                # Combine the attention_mask for input_ids and the extra feature
+                combined_attention_mask = torch.cat([attention_mask, extra_feature_attention_mask.unsqueeze(1)],
+                                                    dim=1)
+                # Forward pass up to the last layer
+                outputs = self.model(input_ids_with_extra_feature, attention_mask=combined_attention_mask)
+                # Extract the last hidden state from the model's output
+                last_hidden_state = outputs[0]
+                # Convert outputs to class predictions
+                class_probabilities = torch.softmax(last_hidden_state, dim=1)  # Apply softmax to output
+                predicted_classes = torch.argmax(class_probabilities, dim=1).cpu().numpy()
+
+                test_predictions = np.append(test_predictions, predicted_classes)
+
+        return test_predictions
+
+
+class SeqBBUPH:
+    def __init__(self, num_classes: int, model_name: str = "bert-base-uncased"):
+        self.num_classes = num_classes
+        self.model_name = model_name
+        self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name, num_labels=self.num_classes)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+
+    def fit(
+            self,
+            training_data: pd.DataFrame,
+            validation_data: pd.DataFrame,
+            batch_size: int,
+            num_epochs: int,
+            device: str,
+            verbose: bool = False,
+    ) -> None:
+        self.model.to(device)
+
+        optimizer = torch.optim.AdamW(self.model.parameters(), lr=2e-5)
+        criterion = torch.nn.CrossEntropyLoss().to(device)
+
+        # train_accuracy_values: list = []
+        # train_f1_values: list = []
+        # val_accuracy_values: list = []
+        # val_f1_values: list = []
+        for epoch in range(num_epochs):
+            if verbose:
+                print(f"Epoch: [ {epoch} / {num_epochs} ]")
+            self.model.train()  # Set the model to training mode
+            running_loss: float = 0.0
+            all_true_labels: list = []
+            all_predicted_labels: list = []
+            for i in range(0, len(training_data), batch_size):
+                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
+                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_labels = torch.tensor(
+                    training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
+                ).to(device)
+
+                # Additional input vectors
+                s1_ph_a = torch.tensor(
+                    training_data["sentence1_ph_a"].values.tolist()[i: i + batch_size], dtype=torch.float32
+                ).to(device)
+                s1_ph_b = torch.tensor(
+                    training_data["sentence1_ph_b"].values.tolist()[i: i + batch_size], dtype=torch.float32
+                ).to(device)
+                s2_ph_a = torch.tensor(
+                    training_data["sentence2_ph_a"].values.tolist()[i: i + batch_size], dtype=torch.float32
+                ).to(device)
+                s2_ph_b = torch.tensor(
+                    training_data["sentence2_ph_b"].values.tolist()[i: i + batch_size], dtype=torch.float32
+                ).to(device)
+
+                # Tokenize and encode the batch
+                inputs = self.tokenizer(
+                    batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
+                ).to(device)
+                input_ids = inputs["input_ids"]
+                attention_mask = inputs["attention_mask"]
+
+                print(input_ids.shape)
+                print(s1_ph_a.shape)
+                print(s1_ph_b.shape)
+                print(s2_ph_a.shape)
+                print(s2_ph_b.shape)
+
+                # Concatenate the input vectors with input_ids
+                concatenated_inputs = torch.cat(
+                    [input_ids, s1_ph_a.unsqueeze(1), s1_ph_b.unsqueeze(1), s2_ph_a.unsqueeze(1), s2_ph_b.unsqueeze(1)],
+                    dim=1)
+
+                # Forward pass
+                outputs = self.model(concatenated_inputs, attention_mask=attention_mask)
+                logits = outputs.logits  # Extract logits from the outputs tuple
+
+                # Calculate the loss
+                loss = criterion(logits, batch_labels)
+                running_loss += loss.item()
+
+                # Backpropagation and optimization
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                # Convert outputs to class predictions
+                class_probabilities = torch.softmax(logits, dim=1)  # Apply softmax to logits
+                predicted_classes = torch.argmax(class_probabilities, dim=1)
+                true_labels: np.ndarray = batch_labels.view(-1).cpu().numpy()
+
+                all_true_labels.extend(true_labels)
+                all_predicted_labels.extend(predicted_classes.cpu().numpy())
+
+            average_loss: float = running_loss / (len(train_df) / batch_size)
+
+            # Calculate training accuracy and F1-score
+            training_accuracy: float = accuracy_score(all_true_labels, all_predicted_labels)
+            training_f1: float = f1_score(
+                all_true_labels, all_predicted_labels, average="macro"
+            )  # You can choose 'micro' or 'weighted' as well
+
+            if verbose:
+                print(
+                    f"\tTraining   | Accuracy: {training_accuracy:.4f}, F1 Score: {training_f1:.4f}, Loss: {average_loss:.4f}"
+                )
+
+            # Validation
+            self.model.eval()  # Set the model to evaluation mode
+            val_predictions = []
+            val_true_labels = []
+
+            with torch.no_grad():
+                for i in range(0, len(validation_data), batch_size):
+                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
+                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
+                    batch_labels = torch.tensor(
+                        validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
+                    )
+
+                    # Additional input vectors
+                    s1_ph_a = torch.tensor(
+                        training_data["sentence1_ph_a"].values.tolist()[i: i + batch_size], dtype=torch.float32
+                    ).to(device)
+                    s1_ph_b = torch.tensor(
+                        training_data["sentence1_ph_b"].values.tolist()[i: i + batch_size], dtype=torch.float32
+                    ).to(device)
+                    s2_ph_a = torch.tensor(
+                        training_data["sentence2_ph_a"].values.tolist()[i: i + batch_size], dtype=torch.float32
+                    ).to(device)
+                    s2_ph_b = torch.tensor(
+                        training_data["sentence2_ph_b"].values.tolist()[i: i + batch_size], dtype=torch.float32
+                    ).to(device)
+
+                    # Tokenize and encode the batch
+                    inputs = self.tokenizer(
+                        batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
+                    ).to(device)
+                    input_ids = inputs["input_ids"]
+                    attention_mask = inputs["attention_mask"]
+
+                    # Concatenate the input vectors with input_ids
+                    concatenated_inputs = torch.cat(
+                        [input_ids, s1_ph_a.unsqueeze(1), s1_ph_b.unsqueeze(1), s2_ph_a.unsqueeze(1),
+                         s2_ph_b.unsqueeze(1)],
+                        dim=1)
+
+                    # Forward pass
+                    outputs = self.model(concatenated_inputs, attention_mask=attention_mask)
 
                     # Convert outputs to class predictions
                     class_probabilities = torch.softmax(outputs.logits, dim=1)  # Apply softmax to logits
@@ -1129,65 +1513,84 @@ if __name__ == "__main__":
     BATCH_SIZE: int = 128
     NUM_CLASSES: int = 3
     for name, model in [
-        # ("SeqBBU", SeqBBU(NUM_CLASSES)),
-        ('SeqRoBERTaB', SeqRoBERTaB(NUM_CLASSES)),
+        # ("SeqBBU", SeqBBUPH(NUM_CLASSES)),
+        # ('SeqRoBERTaB', SeqRoBERTaB(NUM_CLASSES)),
+        # ("SeqBBUNeg", SeqBBUNeg(NUM_CLASSES)),
+        ("SeqBBUPH", SeqBBUPH(NUM_CLASSES)),
+        # ('SeqRoBERTaBNeg', SeqRoBERTaBNeg(NUM_CLASSES)),
         # ("SeqRoBERTaL", SeqRoBERTaL(NUM_CLASSES)),
-        ('SeqRoBERTaBNeg', SeqRoBERTaBNeg(NUM_CLASSES)),
         # ("SeqT5", SeqT5(NUM_CLASSES)),
         # ('SeqGPT2', SeqGPT2(NUM_CLASSES)),
     ]:
-        acc = []
-        f1 = []
-        precision = []
-        recall = []
-        for i in range(1):
+        for dataset_percentage in [0.1]:
+            acc = []
+            f1 = []
+            precision = []
+            recall = []
             # train_df = pd.read_csv("Data/SemEval2014T1/train_cleaned_ph.csv")
             # valid_df = pd.read_csv("Data/SemEval2014T1/valid_cleaned_ph.csv")
             # test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned_ph.csv")
-            # train_df = label_mapping(pd.read_csv("Data/SemEval2014T1/train.csv"))
-            # valid_df = label_mapping(pd.read_csv("Data/SemEval2014T1/valid.csv"))
-            # test_df = label_mapping(pd.read_csv("Data/SemEval2014T1/test.csv"))
-            train_df = pd.read_csv("Data/SNLI/train_cleaned.csv")
-            valid_df = pd.read_csv("Data/SNLI/valid_cleaned.csv")
-            test_df = pd.read_csv("Data/SNLI/test_cleaned.csv")
+            # train_df = create_subset_with_ratio(pd.read_csv("Data/SNLI/train_cleaned.csv"), dataset_percentage,
+            #                                     'gold_label')
+            # valid_df = pd.read_csv("Data/SNLI/valid_cleaned.csv")
+            # test_df = pd.read_csv("Data/SNLI/test_cleaned.csv")
+            # train_df = label_mapping(pd.read_csv("Data/SemEval2014T1/train_cleaned_ph.csv"))
+            # valid_df = label_mapping(pd.read_csv("Data/SemEval2014T1/valid_cleaned_ph.csv"))
+            # test_df = label_mapping(pd.read_csv("Data/SemEval2014T1/test_cleaned_ph.csv"))
+            train_df = create_subset_with_ratio(pd.read_csv("Data/MultiNLI/train_cleaned.csv"), dataset_percentage,
+                                                'gold_label')
+            valid_df = pd.read_csv("Data/MultiNLI/match_cleaned.csv")
+            test_df = pd.read_csv("Data/MultiNLI/test_match.csv")
+            for i in range(1):
+                sentenceBERT = model
+                start_time = time.time()
+                try:
+                    sentenceBERT.fit(
+                        training_data=train_df,
+                        validation_data=valid_df,
+                        batch_size=BATCH_SIZE,
+                        num_epochs=NUM_EPOCHS,
+                        device=DEVICE,
+                        verbose=False,
+                    )
+                except torch.cuda.OutOfMemoryError:
+                    print("CPU Iteration")
+                    sentenceBERT.fit(
+                        training_data=train_df,
+                        validation_data=valid_df,
+                        batch_size=BATCH_SIZE,
+                        num_epochs=NUM_EPOCHS,
+                        device='cpu',
+                        verbose=True,
+                    )
+                elapsed_time = time.time() - start_time
+                predictions: np.ndarray = sentenceBERT.predict(test_data=test_df, batch_size=BATCH_SIZE, device=DEVICE)
+                del sentenceBERT
+                torch.cuda.empty_cache()
+                if 'label' in test_df.columns:
+                    final_labels: np.ndarray = test_df["label"].values
 
-            sequenceBERT = model
-            start_time = time.time()
-            print("Started")
-            sequenceBERT.fit(
-                training_data=train_df,
-                validation_data=valid_df,
-                batch_size=BATCH_SIZE,
-                num_epochs=NUM_EPOCHS,
-                device=DEVICE,
-                verbose=False,
+                    test_accuracy = accuracy_score(final_labels, predictions)
+                    test_precision = precision_score(final_labels, predictions, average="weighted")
+                    test_recall = recall_score(final_labels, predictions, average="weighted")
+                    test_f1 = f1_score(final_labels, predictions, average="weighted")
+
+                    acc.append(test_accuracy)
+                    f1.append(test_f1)
+                    precision.append(test_precision)
+                    recall.append(test_recall)
+                else:
+                    output_df: pd.DataFrame = pd.DataFrame({
+                        'paidID': test_df['paidID'],
+                        'gold_label': predictions,
+                    })
+
+                    output_df = label_mapping(output_df, 'gold_label', 'gold_label')
+
+                print(f"Iteration {i + 1} took {elapsed_time:.2f} seconds")
+
+            print(f"\t{name} Average | {dataset_percentage * 100}% of original training data")
+            print(
+                f"{100 * sum(acc) / len(acc):.2f}% | F1: {sum(f1) / len(f1):.4f} | "
+                f"P: {sum(precision) / len(precision):.4f} | R: {sum(recall) / len(recall):.4f}"
             )
-            elapsed_time = time.time() - start_time
-            predictions: np.ndarray = sequenceBERT.predict(test_data=test_df, batch_size=BATCH_SIZE, device=DEVICE)
-            final_labels: np.ndarray = test_df["label"].values
-
-            # unique_values, counts = np.unique(predictions, return_counts=True)
-            # # Print unique values and their counts
-            # for value, count in zip(unique_values, counts):
-            #     print(f"Class {value}: {count} predictions")
-
-            test_accuracy = accuracy_score(final_labels, predictions)
-            test_precision = precision_score(final_labels, predictions, average="weighted")
-            test_recall = recall_score(final_labels, predictions, average="weighted")
-            test_f1 = f1_score(final_labels, predictions, average="weighted")
-
-            acc.append(test_accuracy)
-            f1.append(test_f1)
-            precision.append(test_precision)
-            recall.append(test_recall)
-            # print(f"\tRun {i}")
-            # print(f"Test Accuracy: {test_accuracy:.4f}")
-            # print(f"Test F1-score: {test_f1:.4f}")
-            # print(f"Test Precision: {test_precision:.4f}")
-            # print(f"Test Recall: {test_recall:.4f}")
-            print(f"Iteration {i + 1} took {elapsed_time:.2f} seconds")
-
-        print(f"\t{name} Average")
-        print(
-            f"{100 * sum(acc) / len(acc):.2f}% | F1: {sum(f1) / len(f1):.4f} | P: {sum(precision) / len(precision):.4f} | R: {sum(recall) / len(recall):.4f}"
-        )

@@ -6,11 +6,12 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score, classification_report, f1_score, precision_score, recall_score
 from bilstm_training import load_txt_file_to_dataframe
 import torch
+
+from clean_dataset import create_subset_with_ratio
 from variables import DEVICE
 from transformers import BertTokenizer, BertModel
 from sklearn.model_selection import validation_curve
 import matplotlib.pyplot as plt
-
 
 BERT: bool = True
 
@@ -27,7 +28,8 @@ for b in [True, False]:
     f1 = []
     precision = []
     recall = []
-    for i in range(30):
+    for i in range(1):
+        print(b, i)
         if b:
             tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
             model = BertModel.from_pretrained("bert-base-uncased").to(DEVICE)
@@ -35,9 +37,10 @@ for b in [True, False]:
             dataset_descriptors: list = ["match", "mismatch"]
             dataframes: list = []
 
-            train_df = pd.read_csv("train.csv")
-            valid_df = pd.read_csv("valid.csv")
-            test_df = pd.read_csv("test.csv")
+            train_df = create_subset_with_ratio(pd.read_csv("Data/SNLI/train_cleaned.csv"), 0.10,
+                                                'gold_label')
+            valid_df = pd.read_csv("Data/SNLI/valid_cleaned.csv")
+            test_df = pd.read_csv("Data/SNLI/test_cleaned.csv")
 
             pair_x = [s.strip() for s in train_df["sentence1"]]
             pair_y = [s.strip() for s in train_df["sentence2"]]
@@ -52,9 +55,6 @@ for b in [True, False]:
             X_test = np.array([encode_sentence(f"{x} [SEP] {y}") for x, y in zip(pair_x, pair_y)])
             y_test = test_df["gold_label"].tolist()
             # print(f"Percent Positive: {100 * sum([1 if int(i) == 2 else 0 for i in y_test]) / len(y_test):.4f}%")
-
-            # Define the hyperparameter grid for C values
-            param_grid = {"C": [0.1, 1, 10, 100]}
 
             # Initialize lists to store results
             validation_accuracies = []
@@ -97,7 +97,7 @@ for b in [True, False]:
 
             # Generate a classification report
             class_report = classification_report(
-                y_test, y_test_pred, target_names=["neutral", "entailment", "contradiction"]
+                y_test, y_test_pred, target_names=["neutral", "entailment", "contradiction", '-']
             )
             # print("Classification Report:\n", class_report)
 
@@ -112,9 +112,10 @@ for b in [True, False]:
             dataset_descriptors: list = ["match", "mismatch"]
             dataframes: list = []
 
-            train_df = pd.read_csv("train.csv")
-            valid_df = pd.read_csv("valid.csv")
-            test_df = pd.read_csv("test.csv")
+            train_df = create_subset_with_ratio(pd.read_csv("Data/SNLI/train_cleaned.csv"), 0.10,
+                                                'gold_label')
+            valid_df = pd.read_csv("Data/SNLI/valid_cleaned.csv")
+            test_df = pd.read_csv("Data/SNLI/test_cleaned.csv")
 
             pair_x = [s.strip() for s in train_df["sentence1"]]
             pair_y = [s.strip() for s in train_df["sentence2"]]
@@ -130,9 +131,7 @@ for b in [True, False]:
             y_test = test_df["gold_label"].tolist()
             # print(f"Percent Positive: {100 * sum([1 if int(i) == 2 else 0 for i in y_test]) / len(y_test):.4f}%")
 
-            # Create the final SVM classifier with the best hyperparameters
             final_clf = SVC(kernel="linear", C=1)
-
             # Train the final model on the entire training dataset
             final_clf.fit(X_train, y_train)
             y_val_pred = final_clf.predict(X_val)
@@ -165,7 +164,7 @@ for b in [True, False]:
 
             # Generate a classification report
             class_report = classification_report(
-                y_test, y_test_pred, target_names=["neutral", "entailment", "contradiction"]
+                y_test, y_test_pred, target_names=["neutral", "entailment", "contradiction", '-']
             )
             # print("Classification Report:\n", class_report)
             acc.append(test_accuracy)
