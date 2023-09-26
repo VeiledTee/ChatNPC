@@ -6,6 +6,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from torch.utils.data import DataLoader, TensorDataset
 
 from ContradictDetectNN import count_negations, ph_to_tensor
+from persitent_homology import persistent_homology_features
 
 from variables import DEVICE
 # DEVICE = 'cpu'
@@ -16,6 +17,38 @@ from sklearn.preprocessing import MinMaxScaler
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch
+import torch.nn as nn
+
+
+class MLPClassifier(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim, dropout_prob=0.1):
+        super(MLPClassifier, self).__init__()
+
+        # Define the hidden layers
+        self.hidden1 = nn.Linear(input_dim, hidden_dim)
+        self.hidden2 = nn.Linear(hidden_dim, hidden_dim)
+        self.hidden3 = nn.Linear(hidden_dim, hidden_dim)
+
+        # Dropout layer with dropout_prob in the last layer
+        self.dropout = nn.Dropout(p=dropout_prob)
+
+        # Output layer
+        self.output = nn.Linear(hidden_dim, output_dim)
+
+    def forward(self, x):
+        # Apply activation functions and dropout in each hidden layer
+        x = torch.relu(self.hidden1(x))
+        x = torch.relu(self.hidden2(x))
+        x = torch.relu(self.hidden3(x))
+
+        # Apply dropout to the last hidden layer
+        x = self.dropout(x)
+
+        # Output layer (no activation for multi-class classification)
+        x = self.output(x)
+
+        return x
 
 
 def label_mapping(df: pd.DataFrame, from_col: str = 'gold_label', to_col: str = 'label') -> pd.DataFrame:
@@ -26,6 +59,22 @@ def label_mapping(df: pd.DataFrame, from_col: str = 'gold_label', to_col: str = 
     }
     df[to_col] = df[from_col].map(mapping)
     return df
+
+
+def replace_inf(tensors: torch.Tensor) -> torch.Tensor:
+    tensor_with_inf = tensors.cpu().numpy()
+
+    for i in range(tensor_with_inf.shape[0]):
+        row_values = tensor_with_inf[i, :]
+        max_finite_value = np.max(row_values[np.isfinite(row_values)])
+
+        # Check if the largest value is 3.4028235e+38
+        if np.isinf(max_finite_value) and not np.isnan(max_finite_value):
+            max_finite_value = np.max(row_values[row_values != 3.4028235e+38])
+
+        tensor_with_inf[i, :] = np.where(row_values == 3.4028235e+38, max_finite_value * 2, row_values)
+        # print(max_finite_value)
+    return torch.tensor(tensor_with_inf)
 
 
 class SeqBBU:
@@ -95,7 +144,7 @@ class SeqBBU:
                 all_true_labels.extend(true_labels)
                 all_predicted_labels.extend(predicted_classes.cpu().numpy())
 
-            average_loss: float = running_loss / (len(train_df) / batch_size)
+            average_loss: float = running_loss / (len(training_data) / batch_size)
 
             # Calculate training accuracy and F1-score
             training_accuracy: float = accuracy_score(all_true_labels, all_predicted_labels)
@@ -189,7 +238,7 @@ class SeqBBUNeg:
     ) -> None:
         self.model.to(device)
 
-        optimizer = torch.optim.AdamW(self.model.parameters(), lr=2e-5)
+        optimizer = torch.optim.AdamW(self.model.parameters(), lr=1e-4)
         criterion = torch.nn.CrossEntropyLoss().to(device)
 
         if 'negation' not in training_data.columns:
@@ -260,7 +309,7 @@ class SeqBBUNeg:
                 all_true_labels.extend(true_labels)
                 all_predicted_labels.extend(predicted_classes.cpu().numpy())
 
-            average_loss: float = running_loss / (len(train_df) / batch_size)
+            average_loss: float = running_loss / (len(training_data) / batch_size)
 
             # Calculate training accuracy and F1-score
             training_accuracy: float = accuracy_score(all_true_labels, all_predicted_labels)
@@ -445,7 +494,7 @@ class SeqBBUPH(nn.Module):
     ) -> None:
         self.to(device)
 
-        optimizer = torch.optim.AdamW(self.encoder.parameters(), lr=2e-5)
+        optimizer = torch.optim.AdamW(self.encoder.parameters(), lr=5e-6)
         criterion = torch.nn.CrossEntropyLoss().to(device)
 
         for column in ["sentence1_ph_a", "sentence1_ph_b", "sentence2_ph_a", "sentence2_ph_b"]:
@@ -536,7 +585,7 @@ class SeqBBUPH(nn.Module):
                 all_true_labels.extend(true_labels)
                 all_predicted_labels.extend(predicted_classes.cpu().numpy())
 
-            average_loss: float = running_loss / (len(train_df) / batch_size)
+            average_loss: float = running_loss / (len(training_data) / batch_size)
 
             # Calculate training accuracy and F1-score
             training_accuracy: float = accuracy_score(all_true_labels, all_predicted_labels)
@@ -682,6 +731,330 @@ class SeqBBUPH(nn.Module):
         return test_predictions
 
 
+class SeqBBUPHMLP(nn.Module):
+    def __init__(self, num_classes: int, model_name: str = "bert-base-uncased"):
+        super(SeqBBUPHMLP, self).__init__()
+        self.num_classes = num_classes
+        self.model_name = model_name
+        self.encoder = AutoModel.from_pretrained(self.model_name,
+                                                 num_labels=self.num_classes).to(DEVICE)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+
+        # Define MLP layers
+        self.mlp = nn.Sequential(
+            nn.Linear(3692, 300),  # Input size is 1200 (max_pool1 + max_pool2 + avg_pool1 + avg_pool2)
+            nn.ReLU(),
+            nn.Linear(300, 300),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(300, num_classes)  # Output layer with num_classes
+        ).to(DEVICE)
+
+    def forward(
+            self,
+            input_ids1,
+            attention_mask1,
+            batch_s1_feature_a,
+            batch_s1_feature_b,
+            input_ids2,
+            attention_mask2,
+            batch_s2_feature_a,
+            batch_s2_feature_b,
+    ):
+        # Move input tensors to the desired device
+        input_ids1 = input_ids1.to(DEVICE)
+        attention_mask1 = attention_mask1.to(DEVICE)
+        batch_s1_feature_a = batch_s1_feature_a.to(DEVICE)
+        batch_s1_feature_b = batch_s1_feature_b.to(DEVICE)
+        input_ids2 = input_ids2.to(DEVICE)
+        attention_mask2 = attention_mask2.to(DEVICE)
+        batch_s2_feature_a = batch_s2_feature_a.to(DEVICE)
+        batch_s2_feature_b = batch_s2_feature_b.to(DEVICE)
+
+        # BERT forward pass for sentence 1
+        # BERT forward pass for sentence 1
+        outputs1 = self.encoder(input_ids1, attention_mask=attention_mask1)
+        embeddings1 = outputs1.last_hidden_state  # Extract BERT embeddings
+
+        # BERT forward pass for sentence 2
+        outputs2 = self.encoder(input_ids2, attention_mask=attention_mask2)
+        embeddings2 = outputs2.last_hidden_state  # Extract BERT embeddings
+
+        # Max pooling for sentence 1 and sentence 2
+        max_pool1, _ = embeddings1.max(dim=1)
+        max_pool2, _ = embeddings2.max(dim=1)
+
+        # Average pooling for sentence 1 and sentence 2
+        avg_pool1 = embeddings1.mean(dim=1)
+        avg_pool2 = embeddings2.mean(dim=1)
+
+        # Concatenate max and average pooled embeddings with other features
+        combined_input = torch.cat(
+            [max_pool1,
+             max_pool2,
+             avg_pool1,
+             avg_pool2,
+             batch_s1_feature_a,
+             batch_s1_feature_b,
+             batch_s2_feature_a,
+             batch_s2_feature_b],
+            dim=1,
+        )
+
+        # Pass through MLP layers
+        logits = self.mlp(combined_input)
+
+        return logits.to(DEVICE)
+
+    def fit(
+            self,
+            training_data: pd.DataFrame,
+            validation_data: pd.DataFrame,
+            batch_size: int,
+            num_epochs: int,
+            device: str,
+            verbose: bool = False,
+    ) -> None:
+        self.to(device)
+
+        optimizer = torch.optim.AdamW(self.encoder.parameters(), lr=1e-10)
+        criterion = torch.nn.CrossEntropyLoss().to(device)
+
+        if "sentence1_ph_a" in training_data.columns:
+            for column in ["sentence1_ph_a", "sentence1_ph_b", "sentence2_ph_a", "sentence2_ph_b"]:
+                try:
+                    # Training cleaning
+                    training_data[column] = training_data[column].apply(ph_to_tensor)
+                    training_data[column] = training_data[column].apply(lambda x: x[:, 0])
+                except AttributeError:
+                    continue
+                try:
+                    # Validation cleaning
+                    validation_data[column] = validation_data[column].apply(ph_to_tensor)
+                    validation_data[column] = validation_data[column].apply(lambda x: x[:, 0])
+                except AttributeError:
+                    continue
+
+        # train_accuracy_values: list = []
+        # train_f1_values: list = []
+        # val_accuracy_values: list = []
+        # val_f1_values: list = []
+        for epoch in range(num_epochs):
+            self.train()  # Set the model to training mode
+            if verbose:
+                print(f"Epoch: [ {epoch} / {num_epochs} ]")
+            running_loss: float = 0.0
+            all_true_labels: list = []
+            all_predicted_labels: list = []
+            for i in range(0, len(training_data), batch_size):
+                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
+                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_labels = torch.tensor(
+                    training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
+                ).to(device)
+
+                # Additional input vectors
+                batch_s1_feature_a = torch.stack(
+                    training_data["sentence1_ph_a"].values.tolist()[i: i + batch_size], dim=0
+                ).to(device)
+                batch_s1_feature_b = torch.stack(
+                    training_data["sentence1_ph_b"].values.tolist()[i: i + batch_size], dim=0
+                ).to(device)
+                batch_s2_feature_a = torch.stack(
+                    training_data["sentence2_ph_a"].values.tolist()[i: i + batch_size], dim=0
+                ).to(device)
+                batch_s2_feature_b = torch.stack(
+                    training_data["sentence2_ph_b"].values.tolist()[i: i + batch_size], dim=0
+                ).to(device)
+
+                # Tokenize and encode sentences 1 and 2 separately
+                inputs1 = self.tokenizer(
+                    batch_sentences1, max_length=128, return_tensors="pt", padding='max_length', truncation=True
+                ).to(device)
+                inputs2 = self.tokenizer(
+                    batch_sentences2, max_length=128, return_tensors="pt", padding='max_length', truncation=True
+                ).to(device)
+
+                input_ids1 = inputs1["input_ids"]
+                attention_mask1 = inputs1["attention_mask"]
+                input_ids2 = inputs2["input_ids"]
+                attention_mask2 = inputs2["attention_mask"]
+
+                # calculate logits
+                train_logits = self(
+                    input_ids1=input_ids1,
+                    attention_mask1=attention_mask1,
+                    batch_s1_feature_a=batch_s1_feature_a,
+                    batch_s1_feature_b=batch_s1_feature_b,
+                    input_ids2=input_ids2,
+                    attention_mask2=attention_mask2,
+                    batch_s2_feature_a=batch_s2_feature_a,
+                    batch_s2_feature_b=batch_s2_feature_b,
+                )
+
+                # Calculate the loss
+                loss = criterion(train_logits, batch_labels)
+                running_loss += loss.item()
+
+                # Backpropagation and optimization
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                # Convert outputs to class predictions
+                class_probabilities = torch.softmax(train_logits, dim=1)  # Apply softmax to logits
+                predicted_classes = torch.argmax(class_probabilities, dim=1)
+                true_labels: np.ndarray = batch_labels.view(-1).cpu().numpy()
+
+                all_true_labels.extend(true_labels)
+                all_predicted_labels.extend(predicted_classes.cpu().numpy())
+
+            average_loss: float = running_loss / (len(training_data) / batch_size)
+
+            # Calculate training accuracy and F1-score
+            training_accuracy: float = accuracy_score(all_true_labels, all_predicted_labels)
+            training_f1: float = f1_score(
+                all_true_labels, all_predicted_labels, average="macro"
+            )  # You can choose 'micro' or 'weighted' as well
+
+            if verbose:
+                print(
+                    f"\tTraining   | Accuracy: {training_accuracy:.4f}, F1 Score: {training_f1:.4f}, Loss: {average_loss:.4f}"
+                )
+
+            # Validation
+            self.eval()  # Set the model to evaluation mode
+            val_predictions = []
+            val_true_labels = []
+
+            with torch.no_grad():
+                for i in range(0, len(validation_data), batch_size):
+                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
+                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
+                    batch_labels = torch.tensor(
+                        validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
+                    )
+
+                    # Additional input vectors
+                    s1_ph_a = torch.stack(
+                        validation_data["sentence1_ph_a"].values.tolist()[i: i + batch_size], dim=0
+                    ).to(device)
+                    s1_ph_b = torch.stack(
+                        validation_data["sentence1_ph_b"].values.tolist()[i: i + batch_size], dim=0
+                    ).to(device)
+                    s2_ph_a = torch.stack(
+                        validation_data["sentence2_ph_a"].values.tolist()[i: i + batch_size], dim=0
+                    ).to(device)
+                    s2_ph_b = torch.stack(
+                        validation_data["sentence2_ph_b"].values.tolist()[i: i + batch_size], dim=0
+                    ).to(device)
+
+                    # Tokenize and encode sentences 1 and 2 separately
+                    inputs1 = self.tokenizer(
+                        batch_sentences1, max_length=128, return_tensors="pt", padding='max_length', truncation=True
+                    ).to(device)
+                    inputs2 = self.tokenizer(
+                        batch_sentences2, max_length=128, return_tensors="pt", padding='max_length', truncation=True
+                    ).to(device)
+
+                    input_ids1 = inputs1["input_ids"]
+                    attention_mask1 = inputs1["attention_mask"]
+                    input_ids2 = inputs2["input_ids"]
+                    attention_mask2 = inputs2["attention_mask"]
+
+                    # calculate logits
+                    val_logits = self(
+                        input_ids1=input_ids1,
+                        attention_mask1=attention_mask1,
+                        batch_s1_feature_a=s1_ph_a,
+                        batch_s1_feature_b=s1_ph_b,
+                        input_ids2=input_ids2,
+                        attention_mask2=attention_mask2,
+                        batch_s2_feature_a=s2_ph_a,
+                        batch_s2_feature_b=s2_ph_b,
+                    )
+
+                    # Convert outputs to class predictions
+                    class_probabilities = torch.softmax(val_logits, dim=1)  # Apply softmax to logits
+                    val_predicted_classes = torch.argmax(class_probabilities, dim=1)
+
+                    # extend bookkeeping lists
+                    val_predictions.extend(val_predicted_classes.cpu().numpy())
+                    val_true_labels.extend(batch_labels.view(-1).cpu().numpy())
+
+            # Calculate validation accuracy and F1-score
+            val_accuracy: float = accuracy_score(val_true_labels, val_predictions)
+            val_f1: float = f1_score(
+                val_true_labels, val_predictions, average="macro"
+            )  # You can choose 'micro' or 'weighted' as well
+            if verbose:
+                print(f"\tValidation | Accuracy: {val_accuracy:.4f}, F1 Score: {val_f1:.4f}")
+
+    def predict(self, test_data: pd.DataFrame, batch_size: int, device: str) -> np.ndarray:
+        self.to(device)
+        self.eval()  # Set the model to evaluation mode
+        test_predictions = np.array([])
+
+        for column in ["sentence1_ph_a", "sentence1_ph_b", "sentence2_ph_a", "sentence2_ph_b"]:
+            # Training cleaning
+            try:
+                test_data[column] = test_data[column].apply(ph_to_tensor)
+                test_data[column] = test_data[column].apply(lambda x: x[:, 0])
+            except AttributeError:
+                continue
+
+        with torch.no_grad():  # Disable gradient tracking during testing
+            for i in range(0, len(test_data), batch_size):
+                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
+                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
+
+                # Additional input vectors
+                s1_ph_a = torch.stack(
+                    test_data["sentence1_ph_a"].values.tolist()[i: i + batch_size], dim=0
+                ).to(device)
+                s1_ph_b = torch.stack(
+                    test_data["sentence1_ph_b"].values.tolist()[i: i + batch_size], dim=0
+                ).to(device)
+                s2_ph_a = torch.stack(
+                    test_data["sentence2_ph_a"].values.tolist()[i: i + batch_size], dim=0
+                ).to(device)
+                s2_ph_b = torch.stack(
+                    test_data["sentence2_ph_b"].values.tolist()[i: i + batch_size], dim=0
+                ).to(device)
+
+                # Tokenize and encode sentences 1 and 2 separately
+                inputs1 = self.tokenizer(
+                    batch_sentences1, max_length=128, return_tensors="pt", padding='max_length', truncation=True
+                ).to(device)
+                inputs2 = self.tokenizer(
+                    batch_sentences2, max_length=128, return_tensors="pt", padding='max_length', truncation=True
+                ).to(device)
+
+                input_ids1 = inputs1["input_ids"]
+                attention_mask1 = inputs1["attention_mask"]
+                input_ids2 = inputs2["input_ids"]
+                attention_mask2 = inputs2["attention_mask"]
+
+                # calculate logits
+                test_logits = self(
+                    input_ids1=input_ids1,
+                    attention_mask1=attention_mask1,
+                    batch_s1_feature_a=s1_ph_a,
+                    batch_s1_feature_b=s1_ph_b,
+                    input_ids2=input_ids2,
+                    attention_mask2=attention_mask2,
+                    batch_s2_feature_a=s2_ph_a,
+                    batch_s2_feature_b=s2_ph_b,
+                )
+
+                class_probabilities = torch.softmax(test_logits, dim=1)  # Apply softmax to logits
+                predicted_classes = torch.argmax(class_probabilities, dim=1).cpu().numpy()
+
+                test_predictions = np.append(test_predictions, predicted_classes)
+
+        return test_predictions
+
+
 class SeqRoBERTaB:
     def __init__(self, num_classes: int, model_name: str = "roberta-base"):
         self.num_classes = num_classes
@@ -749,7 +1122,7 @@ class SeqRoBERTaB:
                 all_true_labels.extend(true_labels)
                 all_predicted_labels.extend(predicted_classes.cpu().numpy())
 
-            average_loss: float = running_loss / (len(train_df) / batch_size)
+            average_loss: float = running_loss / (len(training_data) / batch_size)
 
             # Calculate training accuracy and F1-score
             training_accuracy: float = accuracy_score(all_true_labels, all_predicted_labels)
@@ -893,7 +1266,7 @@ class SeqRoBERTaL:
                 all_true_labels.extend(true_labels)
                 all_predicted_labels.extend(predicted_classes.cpu().numpy())
 
-            average_loss: float = running_loss / (len(train_df) / batch_size)
+            average_loss: float = running_loss / (len(training_data) / batch_size)
 
             # Calculate training accuracy and F1-score
             training_accuracy: float = accuracy_score(all_true_labels, all_predicted_labels)
@@ -1056,7 +1429,7 @@ class SeqRoBERTaBNeg:
                 all_true_labels.extend(true_labels)
                 all_predicted_labels.extend(predicted_classes.cpu().numpy())
 
-            average_loss: float = running_loss / (len(train_df) / batch_size)
+            average_loss: float = running_loss / (len(training_data) / batch_size)
 
             # Calculate training accuracy and F1-score
             training_accuracy: float = accuracy_score(all_true_labels, all_predicted_labels)
@@ -1162,12 +1535,80 @@ class SeqRoBERTaBNeg:
         return test_predictions
 
 
-class SeqRoBERTaBPH:
+class SeqRoBERTaBPH(nn.Module):
     def __init__(self, num_classes: int, model_name: str = "roberta-base"):
+        super(SeqRoBERTaBPH, self).__init__()
         self.num_classes = num_classes
         self.model_name = model_name
-        self.model = AutoModelForSequenceClassification.from_pretrained(self.model_name, num_labels=self.num_classes)
+        self.encoder = AutoModel.from_pretrained(self.model_name,
+                                                 num_labels=self.num_classes).to(DEVICE)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+
+        # Define MLP layers
+        self.mlp = nn.Sequential(
+            nn.Linear(3692, 300),  # Input size is 1200 (max_pool1 + max_pool2 + avg_pool1 + avg_pool2)
+            nn.ReLU(),
+            nn.Linear(300, 300),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(300, num_classes)  # Output layer with num_classes
+        ).to(DEVICE)
+
+    def forward(
+            self,
+            input_ids1,
+            attention_mask1,
+            batch_s1_feature_a,
+            batch_s1_feature_b,
+            input_ids2,
+            attention_mask2,
+            batch_s2_feature_a,
+            batch_s2_feature_b,
+    ):
+        # Move input tensors to the desired device
+        input_ids1 = input_ids1.to(DEVICE)
+        attention_mask1 = attention_mask1.to(DEVICE)
+        batch_s1_feature_a = batch_s1_feature_a.to(DEVICE)
+        batch_s1_feature_b = batch_s1_feature_b.to(DEVICE)
+        input_ids2 = input_ids2.to(DEVICE)
+        attention_mask2 = attention_mask2.to(DEVICE)
+        batch_s2_feature_a = batch_s2_feature_a.to(DEVICE)
+        batch_s2_feature_b = batch_s2_feature_b.to(DEVICE)
+
+        # BERT forward pass for sentence 1
+        # BERT forward pass for sentence 1
+        outputs1 = self.encoder(input_ids1, attention_mask=attention_mask1)
+        embeddings1 = outputs1.last_hidden_state  # Extract BERT embeddings
+
+        # BERT forward pass for sentence 2
+        outputs2 = self.encoder(input_ids2, attention_mask=attention_mask2)
+        embeddings2 = outputs2.last_hidden_state  # Extract BERT embeddings
+
+        # Max pooling for sentence 1 and sentence 2
+        max_pool1, _ = embeddings1.max(dim=1)
+        max_pool2, _ = embeddings2.max(dim=1)
+
+        # Average pooling for sentence 1 and sentence 2
+        avg_pool1 = embeddings1.mean(dim=1)
+        avg_pool2 = embeddings2.mean(dim=1)
+
+        # Concatenate max and average pooled embeddings with other features
+        combined_input = torch.cat(
+            [max_pool1,
+             max_pool2,
+             avg_pool1,
+             avg_pool2,
+             batch_s1_feature_a,
+             batch_s1_feature_b,
+             batch_s2_feature_a,
+             batch_s2_feature_b],
+            dim=1,
+        )
+
+        # Pass through MLP layers
+        logits = self.mlp(combined_input)
+
+        return logits.to(DEVICE)
 
     def fit(
             self,
@@ -1178,25 +1619,34 @@ class SeqRoBERTaBPH:
             device: str,
             verbose: bool = False,
     ) -> None:
-        self.model.to(device)
+        self.to(device)
 
-        optimizer = torch.optim.AdamW(self.model.parameters(), lr=2e-5)
+        optimizer = torch.optim.AdamW(self.encoder.parameters(), lr=1e-10)
         criterion = torch.nn.CrossEntropyLoss().to(device)
 
-        for column in ["sentence1_ph_a", "sentence1_ph_b", "sentence2_ph_a", "sentence2_ph_b"]:
-            # Training cleaning
-            training_data[column] = training_data[column].apply(ph_to_tensor)
-            # Validation cleaning
-            validation_data[column] = validation_data[column].apply(ph_to_tensor)
+        if "sentence1_ph_a" in training_data.columns:
+            for column in ["sentence1_ph_a", "sentence1_ph_b", "sentence2_ph_a", "sentence2_ph_b"]:
+                try:
+                    # Training cleaning
+                    training_data[column] = training_data[column].apply(ph_to_tensor)
+                    training_data[column] = training_data[column].apply(lambda x: x[:, 0])
+                except AttributeError:
+                    continue
+                try:
+                    # Validation cleaning
+                    validation_data[column] = validation_data[column].apply(ph_to_tensor)
+                    validation_data[column] = validation_data[column].apply(lambda x: x[:, 0])
+                except AttributeError:
+                    continue
 
         # train_accuracy_values: list = []
         # train_f1_values: list = []
         # val_accuracy_values: list = []
         # val_f1_values: list = []
         for epoch in range(num_epochs):
+            self.train()  # Set the model to training mode
             if verbose:
                 print(f"Epoch: [ {epoch} / {num_epochs} ]")
-            self.model.train()  # Set the model to training mode
             running_loss: float = 0.0
             all_true_labels: list = []
             all_predicted_labels: list = []
@@ -1206,36 +1656,48 @@ class SeqRoBERTaBPH:
                 batch_labels = torch.tensor(
                     training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
+
+                # Additional input vectors
                 batch_s1_feature_a = torch.stack(
                     training_data["sentence1_ph_a"].values.tolist()[i: i + batch_size], dim=0
-                ).to(device)  # torch.Size([260, 3])
+                ).to(device)
                 batch_s1_feature_b = torch.stack(
                     training_data["sentence1_ph_b"].values.tolist()[i: i + batch_size], dim=0
-                ).to(device)  # torch.Size([260, 3])
+                ).to(device)
                 batch_s2_feature_a = torch.stack(
                     training_data["sentence2_ph_a"].values.tolist()[i: i + batch_size], dim=0
-                ).to(device)  # torch.Size([260, 3])
+                ).to(device)
                 batch_s2_feature_b = torch.stack(
                     training_data["sentence2_ph_b"].values.tolist()[i: i + batch_size], dim=0
-                ).to(device)  # torch.Size([260, 3])
-
-                # Tokenize and encode the batch
-                inputs = self.tokenizer(
-                    batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
                 ).to(device)
-                input_ids = inputs["input_ids"]
-                attention_mask = inputs["attention_mask"]
-                # Concatenate the extra feature to the input_ids
-                input_ids_with_extra_feature = torch.cat([input_ids, batch_negation.unsqueeze(1)], dim=1)
-                # Concatenate the extra feature to the input_ids
-                extra_feature_attention_mask = torch.ones_like(batch_negation)
-                # Combine the attention_mask for input_ids and the extra feature
-                combined_attention_mask = torch.cat([attention_mask, extra_feature_attention_mask.unsqueeze(1)], dim=1)
-                # Forward pass up to the last layer
-                outputs = self.model(input_ids_with_extra_feature, attention_mask=combined_attention_mask)
-                last_hidden_state = outputs[0]  # Get the last hidden state from the outputs [batch_size, num _classes]
+
+                # Tokenize and encode sentences 1 and 2 separately
+                inputs1 = self.tokenizer(
+                    batch_sentences1, max_length=128, return_tensors="pt", padding='max_length', truncation=True
+                ).to(device)
+                inputs2 = self.tokenizer(
+                    batch_sentences2, max_length=128, return_tensors="pt", padding='max_length', truncation=True
+                ).to(device)
+
+                input_ids1 = inputs1["input_ids"]
+                attention_mask1 = inputs1["attention_mask"]
+                input_ids2 = inputs2["input_ids"]
+                attention_mask2 = inputs2["attention_mask"]
+
+                # calculate logits
+                train_logits = self(
+                    input_ids1=input_ids1,
+                    attention_mask1=attention_mask1,
+                    batch_s1_feature_a=batch_s1_feature_a,
+                    batch_s1_feature_b=batch_s1_feature_b,
+                    input_ids2=input_ids2,
+                    attention_mask2=attention_mask2,
+                    batch_s2_feature_a=batch_s2_feature_a,
+                    batch_s2_feature_b=batch_s2_feature_b,
+                )
+
                 # Calculate the loss
-                loss = criterion(last_hidden_state, batch_labels)
+                loss = criterion(train_logits, batch_labels)
                 running_loss += loss.item()
 
                 # Backpropagation and optimization
@@ -1244,14 +1706,14 @@ class SeqRoBERTaBPH:
                 optimizer.step()
 
                 # Convert outputs to class predictions
-                class_probabilities = torch.softmax(last_hidden_state, dim=1)
+                class_probabilities = torch.softmax(train_logits, dim=1)  # Apply softmax to logits
                 predicted_classes = torch.argmax(class_probabilities, dim=1)
-                true_labels = batch_labels.view(-1).cpu().numpy()
+                true_labels: np.ndarray = batch_labels.view(-1).cpu().numpy()
 
                 all_true_labels.extend(true_labels)
                 all_predicted_labels.extend(predicted_classes.cpu().numpy())
 
-            average_loss: float = running_loss / (len(train_df) / batch_size)
+            average_loss: float = running_loss / (len(training_data) / batch_size)
 
             # Calculate training accuracy and F1-score
             training_accuracy: float = accuracy_score(all_true_labels, all_predicted_labels)
@@ -1265,7 +1727,7 @@ class SeqRoBERTaBPH:
                 )
 
             # Validation
-            self.model.eval()  # Set the model to evaluation mode
+            self.eval()  # Set the model to evaluation mode
             val_predictions = []
             val_true_labels = []
 
@@ -1273,33 +1735,51 @@ class SeqRoBERTaBPH:
                 for i in range(0, len(validation_data), batch_size):
                     batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
                     batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
-                    batch_negation = torch.tensor(
-                        validation_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
-                    ).to(device)
                     batch_labels = torch.tensor(
                         validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
+                    )
+
+                    # Additional input vectors
+                    s1_ph_a = torch.stack(
+                        validation_data["sentence1_ph_a"].values.tolist()[i: i + batch_size], dim=0
+                    ).to(device)
+                    s1_ph_b = torch.stack(
+                        validation_data["sentence1_ph_b"].values.tolist()[i: i + batch_size], dim=0
+                    ).to(device)
+                    s2_ph_a = torch.stack(
+                        validation_data["sentence2_ph_a"].values.tolist()[i: i + batch_size], dim=0
+                    ).to(device)
+                    s2_ph_b = torch.stack(
+                        validation_data["sentence2_ph_b"].values.tolist()[i: i + batch_size], dim=0
                     ).to(device)
 
-                    # Tokenize and encode the batch
-                    inputs = self.tokenizer(
-                        batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
+                    # Tokenize and encode sentences 1 and 2 separately
+                    inputs1 = self.tokenizer(
+                        batch_sentences1, max_length=128, return_tensors="pt", padding='max_length', truncation=True
                     ).to(device)
-                    input_ids = inputs["input_ids"]
-                    attention_mask = inputs["attention_mask"]
-                    # Concatenate the extra feature to the input_ids
-                    input_ids_with_extra_feature = torch.cat([input_ids, batch_negation.unsqueeze(1)], dim=1)
-                    # Concatenate the extra feature to the input_ids
-                    extra_feature_attention_mask = torch.ones_like(batch_negation)
-                    # Combine the attention_mask for input_ids and the extra feature
-                    combined_attention_mask = torch.cat([attention_mask, extra_feature_attention_mask.unsqueeze(1)],
-                                                        dim=1)
+                    inputs2 = self.tokenizer(
+                        batch_sentences2, max_length=128, return_tensors="pt", padding='max_length', truncation=True
+                    ).to(device)
 
-                    # Forward pass up to the last layer
-                    outputs = self.model(input_ids_with_extra_feature, attention_mask=combined_attention_mask)
-                    # Extract the last hidden state from the model's output
-                    last_hidden_state = outputs[0]
+                    input_ids1 = inputs1["input_ids"]
+                    attention_mask1 = inputs1["attention_mask"]
+                    input_ids2 = inputs2["input_ids"]
+                    attention_mask2 = inputs2["attention_mask"]
+
+                    # calculate logits
+                    val_logits = self(
+                        input_ids1=input_ids1,
+                        attention_mask1=attention_mask1,
+                        batch_s1_feature_a=s1_ph_a,
+                        batch_s1_feature_b=s1_ph_b,
+                        input_ids2=input_ids2,
+                        attention_mask2=attention_mask2,
+                        batch_s2_feature_a=s2_ph_a,
+                        batch_s2_feature_b=s2_ph_b,
+                    )
+
                     # Convert outputs to class predictions
-                    class_probabilities = torch.softmax(last_hidden_state, dim=1)  # Apply softmax to output
+                    class_probabilities = torch.softmax(val_logits, dim=1)  # Apply softmax to logits
                     val_predicted_classes = torch.argmax(class_probabilities, dim=1)
 
                     # extend bookkeeping lists
@@ -1315,38 +1795,63 @@ class SeqRoBERTaBPH:
                 print(f"\tValidation | Accuracy: {val_accuracy:.4f}, F1 Score: {val_f1:.4f}")
 
     def predict(self, test_data: pd.DataFrame, batch_size: int, device: str) -> np.ndarray:
-        self.model.to(device)
-        self.model.eval()
+        self.to(device)
+        self.eval()  # Set the model to evaluation mode
         test_predictions = np.array([])
 
-        with torch.no_grad():
+        for column in ["sentence1_ph_a", "sentence1_ph_b", "sentence2_ph_a", "sentence2_ph_b"]:
+            # Training cleaning
+            try:
+                test_data[column] = test_data[column].apply(ph_to_tensor)
+                test_data[column] = test_data[column].apply(lambda x: x[:, 0])
+            except AttributeError:
+                continue
+
+        with torch.no_grad():  # Disable gradient tracking during testing
             for i in range(0, len(test_data), batch_size):
                 batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
                 batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
-                batch_negation = torch.tensor(
-                    test_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
+
+                # Additional input vectors
+                s1_ph_a = torch.stack(
+                    test_data["sentence1_ph_a"].values.tolist()[i: i + batch_size], dim=0
+                ).to(device)
+                s1_ph_b = torch.stack(
+                    test_data["sentence1_ph_b"].values.tolist()[i: i + batch_size], dim=0
+                ).to(device)
+                s2_ph_a = torch.stack(
+                    test_data["sentence2_ph_a"].values.tolist()[i: i + batch_size], dim=0
+                ).to(device)
+                s2_ph_b = torch.stack(
+                    test_data["sentence2_ph_b"].values.tolist()[i: i + batch_size], dim=0
                 ).to(device)
 
-                # Tokenize and encode the batch
-                inputs = self.tokenizer(
-                    batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
+                # Tokenize and encode sentences 1 and 2 separately
+                inputs1 = self.tokenizer(
+                    batch_sentences1, max_length=128, return_tensors="pt", padding='max_length', truncation=True
                 ).to(device)
-                input_ids = inputs["input_ids"]
-                attention_mask = inputs["attention_mask"]
-                # Concatenate the extra feature to the input_ids
-                input_ids_with_extra_feature = torch.cat([input_ids, batch_negation.unsqueeze(1)], dim=1)
-                # Concatenate the extra feature to the input_ids
-                extra_feature_attention_mask = torch.ones_like(batch_negation)
-                # Combine the attention_mask for input_ids and the extra feature
-                combined_attention_mask = torch.cat([attention_mask, extra_feature_attention_mask.unsqueeze(1)],
-                                                    dim=1)
+                inputs2 = self.tokenizer(
+                    batch_sentences2, max_length=128, return_tensors="pt", padding='max_length', truncation=True
+                ).to(device)
 
-                # Forward pass up to the last layer
-                outputs = self.model(input_ids_with_extra_feature, attention_mask=combined_attention_mask)
-                # Extract the last hidden state from the model's output
-                last_hidden_state = outputs[0]
-                # Convert outputs to class predictions
-                class_probabilities = torch.softmax(last_hidden_state, dim=1)  # Apply softmax to output
+                input_ids1 = inputs1["input_ids"]
+                attention_mask1 = inputs1["attention_mask"]
+                input_ids2 = inputs2["input_ids"]
+                attention_mask2 = inputs2["attention_mask"]
+
+                # calculate logits
+                test_logits = self(
+                    input_ids1=input_ids1,
+                    attention_mask1=attention_mask1,
+                    batch_s1_feature_a=s1_ph_a,
+                    batch_s1_feature_b=s1_ph_b,
+                    input_ids2=input_ids2,
+                    attention_mask2=attention_mask2,
+                    batch_s2_feature_a=s2_ph_a,
+                    batch_s2_feature_b=s2_ph_b,
+                )
+
+                class_probabilities = torch.softmax(test_logits, dim=1)  # Apply softmax to logits
                 predicted_classes = torch.argmax(class_probabilities, dim=1).cpu().numpy()
 
                 test_predictions = np.append(test_predictions, predicted_classes)
@@ -1421,7 +1926,7 @@ class SeqT5:
                 all_true_labels.extend(true_labels)
                 all_predicted_labels.extend(predicted_classes.cpu().numpy())
 
-            average_loss: float = running_loss / (len(train_df) / batch_size)
+            average_loss: float = running_loss / (len(training_data) / batch_size)
 
             # Calculate training accuracy and F1-score
             training_accuracy: float = accuracy_score(all_true_labels, all_predicted_labels)
@@ -1565,7 +2070,7 @@ class SeqGPT2:
                 all_true_labels.extend(true_labels)
                 all_predicted_labels.extend(predicted_classes.cpu().numpy())
 
-            average_loss: float = running_loss / (len(train_df) / batch_size)
+            average_loss: float = running_loss / (len(training_data) / batch_size)
 
             # Calculate training accuracy and F1-score
             training_accuracy: float = accuracy_score(all_true_labels, all_predicted_labels)
@@ -1649,8 +2154,9 @@ if __name__ == "__main__":
     for name, model in [
         # ("SeqBBU", SeqBBU(NUM_CLASSES)),
         # ("SeqBBUNeg", SeqBBUNeg(NUM_CLASSES)),
-        ("SeqBBUPH", SeqBBUPH(NUM_CLASSES)),
+        ("SeqBBUPHMLP", SeqBBUPHMLP(NUM_CLASSES)),
         # ('SeqRoBERTaB', SeqRoBERTaB(NUM_CLASSES)),
+        ('SeqRoBERTaBPH', SeqRoBERTaBPH(NUM_CLASSES)),
         # ('SeqRoBERTaBNeg', SeqRoBERTaBNeg(NUM_CLASSES)),
         # ("SeqRoBERTaL", SeqRoBERTaL(NUM_CLASSES)),
         # ("SeqT5", SeqT5(NUM_CLASSES)),
@@ -1678,7 +2184,7 @@ if __name__ == "__main__":
             #                                 'gold_label'), from_col='gold_label', to_col='label')
             # valid_df = label_mapping(pd.read_csv("Data/MultiNLI/match.csv"))
             # test_df = label_mapping(pd.read_csv("Data/MultiNLI/test_match.csv"))
-            for i in range(1):
+            for i in range(15):
                 sentenceBERT = model
                 start_time = time.time()
                 # try:

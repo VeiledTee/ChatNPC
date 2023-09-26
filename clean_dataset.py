@@ -122,7 +122,7 @@ if __name__ == "__main__":
         # "Data/match_cleaned.csv",
         "Data/SNLI/valid_cleaned.csv",
         "Data/SNLI/test_cleaned.csv",
-        "Data/SNLI/train_cleaned.csv",
+        "Data/SNLI/train_subset_cleaned.csv",
         # "Data/MultiNLI/train.csv",
     ]
     for file in TO_CLEAN:
