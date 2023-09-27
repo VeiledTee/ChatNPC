@@ -17,7 +17,6 @@ from typing import List
 from tqdm import tqdm
 import concurrent.futures
 
-
 # Disable the logging level for the transformers library
 logging.getLogger("transformers").setLevel(logging.ERROR)
 matplotlib.use("TkAgg")
@@ -110,17 +109,20 @@ def plot_ph_across_dimensions(ph_diagrams):
             color="blue",
             label=f"H{d} Features",
         )
-        ax.set_xlabel("\u03B5 value")
+        ax.set_xlabel("\u03B5 value", fontsize=14)  # Set x-axis label font size
         ax.set_title(f"Persistent Homology H{d} Bar Chart")
         ax.set_xlim(0, max_epsilon)  # Set x-axis limits
-        ax.set_ylabel("Feature Index")
+        ax.set_ylabel("Feature Index", fontsize=14)  # Set y-axis label font size
+
+        # Set tick label font sizes
+        ax.tick_params(axis='both', labelsize=14)
 
     # Add a title to the entire figure
-    fig.suptitle("Persistent Homology Bar Charts Across Dimensions", fontsize=16)
+    # fig.suptitle("Persistent Homology Bar Charts Across Dimensions", fontsize=16)
 
     # Adjust spacing
     plt.tight_layout()
-    # fig.savefig("Figures/ph_example_1.svg", format="svg")
+    # fig.savefig("Figures/ph_example_2.svg", format="svg")
     plt.show()
 
 
@@ -170,7 +172,7 @@ if __name__ == "__main__":
         # "Billy loves cake",
         "Josh hates cake",
     ]
-    sentences = np.random.rand(30, 25)
+    sentences = np.random.rand(20, 10)
     DEVICE = torch.device("cuda")
     # ph_features: list = persistent_homology_features(phrases=sentences)  # (sentence, dimension, k embedding)
     # print(len(sentences))
