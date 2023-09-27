@@ -7,6 +7,16 @@ from tqdm import tqdm
 import csv
 
 
+def label_mapping(df: pd.DataFrame, from_col: str = 'gold_label', to_col: str = 'label') -> pd.DataFrame:
+    mapping = {
+        'neutral': 0,
+        'entailment': 1,
+        'contradiction': 2,
+    }
+    df[to_col] = df[from_col].map(mapping)
+    return df
+
+
 def create_subset_with_ratio(input_df, subset_percentage, label_column):
     # Calculate the size of the desired subset
     total_count = input_df[label_column].count()
@@ -51,7 +61,12 @@ def embed_and_ph(df_for_cleaning: pd.DataFrame, output_csv_path: str) -> None:
 
     for i, row in tqdm(df_for_cleaning.iterrows(), total=len(df_for_cleaning)):
         if i >= existing_records:
-            label = 1 if row["gold_label"].lower() == "contradiction" else 0
+            if row["gold_label"].lower() == "contradiction":
+                label = 2
+            elif row["gold_label"].lower() == "entailment":
+                label = 1
+            else:
+                label = 0
 
             # Apply the get_sentence_embedding function to generate embeddings
             if "sentence1_embeddings" not in row:
@@ -62,7 +77,7 @@ def embed_and_ph(df_for_cleaning: pd.DataFrame, output_csv_path: str) -> None:
 
             # Calculate negation count
             if "negation" not in row:
-                row["negation"] = count_negations([row["sentence1"].strip(), row["sentence2"].strip()])
+                row["negation"] = count_negations([str(row["sentence1"]).strip(), str(row["sentence2"]).strip()])
 
             if output_csv_path[-6:-4] == "ph":
                 if "sentence1_ph_a" not in row:
@@ -93,11 +108,11 @@ def embed_and_ph(df_for_cleaning: pd.DataFrame, output_csv_path: str) -> None:
                 # Create a new row for the result DataFrame
                 result_row = {
                     "gold_label": row["gold_label"].strip(),
-                    "sentence1": row["sentence1"].strip(),
-                    "sentence2": row["sentence2"].strip(),
+                    "sentence1": str(row["sentence1"]).strip(),
+                    "sentence2": str(row["sentence2"]).strip(),
                     "label": label,
-                    "sentence1_embeddings": row["sentence1_embeddings"],
-                    "sentence2_embeddings": row["sentence2_embeddings"],
+                    # "sentence1_embeddings": row["sentence1_embeddings"],
+                    # "sentence2_embeddings": row["sentence2_embeddings"],
                     "negation": row["negation"],
                 }
 
@@ -124,6 +139,8 @@ if __name__ == "__main__":
         "Data/SNLI/test_cleaned.csv",
         "Data/SNLI/train_subset_cleaned.csv",
         # "Data/MultiNLI/train.csv",
+        # "Data/MultiNLI/test_match.csv",
+        # "Data/MultiNLI/test_mismatch.csv",
     ]
     for file in TO_CLEAN:
         print(f"\tIn Progress: {file}")

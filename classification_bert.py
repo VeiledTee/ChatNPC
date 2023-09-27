@@ -6,13 +6,15 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from torch.utils.data import DataLoader, TensorDataset
 
 from ContradictDetectNN import count_negations, ph_to_tensor
+from sklearn.preprocessing import StandardScaler
+
 from persitent_homology import persistent_homology_features
 
 from variables import DEVICE
 # DEVICE = 'cpu'
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 import time
-from clean_dataset import create_subset_with_ratio
+from clean_dataset import create_subset_with_ratio, label_mapping
 from sklearn.preprocessing import MinMaxScaler
 import torch
 import torch.nn as nn
@@ -21,44 +23,55 @@ import torch
 import torch.nn as nn
 
 
-class MLPClassifier(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, dropout_prob=0.1):
-        super(MLPClassifier, self).__init__()
+def get_embeddings(df, model_name):
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModel.from_pretrained(model_name).to(DEVICE)
 
-        # Define the hidden layers
-        self.hidden1 = nn.Linear(input_dim, hidden_dim)
-        self.hidden2 = nn.Linear(hidden_dim, hidden_dim)
-        self.hidden3 = nn.Linear(hidden_dim, hidden_dim)
+    embeddings1 = []
+    embeddings2 = []
 
-        # Dropout layer with dropout_prob in the last layer
-        self.dropout = nn.Dropout(p=dropout_prob)
+    for i in range(0, len(df), BATCH_SIZE):
+        batch = df[i:i + BATCH_SIZE]
+        sentences1 = batch["sentence1"].values.tolist()
+        sentences2 = batch["sentence2"].values.tolist()
 
-        # Output layer
-        self.output = nn.Linear(hidden_dim, output_dim)
+        inputs1 = tokenizer(sentences1, max_length=128, return_tensors="pt", padding='max_length', truncation=True).to(
+            DEVICE)
+        inputs2 = tokenizer(sentences2, max_length=128, return_tensors="pt", padding='max_length', truncation=True).to(
+            DEVICE)
 
-    def forward(self, x):
-        # Apply activation functions and dropout in each hidden layer
-        x = torch.relu(self.hidden1(x))
-        x = torch.relu(self.hidden2(x))
-        x = torch.relu(self.hidden3(x))
+        with torch.no_grad():
+            outputs1 = model(**inputs1)
+            embeddings1_batch = outputs1.last_hidden_state
+            embeddings1.append(torch.mean(embeddings1_batch, dim=1))
 
-        # Apply dropout to the last hidden layer
-        x = self.dropout(x)
+            outputs2 = model(**inputs2)
+            embeddings2_batch = outputs2.last_hidden_state
+            embeddings2.append(torch.mean(embeddings2_batch, dim=1))
 
-        # Output layer (no activation for multi-class classification)
-        x = self.output(x)
+    # Concatenate the batches into single tensors
+    embeddings1 = torch.cat(embeddings1, dim=0)
+    embeddings2 = torch.cat(embeddings2, dim=0)
 
-        return x
+    return embeddings1, embeddings2
 
 
-def label_mapping(df: pd.DataFrame, from_col: str = 'gold_label', to_col: str = 'label') -> pd.DataFrame:
-    mapping = {
-        'neutral': 0,
-        'entailment': 1,
-        'contradiction': 2,
-    }
-    df[to_col] = df[from_col].map(mapping)
-    return df
+def get_features(df):
+    scaler = StandardScaler()
+    s1_a = torch.stack(
+        df["sentence1_ph_a"].values.tolist(), dim=0
+    ).to(DEVICE)
+    s1_b = torch.stack(
+        df["sentence1_ph_b"].values.tolist(), dim=0
+    ).to(DEVICE)
+    s2_a = torch.stack(
+        df["sentence2_ph_a"].values.tolist(), dim=0
+    ).to(DEVICE)
+    s2_b = torch.stack(
+        df["sentence2_ph_b"].values.tolist(), dim=0
+    ).to(DEVICE)
+    return scaler.fit_transform(s1_a), scaler.fit_transform(s1_b), scaler.fit_transform(s2_a), scaler.fit_transform(
+        s2_b)
 
 
 def replace_inf(tensors: torch.Tensor) -> torch.Tensor:
@@ -416,9 +429,9 @@ class BBUNeg:
         return test_predictions
 
 
-class BBUPH(nn.Module):
+class BBUPHSVM:
     def __init__(self, num_classes: int, model_name: str = "bert-base-uncased"):
-        super(BBUPH, self).__init__()
+        super(BBUPHSVM, self).__init__()
         self.num_classes = num_classes
         self.model_name = model_name
         self.encoder = AutoModel.from_pretrained(self.model_name,
@@ -2861,17 +2874,17 @@ class SeqGPT2:
 
 if __name__ == "__main__":
     NUM_EPOCHS: int = 10
-    BATCH_SIZE: int = 32
+    BATCH_SIZE: int = 16
     NUM_CLASSES: int = 3
     for name, model in [
-        # ("BBU", BBU(NUM_CLASSES)),
-        # ("BBUNeg", BBUNeg(NUM_CLASSES)),
+        ("BBU", BBU(NUM_CLASSES)),
+        ("BBUNeg", BBUNeg(NUM_CLASSES)),
         # ("BBUPHMLP", BBUPHMLP(NUM_CLASSES)),
-        ('BBUNegPHMLP', BBUNegPHMLP(NUM_CLASSES)),
-        # ('RoBERTaB', RoBERTaB(NUM_CLASSES)),
+        # ('BBUNegPHMLP', BBUNegPHMLP(NUM_CLASSES)),
+        ('RoBERTaB', RoBERTaB(NUM_CLASSES)),
         # ('RoBERTaBPHMLP', RoBERTaBPHMLP(NUM_CLASSES)),
-        ('RoBERTaBNegPHMLP', RoBERTaBNegPHMLP(NUM_CLASSES)),
-        # ('RoBERTaBNeg', RoBERTaBNeg(NUM_CLASSES)),
+        # ('RoBERTaBNegPHMLP', RoBERTaBNegPHMLP(NUM_CLASSES)),
+        ('RoBERTaBNeg', RoBERTaBNeg(NUM_CLASSES)),
         # ("RoBERTaL", RoBERTaL(NUM_CLASSES)),
         # ("SeqT5", SeqT5(NUM_CLASSES)),
         # ('SeqGPT2', SeqGPT2(NUM_CLASSES)),
@@ -2889,15 +2902,16 @@ if __name__ == "__main__":
             #                                     'gold_label')
             # valid_df = pd.read_csv("Data/SNLI/valid_cleaned.csv")
             # test_df = pd.read_csv("Data/SNLI/test_cleaned.csv")
-            train_df = pd.read_csv("Data/SemEval2014T1/train_cleaned_ph.csv")
-            valid_df = pd.read_csv("Data/SemEval2014T1/valid_cleaned_ph.csv")
-            test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned_ph.csv")
-            # train_df = label_mapping(
-            #     df=create_subset_with_ratio(pd.read_csv("Data/MultiNLI/train.csv"), dataset_percentage,
-            #                                 'gold_label'), from_col='gold_label', to_col='label')
-            # valid_df = label_mapping(pd.read_csv("Data/MultiNLI/match.csv"))
-            # test_df = label_mapping(pd.read_csv("Data/MultiNLI/test_match.csv"))
-            for i in range(30):
+            # train_df = pd.read_csv("Data/SemEval2014T1/train_cleaned_ph.csv")
+            # valid_df = pd.read_csv("Data/SemEval2014T1/valid_cleaned_ph.csv")
+            # test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned_ph.csv")
+            train_df = label_mapping(
+                df=pd.read_csv("Data/MultiNLI/train_cleaned_subset.csv"),
+                from_col='gold_label',
+                to_col='label')
+            valid_df = label_mapping(pd.read_csv("Data/MultiNLI/match_cleaned.csv"))
+            test_df = pd.read_csv("Data/MultiNLI/test_match_cleaned.csv")
+            for i in range(1):
                 sentenceBERT = model
                 start_time = time.time()
                 # try:
@@ -2907,7 +2921,7 @@ if __name__ == "__main__":
                     batch_size=BATCH_SIZE,
                     num_epochs=NUM_EPOCHS,
                     device=DEVICE,
-                    verbose=False,
+                    verbose=True,
                 )
                 # except torch.cuda.OutOfMemoryError:
                 #     print("CPU Iteration")
@@ -2943,7 +2957,7 @@ if __name__ == "__main__":
 
                     output_df = label_mapping(output_df, 'gold_label', 'gold_label')
 
-                    output_df.to_csv(f"Data/MultiNLI/{model}_matched.csv")
+                    output_df.to_csv(f"Data/MultiNLI/{name}_matched.csv")
                 print(f"Iteration {i + 1} took {elapsed_time:.2f} seconds")
 
             print(f"\t{name} Average | {dataset_percentage * 100}% of original training data")
