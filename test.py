@@ -88,130 +88,134 @@ if __name__ == "__main__":
     precision = []
     recall = []
 
-    train_df = pd.read_csv("Data/SemEval2014T1/train_cleaned_ph.csv")
-    valid_df = pd.read_csv("Data/SemEval2014T1/valid_cleaned_ph.csv")
-    test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned_ph.csv")
+    for model_name in ['bert-base-uncased', 'roberta-base']:
+        train_df = pd.read_csv("Data/SemEval2014T1/train_cleaned_ph.csv")
+        valid_df = pd.read_csv("Data/SemEval2014T1/valid_cleaned_ph.csv")
+        test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned_ph.csv")
 
-    # train_df["sentence1_embeddings"] = train_df["sentence1_embeddings"].apply(embedding_to_tensor)
-    # train_df["sentence2_embeddings"] = train_df["sentence2_embeddings"].apply(embedding_to_tensor)
-    # valid_df["sentence1_embeddings"] = valid_df["sentence1_embeddings"].apply(embedding_to_tensor)
-    # valid_df["sentence2_embeddings"] = valid_df["sentence2_embeddings"].apply(embedding_to_tensor)
-    # test_df["sentence1_embeddings"] = test_df["sentence1_embeddings"].apply(embedding_to_tensor)
-    # test_df["sentence2_embeddings"] = test_df["sentence2_embeddings"].apply(embedding_to_tensor)
-    #
-    # sentence1_training_embeddings: torch.Tensor = torch.stack(list(train_df["sentence1_embeddings"]), dim=0).to(DEVICE)
-    # sentence2_training_embeddings: torch.Tensor = torch.stack(list(train_df["sentence2_embeddings"]), dim=0).to(DEVICE)
-    # sentence1_validation_embeddings: torch.Tensor = torch.stack(
-    #     list(valid_df["sentence1_embeddings"]), dim=0
-    # ).to(DEVICE)
-    # sentence2_validation_embeddings: torch.Tensor = torch.stack(
-    #     list(valid_df["sentence2_embeddings"]), dim=0
-    # ).to(DEVICE)
-    # sentence1_testing_embeddings: torch.Tensor = torch.stack(list(test_df["sentence1_embeddings"]), dim=0).to(DEVICE)
-    # sentence2_testing_embeddings: torch.Tensor = torch.stack(list(test_df["sentence2_embeddings"]), dim=0).to(DEVICE)
+        # train_df["sentence1_embeddings"] = train_df["sentence1_embeddings"].apply(embedding_to_tensor)
+        # train_df["sentence2_embeddings"] = train_df["sentence2_embeddings"].apply(embedding_to_tensor)
+        # valid_df["sentence1_embeddings"] = valid_df["sentence1_embeddings"].apply(embedding_to_tensor)
+        # valid_df["sentence2_embeddings"] = valid_df["sentence2_embeddings"].apply(embedding_to_tensor)
+        # test_df["sentence1_embeddings"] = test_df["sentence1_embeddings"].apply(embedding_to_tensor)
+        # test_df["sentence2_embeddings"] = test_df["sentence2_embeddings"].apply(embedding_to_tensor)
+        #
+        # sentence1_training_embeddings: torch.Tensor = torch.stack(list(train_df["sentence1_embeddings"]), dim=0).to(DEVICE)
+        # sentence2_training_embeddings: torch.Tensor = torch.stack(list(train_df["sentence2_embeddings"]), dim=0).to(DEVICE)
+        # sentence1_validation_embeddings: torch.Tensor = torch.stack(
+        #     list(valid_df["sentence1_embeddings"]), dim=0
+        # ).to(DEVICE)
+        # sentence2_validation_embeddings: torch.Tensor = torch.stack(
+        #     list(valid_df["sentence2_embeddings"]), dim=0
+        # ).to(DEVICE)
+        # sentence1_testing_embeddings: torch.Tensor = torch.stack(list(test_df["sentence1_embeddings"]), dim=0).to(DEVICE)
+        # sentence2_testing_embeddings: torch.Tensor = torch.stack(list(test_df["sentence2_embeddings"]), dim=0).to(DEVICE)
 
-    sentence1_training_embeddings, sentence2_training_embeddings = get_embeddings(train_df, 'roberta-base')
-    sentence1_validation_embeddings, sentence2_validation_embeddings = get_embeddings(valid_df, 'roberta-base')
-    sentence1_testing_embeddings, sentence2_testing_embeddings = get_embeddings(test_df, 'roberta-base')
+        sentence1_training_embeddings, sentence2_training_embeddings = get_embeddings(train_df, model_name)
+        sentence1_validation_embeddings, sentence2_validation_embeddings = get_embeddings(valid_df, model_name)
+        sentence1_testing_embeddings, sentence2_testing_embeddings = get_embeddings(test_df, model_name)
 
-    for column in ["sentence1_ph_a", "sentence1_ph_b", "sentence2_ph_a", "sentence2_ph_b"]:
-        # Training cleaning
-        train_df[column] = train_df[column].apply(ph_to_tensor)
-        train_df[column] = train_df[column].apply(lambda x: x[:, -1])
-        # Validation cleaning
-        valid_df[column] = valid_df[column].apply(ph_to_tensor)
-        valid_df[column] = valid_df[column].apply(lambda x: x[:, -1])
-        # Testing cleaning
-        test_df[column] = test_df[column].apply(ph_to_tensor)
-        test_df[column] = test_df[column].apply(lambda x: x[:, -1])
+        for column in ["sentence1_ph_a", "sentence1_ph_b", "sentence2_ph_a", "sentence2_ph_b"]:
+            # Training cleaning
+            train_df[column] = train_df[column].apply(ph_to_tensor)
+            train_df[column] = train_df[column].apply(lambda x: x[:, -1])
+            # Validation cleaning
+            valid_df[column] = valid_df[column].apply(ph_to_tensor)
+            valid_df[column] = valid_df[column].apply(lambda x: x[:, -1])
+            # Testing cleaning
+            test_df[column] = test_df[column].apply(ph_to_tensor)
+            test_df[column] = test_df[column].apply(lambda x: x[:, -1])
 
-    scaler = StandardScaler()
+        scaler = StandardScaler()
 
-    train_s1_a, train_s1_b, train_s2_a, train_s2_b = get_features(train_df)
-    valid_s1_a, valid_s1_b, valid_s2_a, valid_s2_b = get_features(valid_df)
-    test_s1_a, test_s1_b, test_s2_a, test_s2_b = get_features(test_df)
+        train_s1_a, train_s1_b, train_s2_a, train_s2_b = get_features(train_df)
+        valid_s1_a, valid_s1_b, valid_s2_a, valid_s2_b = get_features(valid_df)
+        test_s1_a, test_s1_b, test_s2_a, test_s2_b = get_features(test_df)
 
-    print("PH Formatted")
+        print("PH Formatted")
 
-    training_input = np.concatenate(
-        [sentence1_training_embeddings.cpu().numpy(),
-         sentence2_training_embeddings.cpu().numpy(),
-         train_s1_a,
-         train_s1_b,
-         train_s2_a,
-         train_s2_b],
-        axis=1,
-    )
-    print("Training Data")
-    validation_input = np.concatenate(
-        [sentence1_validation_embeddings.cpu().numpy(),
-         sentence2_validation_embeddings.cpu().numpy(),
-         valid_s1_a,
-         valid_s1_b,
-         valid_s2_a,
-         valid_s2_b],
-        axis=1,
-    )
-    print("Validation Data")
-    testing_input = np.concatenate(
-        [sentence1_testing_embeddings.cpu().numpy(),
-         sentence2_testing_embeddings.cpu().numpy(),
-         test_s1_a,
-         test_s1_b,
-         test_s2_a,
-         test_s2_b],
-        axis=1,
-    )
-    print("Testing Data")
+        training_input = np.concatenate(
+            [sentence1_training_embeddings.cpu().numpy(),
+             sentence2_training_embeddings.cpu().numpy(),
+             train_s1_a,
+             train_s1_b,
+             train_s2_a,
+             train_s2_b,
+             train_df['negation'].values.reshape(-1, 1)],
+            axis=1,
+        )
+        print("Training Data")
+        validation_input = np.concatenate(
+            [sentence1_validation_embeddings.cpu().numpy(),
+             sentence2_validation_embeddings.cpu().numpy(),
+             valid_s1_a,
+             valid_s1_b,
+             valid_s2_a,
+             valid_s2_b,
+             valid_df['negation'].values.reshape(-1, 1)],
+            axis=1,
+        )
+        print("Validation Data")
+        testing_input = np.concatenate(
+            [sentence1_testing_embeddings.cpu().numpy(),
+             sentence2_testing_embeddings.cpu().numpy(),
+             test_s1_a,
+             test_s1_b,
+             test_s2_a,
+             test_s2_b,
+             test_df['negation'].values.reshape(-1, 1)],
+            axis=1,
+        )
+        print("Testing Data")
 
-    acc = []
-    f1 = []
-    precision = []
-    recall = []
-    for i in range(30):
+        acc = []
+        f1 = []
+        precision = []
+        recall = []
+        for i in range(1):
 
-        # Initialize SVM classifier
-        svm_classifier = SVC(kernel='linear', C=1.0)
+            # Initialize SVM classifier
+            svm_classifier = SVC(kernel='linear', C=1.0)
 
-        # Hyperparameter tuning loop
-        best_accuracy = 0
-        best_svm = None
+            # Hyperparameter tuning loop
+            best_accuracy = 0
+            best_svm = None
 
-        for C_value in [0.01]:  # Example values for the regularization parameter C
-            print(C_value)
-            # Train SVM on the training set
-            svm_classifier.set_params(C=0.01)
-            svm_classifier.fit(training_input, train_df['label'].values.tolist())
+            for C_value in [0.001, 0.01, 0.05, 0.1, 0.5, 1, 5, 10]:  # Example values for the regularization parameter C
+                print(C_value)
+                # Train SVM on the training set
+                svm_classifier.set_params(C=C_value)
+                svm_classifier.fit(training_input, train_df['label'].values.tolist())
 
-            # Evaluate on the validation set
-            y_val_pred = svm_classifier.predict(validation_input)
-            accuracy = accuracy_score(valid_df['label'].values.tolist(), y_val_pred)
+                # Evaluate on the validation set
+                y_val_pred = svm_classifier.predict(validation_input)
+                accuracy = accuracy_score(valid_df['label'].values.tolist(), y_val_pred)
 
-            print(f"C = {C_value}, Validation Accuracy = {accuracy:.4f}")
+                print(f"C = {C_value}, Validation Accuracy = {accuracy:.4f}")
 
-            # Check if this model is the best so far
-            if accuracy > best_accuracy:
-                best_accuracy = accuracy
-                best_svm = svm_classifier
+                # Check if this model is the best so far
+                if accuracy > best_accuracy:
+                    best_accuracy = accuracy
+                    best_svm = svm_classifier
 
-        # Train the best SVM on the combined training and validation sets
-        best_svm.fit(validation_input, valid_df['label'].values.tolist())
+            # Train the best SVM on the combined training and validation sets
+            best_svm.fit(validation_input, valid_df['label'].values.tolist())
 
-        # Evaluate on the test set
-        y_test_pred = best_svm.predict(testing_input)
+            # Evaluate on the test set
+            y_test_pred = best_svm.predict(testing_input)
 
-        test_accuracy = accuracy_score(test_df['label'].values.tolist(), y_test_pred)
-        test_f1 = f1_score(test_df['label'].values.tolist(), y_test_pred, average="weighted")
-        test_precision = precision_score(test_df['label'].values.tolist(), y_test_pred, average="weighted")
-        test_recall = recall_score(test_df['label'].values.tolist(), y_test_pred, average="weighted")
+            test_accuracy = accuracy_score(test_df['label'].values.tolist(), y_test_pred)
+            test_f1 = f1_score(test_df['label'].values.tolist(), y_test_pred, average="weighted")
+            test_precision = precision_score(test_df['label'].values.tolist(), y_test_pred, average="weighted")
+            test_recall = recall_score(test_df['label'].values.tolist(), y_test_pred, average="weighted")
 
-        acc.append(test_accuracy)
-        f1.append(test_f1)
-        precision.append(test_precision)
-        recall.append(test_recall)
+            acc.append(test_accuracy)
+            f1.append(test_f1)
+            precision.append(test_precision)
+            recall.append(test_recall)
 
-    print(f"\tAverage")
-    print(
-        f"{100 * sum(acc) / len(acc):.2f}% | F1: {sum(f1) / len(f1):.4f} | "
-        f"P: {sum(precision) / len(precision):.4f} | R: {sum(recall) / len(recall):.4f}"
-    )
+        print(f"\t{model_name} Average")
+        print(
+            f"{100 * sum(acc) / len(acc):.2f}% | F1: {sum(f1) / len(f1):.4f} | "
+            f"P: {sum(precision) / len(precision):.4f} | R: {sum(recall) / len(recall):.4f}"
+        )
