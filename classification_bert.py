@@ -11,7 +11,6 @@ from sklearn.preprocessing import StandardScaler
 from persitent_homology import persistent_homology_features
 
 from variables import DEVICE
-# DEVICE = 'cpu'
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 import time
 from clean_dataset import create_subset_with_ratio, label_mapping
@@ -123,8 +122,10 @@ class BBU:
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    training_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    training_data["sentence2"].values.tolist()[i: i + batch_size]]
                 batch_labels = torch.tensor(
                     training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
@@ -177,8 +178,11 @@ class BBU:
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
+                    batch_sentences1 = [str(sentence) for sentence in
+                                        validation_data["sentence1"].values.tolist()[i: i + batch_size]]
+                    batch_sentences2 = [str(sentence) for sentence in
+                                        validation_data["sentence2"].values.tolist()[i: i + batch_size]]
+
                     batch_labels = torch.tensor(
                         validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                     )
@@ -216,8 +220,11 @@ class BBU:
 
         with torch.no_grad():  # Disable gradient tracking during testing
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    test_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    test_data["sentence2"].values.tolist()[i: i + batch_size]]
+
                 inputs = self.tokenizer(
                     batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
                 ).to(device)
@@ -276,8 +283,10 @@ class BBUNeg:
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    training_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    training_data["sentence2"].values.tolist()[i: i + batch_size]]
                 batch_negation = torch.tensor(
                     training_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
@@ -342,8 +351,10 @@ class BBUNeg:
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
+                    batch_sentences1 = [str(sentence) for sentence in
+                                        validation_data["sentence1"].values.tolist()[i: i + batch_size]]
+                    batch_sentences2 = [str(sentence) for sentence in
+                                        validation_data["sentence2"].values.tolist()[i: i + batch_size]]
                     batch_negation = torch.tensor(
                         validation_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
                     ).to(device)
@@ -353,22 +364,26 @@ class BBUNeg:
 
                     # Tokenize and encode the batch
                     inputs = self.tokenizer(
-                        batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
+                        batch_sentences1, batch_sentences2, max_length=256, return_tensors="pt", padding="max_length",
+                        truncation=True
                     ).to(device)
                     input_ids = inputs["input_ids"]
                     attention_mask = inputs["attention_mask"]
+
                     # Concatenate the extra feature to the input_ids
                     input_ids_with_extra_feature = torch.cat([input_ids, batch_negation.unsqueeze(1)], dim=1)
+
                     # Concatenate the extra feature to the input_ids
                     extra_feature_attention_mask = torch.ones_like(batch_negation)
+
                     # Combine the attention_mask for input_ids and the extra feature
                     combined_attention_mask = torch.cat([attention_mask, extra_feature_attention_mask.unsqueeze(1)],
                                                         dim=1)
 
                     # Forward pass up to the last layer
                     outputs = self.model(input_ids_with_extra_feature, attention_mask=combined_attention_mask)
-                    # Extract the last hidden state from the model's output
-                    last_hidden_state = outputs[0]
+                    last_hidden_state = outputs[
+                        0]  # Get the last hidden state from the outputs [batch_size, num _classes]
                     # Convert outputs to class predictions
                     class_probabilities = torch.softmax(last_hidden_state, dim=1)  # Apply softmax to output
                     val_predicted_classes = torch.argmax(class_probabilities, dim=1)
@@ -397,15 +412,19 @@ class BBUNeg:
 
         with torch.no_grad():
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    test_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    test_data["sentence2"].values.tolist()[i: i + batch_size]]
+
                 batch_negation = torch.tensor(
                     test_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
 
                 # Tokenize and encode the batch
                 inputs = self.tokenizer(
-                    batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
+                    batch_sentences1, batch_sentences2, max_length=256, return_tensors="pt", padding="max_length",
+                    truncation=True
                 ).to(device)
                 input_ids = inputs["input_ids"]
                 attention_mask = inputs["attention_mask"]
@@ -536,8 +555,10 @@ class BBUPHSVM:
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    training_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    training_data["sentence2"].values.tolist()[i: i + batch_size]]
                 batch_labels = torch.tensor(
                     training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
@@ -618,8 +639,10 @@ class BBUPHSVM:
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
+                    batch_sentences1 = [str(sentence) for sentence in
+                                        validation_data["sentence1"].values.tolist()[i: i + batch_size]]
+                    batch_sentences2 = [str(sentence) for sentence in
+                                        validation_data["sentence2"].values.tolist()[i: i + batch_size]]
                     batch_labels = torch.tensor(
                         validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                     )
@@ -694,8 +717,10 @@ class BBUPHSVM:
 
         with torch.no_grad():  # Disable gradient tracking during testing
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    test_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    test_data["sentence2"].values.tolist()[i: i + batch_size]]
 
                 # Additional input vectors
                 s1_ph_a = torch.stack(
@@ -860,8 +885,10 @@ class BBUPHMLP(nn.Module):
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    training_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    training_data["sentence2"].values.tolist()[i: i + batch_size]]
                 batch_labels = torch.tensor(
                     training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
@@ -942,8 +969,10 @@ class BBUPHMLP(nn.Module):
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
+                    batch_sentences1 = [str(sentence) for sentence in
+                                        validation_data["sentence1"].values.tolist()[i: i + batch_size]]
+                    batch_sentences2 = [str(sentence) for sentence in
+                                        validation_data["sentence2"].values.tolist()[i: i + batch_size]]
                     batch_labels = torch.tensor(
                         validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                     )
@@ -1018,8 +1047,10 @@ class BBUPHMLP(nn.Module):
 
         with torch.no_grad():  # Disable gradient tracking during testing
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    test_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    test_data["sentence2"].values.tolist()[i: i + batch_size]]
 
                 # Additional input vectors
                 s1_ph_a = torch.stack(
@@ -1197,8 +1228,10 @@ class BBUNegPHMLP(nn.Module):
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    training_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    training_data["sentence2"].values.tolist()[i: i + batch_size]]
                 batch_negation = torch.tensor(
                     training_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).view(-1, 1).to(device)
@@ -1283,8 +1316,10 @@ class BBUNegPHMLP(nn.Module):
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
+                    batch_sentences1 = [str(sentence) for sentence in
+                                        validation_data["sentence1"].values.tolist()[i: i + batch_size]]
+                    batch_sentences2 = [str(sentence) for sentence in
+                                        validation_data["sentence2"].values.tolist()[i: i + batch_size]]
                     batch_negation = torch.tensor(
                         validation_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
                     ).view(-1, 1).to(device)
@@ -1368,8 +1403,11 @@ class BBUNegPHMLP(nn.Module):
 
         with torch.no_grad():  # Disable gradient tracking during testing
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    test_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    test_data["sentence2"].values.tolist()[i: i + batch_size]]
+
                 batch_negation = torch.tensor(
                     test_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).view(-1, 1).to(device)
@@ -1455,8 +1493,10 @@ class RoBERTaB:
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    training_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    training_data["sentence2"].values.tolist()[i: i + batch_size]]
                 batch_labels = torch.tensor(
                     training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
@@ -1509,8 +1549,10 @@ class RoBERTaB:
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
+                    batch_sentences1 = [str(sentence) for sentence in
+                                        validation_data["sentence1"].values.tolist()[i: i + batch_size]]
+                    batch_sentences2 = [str(sentence) for sentence in
+                                        validation_data["sentence2"].values.tolist()[i: i + batch_size]]
                     batch_labels = torch.tensor(
                         validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                     )
@@ -1548,8 +1590,10 @@ class RoBERTaB:
 
         with torch.no_grad():  # Disable gradient tracking during testing
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    test_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    test_data["sentence2"].values.tolist()[i: i + batch_size]]
 
                 inputs = self.tokenizer(
                     batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
@@ -1599,8 +1643,10 @@ class RoBERTaL:
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    training_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    training_data["sentence2"].values.tolist()[i: i + batch_size]]
                 batch_labels = torch.tensor(
                     training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
@@ -1653,8 +1699,10 @@ class RoBERTaL:
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
+                    batch_sentences1 = [str(sentence) for sentence in
+                                        validation_data["sentence1"].values.tolist()[i: i + batch_size]]
+                    batch_sentences2 = [str(sentence) for sentence in
+                                        validation_data["sentence2"].values.tolist()[i: i + batch_size]]
                     batch_labels = torch.tensor(
                         validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                     )
@@ -1692,8 +1740,10 @@ class RoBERTaL:
 
         with torch.no_grad():  # Disable gradient tracking during testing
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    test_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    test_data["sentence2"].values.tolist()[i: i + batch_size]]
 
                 inputs = self.tokenizer(
                     batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
@@ -1753,8 +1803,10 @@ class RoBERTaBNeg:
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    training_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    training_data["sentence2"].values.tolist()[i: i + batch_size]]
                 batch_negation = torch.tensor(
                     training_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
@@ -1819,8 +1871,10 @@ class RoBERTaBNeg:
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
+                    batch_sentences1 = [str(sentence) for sentence in
+                                        validation_data["sentence1"].values.tolist()[i: i + batch_size]]
+                    batch_sentences2 = [str(sentence) for sentence in
+                                        validation_data["sentence2"].values.tolist()[i: i + batch_size]]
                     batch_negation = torch.tensor(
                         validation_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
                     ).to(device)
@@ -1830,21 +1884,24 @@ class RoBERTaBNeg:
 
                     # Tokenize and encode the batch
                     inputs = self.tokenizer(
-                        batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
+                        batch_sentences1, batch_sentences2, max_length=256, return_tensors="pt", padding="max_length",
+                        truncation=True
                     ).to(device)
                     input_ids = inputs["input_ids"]
                     attention_mask = inputs["attention_mask"]
+
                     # Concatenate the extra feature to the input_ids
                     input_ids_with_extra_feature = torch.cat([input_ids, batch_negation.unsqueeze(1)], dim=1)
+
                     # Concatenate the extra feature to the input_ids
                     extra_feature_attention_mask = torch.ones_like(batch_negation)
+
                     # Combine the attention_mask for input_ids and the extra feature
                     combined_attention_mask = torch.cat([attention_mask, extra_feature_attention_mask.unsqueeze(1)],
                                                         dim=1)
 
                     # Forward pass up to the last layer
                     outputs = self.model(input_ids_with_extra_feature, attention_mask=combined_attention_mask)
-                    # Extract the last hidden state from the model's output
                     last_hidden_state = outputs[0]
                     # Convert outputs to class predictions
                     class_probabilities = torch.softmax(last_hidden_state, dim=1)  # Apply softmax to output
@@ -1874,8 +1931,11 @@ class RoBERTaBNeg:
 
         with torch.no_grad():
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    test_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    test_data["sentence2"].values.tolist()[i: i + batch_size]]
+
                 batch_negation = torch.tensor(
                     test_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
@@ -2022,8 +2082,10 @@ class RoBERTaBPHMLP(nn.Module):
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    training_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    training_data["sentence2"].values.tolist()[i: i + batch_size]]
                 batch_labels = torch.tensor(
                     training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
@@ -2104,8 +2166,10 @@ class RoBERTaBPHMLP(nn.Module):
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
+                    batch_sentences1 = [str(sentence) for sentence in
+                                        validation_data["sentence1"].values.tolist()[i: i + batch_size]]
+                    batch_sentences2 = [str(sentence) for sentence in
+                                        validation_data["sentence2"].values.tolist()[i: i + batch_size]]
                     batch_labels = torch.tensor(
                         validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                     )
@@ -2180,8 +2244,10 @@ class RoBERTaBPHMLP(nn.Module):
 
         with torch.no_grad():  # Disable gradient tracking during testing
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    test_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    test_data["sentence2"].values.tolist()[i: i + batch_size]]
 
                 # Additional input vectors
                 s1_ph_a = torch.stack(
@@ -2359,8 +2425,10 @@ class RoBERTaBNegPHMLP(nn.Module):
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    training_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    training_data["sentence2"].values.tolist()[i: i + batch_size]]
                 batch_negation = torch.tensor(
                     training_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).view(-1, 1).to(device)
@@ -2445,8 +2513,10 @@ class RoBERTaBNegPHMLP(nn.Module):
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
+                    batch_sentences1 = [str(sentence) for sentence in
+                                        validation_data["sentence1"].values.tolist()[i: i + batch_size]]
+                    batch_sentences2 = [str(sentence) for sentence in
+                                        validation_data["sentence2"].values.tolist()[i: i + batch_size]]
                     batch_negation = torch.tensor(
                         validation_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
                     ).view(-1, 1).to(device)
@@ -2530,8 +2600,11 @@ class RoBERTaBNegPHMLP(nn.Module):
 
         with torch.no_grad():  # Disable gradient tracking during testing
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    test_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    test_data["sentence2"].values.tolist()[i: i + batch_size]]
+
                 batch_negation = torch.tensor(
                     test_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).view(-1, 1).to(device)
@@ -2617,8 +2690,10 @@ class SeqT5:
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    training_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    training_data["sentence2"].values.tolist()[i: i + batch_size]]
                 batch_labels = torch.tensor(
                     training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
@@ -2671,8 +2746,10 @@ class SeqT5:
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
+                    batch_sentences1 = [str(sentence) for sentence in
+                                        validation_data["sentence1"].values.tolist()[i: i + batch_size]]
+                    batch_sentences2 = [str(sentence) for sentence in
+                                        validation_data["sentence2"].values.tolist()[i: i + batch_size]]
                     batch_labels = torch.tensor(
                         validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                     )
@@ -2710,8 +2787,10 @@ class SeqT5:
 
         with torch.no_grad():  # Disable gradient tracking during testing
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    test_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    test_data["sentence2"].values.tolist()[i: i + batch_size]]
 
                 inputs = self.tokenizer(
                     batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
@@ -2761,8 +2840,10 @@ class SeqGPT2:
             all_true_labels: list = []
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
-                batch_sentences1 = training_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = training_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    training_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    training_data["sentence2"].values.tolist()[i: i + batch_size]]
                 batch_labels = torch.tensor(
                     training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                 ).to(device)
@@ -2815,8 +2896,10 @@ class SeqGPT2:
 
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
-                    batch_sentences1 = validation_data["sentence1"].values.tolist()[i: i + batch_size]
-                    batch_sentences2 = validation_data["sentence2"].values.tolist()[i: i + batch_size]
+                    batch_sentences1 = [str(sentence) for sentence in
+                                        validation_data["sentence1"].values.tolist()[i: i + batch_size]]
+                    batch_sentences2 = [str(sentence) for sentence in
+                                        validation_data["sentence2"].values.tolist()[i: i + batch_size]]
                     batch_labels = torch.tensor(
                         validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
                     )
@@ -2854,8 +2937,10 @@ class SeqGPT2:
 
         with torch.no_grad():  # Disable gradient tracking during testing
             for i in range(0, len(test_data), batch_size):
-                batch_sentences1 = test_data["sentence1"].values.tolist()[i: i + batch_size]
-                batch_sentences2 = test_data["sentence2"].values.tolist()[i: i + batch_size]
+                batch_sentences1 = [str(sentence) for sentence in
+                                    test_data["sentence1"].values.tolist()[i: i + batch_size]]
+                batch_sentences2 = [str(sentence) for sentence in
+                                    test_data["sentence2"].values.tolist()[i: i + batch_size]]
 
                 inputs = self.tokenizer(
                     batch_sentences1, batch_sentences2, return_tensors="pt", padding=True, truncation=True
@@ -2877,15 +2962,15 @@ if __name__ == "__main__":
     BATCH_SIZE: int = 16
     NUM_CLASSES: int = 3
     for name, model in [
-        ("BBU", BBU(NUM_CLASSES)),
-        ("BBUNeg", BBUNeg(NUM_CLASSES)),
+        # ("BBU", BBU(NUM_CLASSES)),
+        # ('RoBERTaB', RoBERTaB(NUM_CLASSES)),
+        # ("BBUNeg", BBUNeg(NUM_CLASSES)),
         # ("BBUPHMLP", BBUPHMLP(NUM_CLASSES)),
         # ('BBUNegPHMLP', BBUNegPHMLP(NUM_CLASSES)),
-        ('RoBERTaB', RoBERTaB(NUM_CLASSES)),
         # ('RoBERTaBPHMLP', RoBERTaBPHMLP(NUM_CLASSES)),
         # ('RoBERTaBNegPHMLP', RoBERTaBNegPHMLP(NUM_CLASSES)),
-        ('RoBERTaBNeg', RoBERTaBNeg(NUM_CLASSES)),
-        # ("RoBERTaL", RoBERTaL(NUM_CLASSES)),
+        # ('RoBERTaBNeg', RoBERTaBNeg(NUM_CLASSES)),
+        ("RoBERTaL", RoBERTaL(NUM_CLASSES)),
         # ("SeqT5", SeqT5(NUM_CLASSES)),
         # ('SeqGPT2', SeqGPT2(NUM_CLASSES)),
     ]:
@@ -2905,63 +2990,68 @@ if __name__ == "__main__":
             # train_df = pd.read_csv("Data/SemEval2014T1/train_cleaned_ph.csv")
             # valid_df = pd.read_csv("Data/SemEval2014T1/valid_cleaned_ph.csv")
             # test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned_ph.csv")
-            train_df = label_mapping(
-                df=pd.read_csv("Data/MultiNLI/train_cleaned_subset.csv"),
-                from_col='gold_label',
-                to_col='label')
-            valid_df = label_mapping(pd.read_csv("Data/MultiNLI/match_cleaned.csv"))
-            test_df = pd.read_csv("Data/MultiNLI/test_match_cleaned.csv")
-            for i in range(1):
-                sentenceBERT = model
-                start_time = time.time()
-                # try:
-                sentenceBERT.fit(
-                    training_data=train_df,
-                    validation_data=valid_df,
-                    batch_size=BATCH_SIZE,
-                    num_epochs=NUM_EPOCHS,
-                    device=DEVICE,
-                    verbose=True,
-                )
-                # except torch.cuda.OutOfMemoryError:
-                #     print("CPU Iteration")
-                #     sentenceBERT.fit(
-                #         training_data=train_df,
-                #         validation_data=valid_df,
-                #         batch_size=BATCH_SIZE,
-                #         num_epochs=NUM_EPOCHS,
-                #         device='cpu',
-                #         verbose=True,
-                #     )
-                elapsed_time = time.time() - start_time
-                predictions: np.ndarray = sentenceBERT.predict(test_data=test_df, batch_size=BATCH_SIZE, device=DEVICE)
-                del sentenceBERT
-                torch.cuda.empty_cache()
-                if 'label' in test_df.columns:
-                    final_labels: np.ndarray = test_df["label"].values
+            for dataset in ['mismatch']:
+                train_df = label_mapping(
+                    df=pd.read_csv("Data/MultiNLI/train_cleaned_subset.csv"),
+                    from_col='gold_label',
+                    to_col='label')
+                valid_df = label_mapping(pd.read_csv(f"Data/MultiNLI/{dataset}_cleaned.csv"))
+                test_df = pd.read_csv(f"Data/MultiNLI/test_{dataset}_cleaned.csv")
+                for i in range(1):
+                    print(f"{name} -> {dataset} Started")
+                    sentenceBERT = model
+                    start_time = time.time()
+                    # try:
+                    sentenceBERT.fit(
+                        training_data=train_df,
+                        validation_data=valid_df,
+                        batch_size=BATCH_SIZE,
+                        num_epochs=NUM_EPOCHS,
+                        device=DEVICE,
+                        verbose=False,
+                    )
+                    # except torch.cuda.OutOfMemoryError:
+                    #     print("CPU Iteration")
+                    #     sentenceBERT.fit(
+                    #         training_data=train_df,
+                    #         validation_data=valid_df,
+                    #         batch_size=BATCH_SIZE,
+                    #         num_epochs=NUM_EPOCHS,
+                    #         device='cpu',
+                    #         verbose=True,
+                    #     )
+                    elapsed_time = time.time() - start_time
+                    print(f"{name} -> {dataset} Trained")
+                    predictions: np.ndarray = sentenceBERT.predict(test_data=test_df, batch_size=BATCH_SIZE,
+                                                                   device=DEVICE)
+                    del sentenceBERT
+                    torch.cuda.empty_cache()
+                    if 'label' in test_df.columns:
+                        final_labels: np.ndarray = test_df["label"].values
 
-                    test_accuracy = accuracy_score(final_labels, predictions)
-                    test_precision = precision_score(final_labels, predictions, average="weighted")
-                    test_recall = recall_score(final_labels, predictions, average="weighted")
-                    test_f1 = f1_score(final_labels, predictions, average="weighted")
+                        test_accuracy = accuracy_score(final_labels, predictions)
+                        test_precision = precision_score(final_labels, predictions, average="weighted")
+                        test_recall = recall_score(final_labels, predictions, average="weighted")
+                        test_f1 = f1_score(final_labels, predictions, average="weighted")
 
-                    acc.append(test_accuracy)
-                    f1.append(test_f1)
-                    precision.append(test_precision)
-                    recall.append(test_recall)
-                else:
-                    output_df: pd.DataFrame = pd.DataFrame({
-                        'pairID': test_df['pairID'],
-                        'gold_label': predictions,
-                    })
+                        acc.append(test_accuracy)
+                        f1.append(test_f1)
+                        precision.append(test_precision)
+                        recall.append(test_recall)
+                    else:
+                        output_df: pd.DataFrame = pd.DataFrame({
+                            'pairID': test_df['pairID'],
+                            'gold_label': predictions,
+                        })
 
-                    output_df = label_mapping(output_df, 'gold_label', 'gold_label')
+                        output_df = label_mapping(output_df, 'gold_label', 'gold_label', False)
 
-                    output_df.to_csv(f"Data/MultiNLI/{name}_matched.csv")
-                print(f"Iteration {i + 1} took {elapsed_time:.2f} seconds")
-
-            print(f"\t{name} Average | {dataset_percentage * 100}% of original training data")
-            print(
-                f"{100 * sum(acc) / len(acc):.2f}% | F1: {sum(f1) / len(f1):.4f} | "
-                f"P: {sum(precision) / len(precision):.4f} | R: {sum(recall) / len(recall):.4f}"
-            )
+                        output_df.to_csv(f"Data/MultiNLI/{name}_{dataset}.csv", index=False)
+                    print(f"{name} -> {dataset} Saved")
+                    # print(f"Iteration {i + 1} took {elapsed_time:.2f} seconds")
+                #
+                # print(f"\t{name} Average | {dataset_percentage * 100}% of original training data")
+                # print(
+                #     f"{100 * sum(acc) / len(acc):.2f}% | F1: {sum(f1) / len(f1):.4f} | "
+                #     f"P: {sum(precision) / len(precision):.4f} | R: {sum(recall) / len(recall):.4f}"
+                # )

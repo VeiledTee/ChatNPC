@@ -7,12 +7,16 @@ from tqdm import tqdm
 import csv
 
 
-def label_mapping(df: pd.DataFrame, from_col: str = 'gold_label', to_col: str = 'label') -> pd.DataFrame:
-    mapping = {
-        'neutral': 0,
-        'entailment': 1,
-        'contradiction': 2,
-    }
+def label_mapping(df: pd.DataFrame, from_col: str = 'gold_label', to_col: str = 'label',
+                  str_to_int: bool = True) -> pd.DataFrame:
+    if str_to_int:
+        mapping = {
+            'neutral': 0,
+            'entailment': 1,
+            'contradiction': 2,
+        }
+    else:
+        mapping = {0: 'neutral', 1: 'entailment', 2: 'contradiction'}
     df[to_col] = df[from_col].map(mapping)
     return df
 

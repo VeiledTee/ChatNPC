@@ -268,7 +268,7 @@ if __name__ == '__main__':
     # # )
 
     study = optuna.create_study(direction="maximize")
-    study.optimize(objective, n_trials=100, timeout=600, n_jobs=-1)
+    study.optimize(objective, n_trials=100, timeout=200, n_jobs=-1)
 
     print("Number of finished trials: ", len(study.trials))
     print("Best trial:")
