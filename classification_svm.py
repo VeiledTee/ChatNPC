@@ -7,19 +7,11 @@ from sklearn.metrics import accuracy_score, classification_report, f1_score, pre
 from bilstm_training import load_txt_file_to_dataframe
 import torch
 
-from clean_dataset import create_subset_with_ratio, label_mapping
+from clean_dataset import create_subset_with_ratio, label_mapping, encode_sentence
 from variables import DEVICE
 from transformers import BertTokenizer, BertModel
 from sklearn.model_selection import validation_curve
 import matplotlib.pyplot as plt
-
-
-def encode_sentence(language_model, tokenizer, sentence, device):
-    tokens = tokenizer(sentence, return_tensors="pt", padding=True, truncation=True).to(device)
-    with torch.no_grad():
-        outputs = language_model(**tokens)
-    return outputs.last_hidden_state.mean(dim=1).squeeze().cpu().numpy()
-
 
 if __name__ == '__main__':
     train_df = label_mapping(

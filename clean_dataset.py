@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import torch
 
 from ContradictDetectNN import get_sentence_embedding, count_negations
 from persitent_homology import persistent_homology_features
@@ -19,6 +20,13 @@ def label_mapping(df: pd.DataFrame, from_col: str = 'gold_label', to_col: str = 
         mapping = {0: 'neutral', 1: 'entailment', 2: 'contradiction'}
     df[to_col] = df[from_col].map(mapping)
     return df
+
+
+def encode_sentence(language_model, tokenizer, sentence, device):
+    tokens = tokenizer(sentence, return_tensors="pt", padding=True, truncation=True).to(device)
+    with torch.no_grad():
+        outputs = language_model(**tokens)
+    return outputs.last_hidden_state.mean(dim=1).squeeze().cpu().numpy()
 
 
 def create_subset_with_ratio(input_df, subset_percentage, label_column):
