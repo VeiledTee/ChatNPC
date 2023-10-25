@@ -2963,7 +2963,7 @@ if __name__ == "__main__":
     NUM_CLASSES: int = 3
     for name, model in [
         # ("BBU", BBU(NUM_CLASSES)),
-        # ('RoBERTaB', RoBERTaB(NUM_CLASSES)),
+        ('RoBERTaB', RoBERTaB(NUM_CLASSES)),
         # ("BBUNeg", BBUNeg(NUM_CLASSES)),
         # ("BBUPHMLP", BBUPHMLP(NUM_CLASSES)),
         # ('BBUNegPHMLP', BBUNegPHMLP(NUM_CLASSES)),
@@ -2980,9 +2980,9 @@ if __name__ == "__main__":
             f1 = []
             precision = []
             recall = []
-            # train_df = pd.read_csv("Data/SemEval2014T1/train_cleaned_ph.csv")
-            # valid_df = pd.read_csv("Data/SemEval2014T1/valid_cleaned_ph.csv")
-            # test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned_ph.csv")
+            train_df = pd.read_csv("Data/SemEval2014T1/train_cleaned_ph.csv")
+            valid_df = pd.read_csv("Data/SemEval2014T1/valid_cleaned_ph.csv")
+            test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned_ph.csv")
             # train_df = create_subset_with_ratio(pd.read_csv("Data/SNLI/train_cleaned.csv"), dataset_percentage,
             #                                     'gold_label')
             # valid_df = pd.read_csv("Data/SNLI/valid_cleaned.csv")
@@ -2991,12 +2991,12 @@ if __name__ == "__main__":
             # valid_df = pd.read_csv("Data/SemEval2014T1/valid_cleaned_ph.csv")
             # test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned_ph.csv")
             for dataset in ['mismatch']:
-                train_df = label_mapping(
-                    df=pd.read_csv("Data/MultiNLI/train_cleaned_subset.csv"),
-                    from_col='gold_label',
-                    to_col='label')
-                valid_df = label_mapping(pd.read_csv(f"Data/MultiNLI/{dataset}_cleaned.csv"))
-                test_df = pd.read_csv(f"Data/MultiNLI/test_{dataset}_cleaned.csv")
+                # train_df = label_mapping(
+                #     df=pd.read_csv("Data/MultiNLI/train_cleaned_subset.csv"),
+                #     from_col='gold_label',
+                #     to_col='label')
+                # valid_df = label_mapping(pd.read_csv(f"Data/MultiNLI/{dataset}_cleaned.csv"))
+                # test_df = pd.read_csv(f"Data/MultiNLI/test_{dataset}_cleaned.csv")
                 for i in range(1):
                     print(f"{name} -> {dataset} Started")
                     sentenceBERT = model
@@ -3038,17 +3038,17 @@ if __name__ == "__main__":
                         f1.append(test_f1)
                         precision.append(test_precision)
                         recall.append(test_recall)
-                    else:
-                        output_df: pd.DataFrame = pd.DataFrame({
-                            'pairID': test_df['pairID'],
-                            'gold_label': predictions,
-                        })
-
-                        output_df = label_mapping(output_df, 'gold_label', 'gold_label', False)
-
-                        output_df.to_csv(f"Data/MultiNLI/{name}_{dataset}.csv", index=False)
+                    # else:
+                    #     output_df: pd.DataFrame = pd.DataFrame({
+                    #         'pairID': test_df['pairID'],
+                    #         'gold_label': predictions,
+                    #     })
+                    #
+                    #     output_df = label_mapping(output_df, 'gold_label', 'gold_label', False)
+                    #
+                    #     output_df.to_csv(f"Data/MultiNLI/{name}_{dataset}.csv", index=False)
                     print(f"{name} -> {dataset} Saved")
-                    # print(f"Iteration {i + 1} took {elapsed_time:.2f} seconds")
+                    print(f"Iteration {i + 1} took {elapsed_time:.2f} seconds")
                 #
                 # print(f"\t{name} Average | {dataset_percentage * 100}% of original training data")
                 # print(
