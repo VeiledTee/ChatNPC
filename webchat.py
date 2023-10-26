@@ -1,20 +1,20 @@
 import json
 from typing import List
+import os
 
 import numpy as np
 import openai
 import pinecone
 import torch
 from sentence_transformers import SentenceTransformer
-from tqdm.auto import tqdm
 
-# with open("keys.txt", "r") as key_file:
-#     api_keys = [key.strip() for key in key_file.readlines()]
-#     openai.api_key = api_keys[0]
-#     pinecone.init(
-#         api_key=api_keys[1],
-#         environment=api_keys[2],
-#     )
+with open("../keys.txt", "r") as key_file:
+    api_keys = [key.strip() for key in key_file.readlines()]
+    openai.api_key = api_keys[0]
+    pinecone.init(
+        api_key=api_keys[1],
+        environment=api_keys[2],
+    )
 
 
 def get_information(character_name) -> None | tuple:
@@ -23,7 +23,7 @@ def get_information(character_name) -> None | tuple:
     :param character_name: name of character
     :return: None if character doesn't exist | profession and social status if they do exist
     """
-    with open("WebBot/character_objects.json", "r") as character_file:
+    with open("../Text Summaries/character_objects.json", "r") as character_file:
         data = json.load(character_file)
 
     for character in data["characters"]:
@@ -63,11 +63,11 @@ def load_file_information(load_file: str) -> List[str]:
 
 
 def chat(
-    namespace: str,
-    data: List[str],
-    receiver: str,
-    job: str,
-    status: str,
+        namespace: str,
+        data: List[str],
+        receiver: str,
+        job: str,
+        status: str,
 ) -> None:
     """
     Initiate a conversation with a character. Stops conversation when player says "bye".
@@ -81,8 +81,6 @@ def chat(
     save_background: bool = True
     while True:
         final_answer = run_query_and_generate_answer(
-            namespace=namespace,
-            data=data,
             receiver=receiver,
             job=job,
             status=status,
@@ -97,55 +95,45 @@ def chat(
 
 
 def run_query_and_generate_answer(
-    background: bool,
-    query: str,
-    receiver: str,
-    job: str,
-    status: str,
-    index_name: str = "thesis-index",
-    save: bool = True,
+        query: str,
+        receiver: str,
+        index_name: str = "thesis-index",
+        save: bool = True,
 ) -> str | None:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
-    :param background: If the background info of the character needs to be saved
     :param query: The query to be run on the index.
     :param receiver: The character being prompted
-    :param job: The profession of the receiver
-    :param status: The social status of the character
     :param index_name: The name of the Pinecone index.
     :param save: A bool to save to a file is Ture and print out if False. Default: True
     :return: The generated answer based on the response context.
     """
-    GRAMMAR: dict = {
-        "lower": "poor",
-        "middle": "satisfactory",
-        "high": "formal",
+    class_grammar_map: dict[str: str] = {
+        "lower class": "poor",
+        "middle class": "satisfactory",
+        "high class": "formal",
     }
 
     history: List[dict] = []
 
-    with open("WebBot/characters.json", "r") as f:
-        names = json.load(f)
+    with open("../Text Summaries/characters.json", "r") as f:
+        character_names = json.load(f)
 
-    PROFESSION, SOCIAL_CLASS = get_information(CHARACTER)
-    print(f"Conversation with: {CHARACTER} (a {PROFESSION})")
-    DATA_FILE: str = f"WebBot/summaries/{names[CHARACTER]}.txt"
+    profession, social_class = get_information(receiver)  # get the profession and social status of the character
+    print(f"Conversation with: {receiver} (a {profession})")
+    data_file: str = f"../Text Summaries/Summaries/{character_names[receiver]}.txt"
+    print(data_file)
 
-    namespace: str = extract_name(DATA_FILE).lower()
-
-    data = load_file_information(DATA_FILE)
+    namespace: str = extract_name(data_file).lower()
 
     # connect to index
     index = pinecone.Index(index_name)
 
-    # upload character background
-    if background:
-        upload_background(namespace, data, index)
-
     if query.lower() == "bye":
         return None
 
-    history = generate_conversation(f"WebBot/summaries/{namespace.replace('-', '_')}.txt", history, True, query)
+    history = generate_conversation(f"../Text Summaries/Summaries/{namespace.replace('-', '_')}.txt", history, True,
+                                    query)
     # embed query for processing
     embedded_query = embed(query=query)
     # query Pinecone index and get context for model prompting.
@@ -166,17 +154,17 @@ def run_query_and_generate_answer(
     context = [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
 
     # generate clean prompt and answer.
-    clean_prompt = prompt_engineer(query, status, context)
+    clean_prompt = prompt_engineer(query, class_grammar_map[social_class], context)
     save_prompt: str = clean_prompt.replace("\n", " ")
 
     generated_answer = answer(clean_prompt, history)
 
     if save:
         # save results to file and return generated answer.
-        with open("WebBot/prompt_response.txt", "a") as save_file:
+        with open("../Text Summaries/prompt_response.txt", "a") as save_file:
             save_file.write("\n" + "=" * 120 + "\n")
             save_file.write(f"Prompt: {save_prompt}\n")
-            save_file.write(f"To: {receiver}, a {job}\n")
+            save_file.write(f"To: {receiver}, a {profession}\n")
             clean_prompt = clean_prompt.replace("\n", " ")
             save_file.write(f"{clean_prompt}\n{generated_answer}")
         # print("Results saved to file.")
@@ -184,14 +172,16 @@ def run_query_and_generate_answer(
         print(generated_answer)
 
     generate_conversation(
-        f"WebBot/summaries/{namespace.replace('-', '_')}.txt",
+        f"../Text Summaries/Summaries/{namespace.replace('-', '_')}.txt",
         chat_history=history,
         player=False,
         next_phrase=generated_answer,
     )
 
+    print(generated_answer)
+
     update_history(
-        namespace=namespace, info_file=DATA_FILE, prompt=query, response=generated_answer.split(": ")[-1], index=index
+        namespace=namespace, info_file=data_file, prompt=query, response=generated_answer.split(": ")[-1], index=index
     )
 
     return generated_answer
@@ -209,7 +199,8 @@ def generate_conversation(character_file: str, chat_history: list, player: bool,
     """
     if not chat_history:
         with open(character_file) as char_file:
-            background: str = f"You are {CHARACTER}. Your background:"
+            print(name_conversion(False, extract_name(character_file).replace('-', '_')))
+            background: str = f"You are {name_conversion(False, extract_name(character_file).replace('-', '_'))}. Your background:"
             for line in char_file.readlines():
                 background += " " + line.strip()
         chat_history.append({"role": "system", "content": background})
@@ -236,17 +227,24 @@ def embed(query: str) -> List[float]:
 
 
 def upload_background(
-    namespace: str,
-    data: List[str],
-    index: pinecone.Index,
+        character: str,
+        index_name: str = 'thesis-index'
 ) -> None:
     """
     Uploads the background of the character associated with the namespace
-    :param namespace: character to upsert vectors to
-    :param data: character's background as a list of strings (loaded from .txt file)
-    :param index: the pinecone index to upsert to
+    :param character: the character we're working with
+    :param index_name: the name of the pinecone index
     :return:
     """
+    with open("../Text Summaries/characters.json", "r") as character_info_file:
+        character_names = json.load(character_info_file)
+
+    data_file: str = f"../Text Summaries/Summaries/{character_names[character]}.txt"
+    namespace: str = extract_name(data_file).lower()
+    data = load_file_information(data_file)
+    # connect to index
+    index = pinecone.Index(index_name)
+
     if not pinecone.list_indexes():  # check if there are any indexes
         # create index if it doesn't exist
         pinecone.create_index("thesis-index", dimension=384)
@@ -267,10 +265,10 @@ def upload_background(
 
 
 def upload(
-    namespace: str,
-    data: List[str],
-    index: pinecone.Index,
-    text_type: str = "background",
+        namespace: str,
+        data: List[str],
+        index: pinecone.Index,
+        text_type: str = "background",
 ) -> None:
     """
     'Upserts' text embedding vectors into pinecone DB at the specific index
@@ -320,15 +318,15 @@ def namespace_exist(namespace: str) -> bool:
     return responses["matches"] != []  # if matches comes back empty namespace doesn't exist
 
 
-def prompt_engineer(prompt: str, status: str, context: List[str]) -> str:
+def prompt_engineer(prompt: str, grammar: str, context: List[str]) -> str:
     """
     Given a base query and context, format it to be used as prompt
     :param prompt: The prompt query
-    :param status: social status of the character
+    :param grammar: grammar the character uses based on social status
     :param context: The context to be used in the prompt
     :return: The formatted prompt
     """
-    prompt_start: str = f"Use {GRAMMAR[status.split()[0]]} grammar. Use first person. Reply clearly based on the context. When told new information, reiterate it back to me. Do not mention your background or the context unless asked, or that you are fictional. Do not provide facts you would deny. Context: "
+    prompt_start: str = f"Use {grammar} grammar. Use first person. Reply clearly based on the context. When told new information, reiterate it back to me. Do not mention your background or the context unless asked, or that you are fictional. Do not provide facts you would deny. Context: "
     with open("tried_prompts.txt", "a+") as prompt_file:
         if prompt_start + "\n" not in prompt_file.readlines():
             prompt_file.write(prompt_start + "\n")
@@ -374,12 +372,12 @@ def answer(prompt: str, chat_history: List[dict], is_chat: bool = True) -> str:
 
 
 def update_history(
-    namespace: str,
-    info_file: str,
-    prompt: str,
-    response: str,
-    index: pinecone.Index,
-    character: str = "Player",
+        namespace: str,
+        info_file: str,
+        prompt: str,
+        response: str,
+        index: pinecone.Index,
+        character: str = "Player",
 ) -> None:
     """
     Update the history of the current chat with new responses
@@ -388,23 +386,28 @@ def update_history(
     :param prompt: prompt user input
     :param response: response given by LLM
     :param index:
-    :param index_name: name of the index associated with the namespace
     :param character: the character we are conversing with
     """
     upload(namespace, [prompt], index, "query")  # upload prompt to pinecone
     upload(namespace, [response], index, "response")  # upload response to pinecone
 
-    info_file = f"{info_file.split('/')[0]}/chat logs/{info_file.split('/')[-1]}"  # swap directory
-    extension_index = info_file.index(".")
-    new_filename = info_file[:extension_index] + "_chat" + info_file[extension_index:]  # generate new filename
+    info_file = f"../Text Summaries/Chat Logs/{info_file.split('/')[-1]}"  # swap directory
+    # extension_index = info_file.index(".")
+    # new_filename = info_file[:extension_index] + "_chat" + info_file[extension_index:]  # generate new filename
 
-    with open(new_filename, "a") as history_file:
+    with open(info_file, "a") as history_file:
         history_file.write(
-            f"{character}: {prompt}\n{name_conversion(False, NAMESPACE).replace('-', ' ')}: {response}\n"
+            f"{character}: {prompt}\n{name_conversion(False, namespace).replace('-', ' ')}: {response}\n"
         )  # save chat logs
 
 
-def name_conversion(to_snake: bool, to_HISTORYconvert: str) -> str:
+def name_conversion(to_snake: bool, to_convert: str) -> str:
+    """
+    Convert a namespace to character name or character name to namespace
+    :param to_snake: Do you convert to namespace or not
+    :param to_convert: String to convert
+    :return: Converted string
+    """
     if to_snake:
         text = to_convert.lower().split(" ")
         converted: str = text[0]
@@ -456,7 +459,7 @@ def random_sentence():
 if __name__ == "__main__":
     # CHARACTER: str = "John Pebble"  # thief
     # CHARACTER: str = "Evelyn Stone-Brown"  # blacksmith
-    CHARACTER: str = "Caleb Brown"  # baker
+    receiver: str = "Caleb Brown"  # baker
     # CHARACTER: str = 'Jack McCaster'  # fisherman
     # CHARACTER: str = "Peter Satoru"  # archer
     # CHARACTER: str = "Melinda Deek"  # knight
@@ -470,12 +473,12 @@ if __name__ == "__main__":
 
     HISTORY: List[dict] = []
 
-    with open("WebBot/characters.json", "r") as f:
+    with open("Text Summaries/characters.json", "r") as f:
         names = json.load(f)
 
-    PROFESSION, SOCIAL_CLASS = get_information(CHARACTER)
-    print(f"Conversation with: {CHARACTER} (a {PROFESSION})")
-    DATA_FILE: str = f"WebBot/summaries/{names[CHARACTER]}.txt"
+    PROFESSION, SOCIAL_CLASS = get_information(receiver)
+    print(f"Conversation with: {receiver} (a {PROFESSION})")
+    DATA_FILE: str = f"../Text Summaries/Summaries/{names[receiver]}.txt"
 
     INDEX_NAME: str = "thesis-index"
     NAMESPACE: str = extract_name(DATA_FILE).lower()
@@ -493,7 +496,7 @@ if __name__ == "__main__":
     chat(
         namespace=NAMESPACE,
         data=file_data,
-        receiver=CHARACTER,
+        receiver=receiver,
         job=PROFESSION,
         status=SOCIAL_CLASS,
     )

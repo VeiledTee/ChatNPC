@@ -13,6 +13,28 @@ document.addEventListener('DOMContentLoaded', function () {
             // Enable the form elements when a character is selected
             userInput.disabled = false;
             form.querySelector('input[type="submit"]').disabled = false;
+
+            // Make an HTTP request to call the Python function
+            fetch('/upload_background', {
+                method: 'POST',
+                body: JSON.stringify({ character: selectedCharacter }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Handle a successful response here
+                    console.log("Background uploaded successfully");
+                } else {
+                    // Handle an error response here
+                    console.error("Error uploading background");
+                }
+            })
+            .catch(error => {
+                // Handle any network or other errors here
+                console.error("Network or other error occurred");
+            });
         } else {
             // Disable the form elements if no character is selected
             userInput.disabled = true;
