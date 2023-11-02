@@ -8,6 +8,7 @@ import pinecone
 import torch
 from sentence_transformers import SentenceTransformer
 
+# load api keys from openai ad pinecone
 with open("../keys.txt", "r") as key_file:
     api_keys = [key.strip() for key in key_file.readlines()]
     openai.api_key = api_keys[0]
@@ -60,38 +61,6 @@ def load_file_information(load_file: str) -> List[str]:
         # list comprehension to clean and split the text file
         clean_string = [s.strip() + "." for line in text_file for s in line.strip().split(".") if s.strip()]
     return clean_string
-
-
-def chat(
-        namespace: str,
-        data: List[str],
-        receiver: str,
-        job: str,
-        status: str,
-) -> None:
-    """
-    Initiate a conversation with a character. Stops conversation when player says "bye".
-    :param namespace: Namespace of the character, reference to knowledge base
-    :param data: Text data
-    :param receiver: The character receiving query
-    :param job: The character's profession
-    :param status: Social status of character
-    :return: None
-    """
-    save_background: bool = True
-    while True:
-        final_answer = run_query_and_generate_answer(
-            receiver=receiver,
-            job=job,
-            status=status,
-            background=save_background,
-        )
-
-        if final_answer is None:
-            break
-
-        print(f"{receiver}: {final_answer}")
-        save_background = False
 
 
 def run_query_and_generate_answer(
@@ -454,49 +423,3 @@ def random_sentence():
         "Josh hates cake",
     ]
     return sentences[np.random.randint(len(sentences))]
-
-
-if __name__ == "__main__":
-    # CHARACTER: str = "John Pebble"  # thief
-    # CHARACTER: str = "Evelyn Stone-Brown"  # blacksmith
-    receiver: str = "Caleb Brown"  # baker
-    # CHARACTER: str = 'Jack McCaster'  # fisherman
-    # CHARACTER: str = "Peter Satoru"  # archer
-    # CHARACTER: str = "Melinda Deek"  # knight
-    # CHARACTER: str = "Sarah Ratengen"  # tavern owner
-
-    GRAMMAR: dict = {
-        "lower": "poor",
-        "middle": "satisfactory",
-        "high": "formal",
-    }
-
-    HISTORY: List[dict] = []
-
-    with open("Text Summaries/characters.json", "r") as f:
-        names = json.load(f)
-
-    PROFESSION, SOCIAL_CLASS = get_information(receiver)
-    print(f"Conversation with: {receiver} (a {PROFESSION})")
-    DATA_FILE: str = f"../Text Summaries/Summaries/{names[receiver]}.txt"
-
-    INDEX_NAME: str = "thesis-index"
-    NAMESPACE: str = extract_name(DATA_FILE).lower()
-
-    file_data = load_file_information(DATA_FILE)
-
-    with open("keys.txt", "r") as key_file:
-        api_keys = [key.strip() for key in key_file.readlines()]
-        openai.api_key = api_keys[0]
-        pinecone.init(
-            api_key=api_keys[1],
-            environment=api_keys[2],
-        )
-
-    chat(
-        namespace=NAMESPACE,
-        data=file_data,
-        receiver=receiver,
-        job=PROFESSION,
-        status=SOCIAL_CLASS,
-    )
