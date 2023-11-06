@@ -13,11 +13,10 @@ from transformers import BertTokenizer, BertModel
 from sklearn.model_selection import validation_curve
 import matplotlib.pyplot as plt
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     train_df = label_mapping(
-        df=pd.read_csv("Data/MultiNLI/train_cleaned_subset.csv"),
-        from_col='gold_label',
-        to_col='label')
+        df=pd.read_csv("Data/MultiNLI/train_cleaned_subset.csv"), from_col="gold_label", to_col="label"
+    )
     valid_df = label_mapping(pd.read_csv("Data/MultiNLI/mismatch_cleaned.csv"))
     test_df = pd.read_csv("Data/MultiNLI/test_mismatch_cleaned.csv")
 
@@ -38,20 +37,29 @@ if __name__ == '__main__':
                 pair_x = [str(s).strip() for s in train_df["sentence1"]]
                 pair_y = [str(s).strip() for s in train_df["sentence2"]]
                 X_train = np.array(
-                    [encode_sentence(bbu_model, bbu_tokenizer, f"{x} [SEP] {y}", DEVICE) for x, y in
-                     zip(pair_x, pair_y)])
+                    [
+                        encode_sentence(bbu_model, bbu_tokenizer, f"{x} [SEP] {y}", DEVICE)
+                        for x, y in zip(pair_x, pair_y)
+                    ]
+                )
                 y_train = train_df["gold_label"].tolist()
                 pair_x = [str(s).strip() for s in valid_df["sentence1"]]
                 pair_y = [str(s).strip() for s in valid_df["sentence2"]]
                 X_val = np.array(
-                    [encode_sentence(bbu_model, bbu_tokenizer, f"{x} [SEP] {y}", DEVICE) for x, y in
-                     zip(pair_x, pair_y)])
+                    [
+                        encode_sentence(bbu_model, bbu_tokenizer, f"{x} [SEP] {y}", DEVICE)
+                        for x, y in zip(pair_x, pair_y)
+                    ]
+                )
                 y_val = valid_df["gold_label"].tolist()
                 pair_x = [str(s).strip() for s in test_df["sentence1"]]
                 pair_y = [str(s).strip() for s in test_df["sentence2"]]
                 X_test = np.array(
-                    [encode_sentence(bbu_model, bbu_tokenizer, f"{x} [SEP] {y}", DEVICE) for x, y in
-                     zip(pair_x, pair_y)])
+                    [
+                        encode_sentence(bbu_model, bbu_tokenizer, f"{x} [SEP] {y}", DEVICE)
+                        for x, y in zip(pair_x, pair_y)
+                    ]
+                )
                 # y_test = test_df["gold_label"].tolist()
                 # print(f"Percent Positive: {100 * sum([1 if int(i) == 2 else 0 for i in y_test]) / len(y_test):.4f}%")
 
@@ -104,12 +112,14 @@ if __name__ == '__main__':
                 # f1.append(test_f1)
                 # precision.append(test_precision)
                 # recall.append(test_recall)
-                output_df: pd.DataFrame = pd.DataFrame({
-                    'pairID': test_df['pairID'],
-                    'gold_label': y_test_pred,
-                })
+                output_df: pd.DataFrame = pd.DataFrame(
+                    {
+                        "pairID": test_df["pairID"],
+                        "gold_label": y_test_pred,
+                    }
+                )
 
-                output_df = label_mapping(output_df, 'gold_label', 'gold_label')
+                output_df = label_mapping(output_df, "gold_label", "gold_label")
 
                 output_df.to_csv(f"Data/MultiNLI/SVM-BBU_mismatch.csv")
             else:
@@ -174,12 +184,14 @@ if __name__ == '__main__':
                 # precision.append(test_precision)
                 # recall.append(test_recall)
 
-                output_df: pd.DataFrame = pd.DataFrame({
-                    'pairID': test_df['pairID'],
-                    'gold_label': y_test_pred,
-                })
+                output_df: pd.DataFrame = pd.DataFrame(
+                    {
+                        "pairID": test_df["pairID"],
+                        "gold_label": y_test_pred,
+                    }
+                )
 
-                output_df = label_mapping(output_df, 'gold_label', 'gold_label')
+                output_df = label_mapping(output_df, "gold_label", "gold_label")
 
                 output_df.to_csv(f"Data/MultiNLI/SVM-SBERT_mismatch.csv")
 

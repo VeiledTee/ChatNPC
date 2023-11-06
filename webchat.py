@@ -64,10 +64,10 @@ def load_file_information(load_file: str) -> List[str]:
 
 
 def run_query_and_generate_answer(
-        query: str,
-        receiver: str,
-        index_name: str = "thesis-index",
-        save: bool = True,
+    query: str,
+    receiver: str,
+    index_name: str = "thesis-index",
+    save: bool = True,
 ) -> str | None:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
@@ -77,7 +77,7 @@ def run_query_and_generate_answer(
     :param save: A bool to save to a file is Ture and print out if False. Default: True
     :return: The generated answer based on the response context.
     """
-    class_grammar_map: dict[str: str] = {
+    class_grammar_map: dict[str:str] = {
         "lower class": "poor",
         "middle class": "satisfactory",
         "high class": "formal",
@@ -101,8 +101,9 @@ def run_query_and_generate_answer(
     if query.lower() == "bye":
         return None
 
-    history = generate_conversation(f"../Text Summaries/Summaries/{namespace.replace('-', '_')}.txt", history, True,
-                                    query)
+    history = generate_conversation(
+        f"../Text Summaries/Summaries/{namespace.replace('-', '_')}.txt", history, True, query
+    )
     # embed query for processing
     embedded_query = embed(query=query)
     # query Pinecone index and get context for model prompting.
@@ -168,8 +169,10 @@ def generate_conversation(character_file: str, chat_history: list, player: bool,
     """
     if not chat_history:
         with open(character_file) as char_file:
-            print(name_conversion(False, extract_name(character_file).replace('-', '_')))
-            background: str = f"You are {name_conversion(False, extract_name(character_file).replace('-', '_'))}. Your background:"
+            print(name_conversion(False, extract_name(character_file).replace("-", "_")))
+            background: str = (
+                f"You are {name_conversion(False, extract_name(character_file).replace('-', '_'))}. Your background:"
+            )
             for line in char_file.readlines():
                 background += " " + line.strip()
         chat_history.append({"role": "system", "content": background})
@@ -195,10 +198,7 @@ def embed(query: str) -> List[float]:
     return model.encode(query).tolist()
 
 
-def upload_background(
-        character: str,
-        index_name: str = 'thesis-index'
-) -> None:
+def upload_background(character: str, index_name: str = "thesis-index") -> None:
     """
     Uploads the background of the character associated with the namespace
     :param character: the character we're working with
@@ -234,10 +234,10 @@ def upload_background(
 
 
 def upload(
-        namespace: str,
-        data: List[str],
-        index: pinecone.Index,
-        text_type: str = "background",
+    namespace: str,
+    data: List[str],
+    index: pinecone.Index,
+    text_type: str = "background",
 ) -> None:
     """
     'Upserts' text embedding vectors into pinecone DB at the specific index
@@ -341,12 +341,12 @@ def answer(prompt: str, chat_history: List[dict], is_chat: bool = True) -> str:
 
 
 def update_history(
-        namespace: str,
-        info_file: str,
-        prompt: str,
-        response: str,
-        index: pinecone.Index,
-        character: str = "Player",
+    namespace: str,
+    info_file: str,
+    prompt: str,
+    response: str,
+    index: pinecone.Index,
+    character: str = "Player",
 ) -> None:
     """
     Update the history of the current chat with new responses

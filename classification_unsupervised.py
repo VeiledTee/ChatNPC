@@ -53,8 +53,15 @@ class SiameseContrastiveModel(nn.Module):
 
         return output1, output2
 
-    def fit(self, training_data: pd.DataFrame, batch_size: int, num_epochs: int, device: str, margin: float,
-            verbose: bool = False) -> list[float]:
+    def fit(
+        self,
+        training_data: pd.DataFrame,
+        batch_size: int,
+        num_epochs: int,
+        device: str,
+        margin: float,
+        verbose: bool = False,
+    ) -> list[float]:
         training_data["sentence1_embeddings"] = training_data["sentence1_embeddings"].apply(embedding_to_tensor)
         training_data["sentence2_embeddings"] = training_data["sentence2_embeddings"].apply(embedding_to_tensor)
 
@@ -74,20 +81,22 @@ class SiameseContrastiveModel(nn.Module):
             for i in range(0, len(training_data), batch_size):
                 optimizer.zero_grad()  # Zero the gradients for this batch
 
-                s1_embedding = sentence1_training_embeddings[i: i + batch_size].to(device)
-                s2_embedding = sentence2_training_embeddings[i: i + batch_size].to(device)
+                s1_embedding = sentence1_training_embeddings[i : i + batch_size].to(device)
+                s2_embedding = sentence2_training_embeddings[i : i + batch_size].to(device)
 
                 output1, output2 = self(s1_embedding, s2_embedding)
 
                 # Calculate similarity scores using cosine similarity
                 similarity_scores = F.cosine_similarity(output1, output2)
                 target_labels: torch.Tensor = torch.tensor(
-                    training_data["label"].iloc[i: i + batch_size].values, dtype=torch.long
+                    training_data["label"].iloc[i : i + batch_size].values, dtype=torch.long
                 ).to(device)
 
                 # Calculate the contrastive loss
-                loss = torch.mean((1 - target_labels) * similarity_scores ** 2 + target_labels * torch.clamp(
-                    margin - similarity_scores, min=0.0) ** 2)
+                loss = torch.mean(
+                    (1 - target_labels) * similarity_scores**2
+                    + target_labels * torch.clamp(margin - similarity_scores, min=0.0) ** 2
+                )
 
                 loss.backward()
                 optimizer.step()
@@ -102,8 +111,9 @@ class SiameseContrastiveModel(nn.Module):
 
         return train_loss_values
 
-    def predict(self, test_data: pd.DataFrame, batch_size: int, device: str, similarity_threshold: float = 0.5) -> List[
-        int]:
+    def predict(
+        self, test_data: pd.DataFrame, batch_size: int, device: str, similarity_threshold: float = 0.5
+    ) -> List[int]:
         # Clean data
         test_data["sentence1_embeddings"] = test_data["sentence1_embeddings"].apply(embedding_to_tensor)
         test_data["sentence2_embeddings"] = test_data["sentence2_embeddings"].apply(embedding_to_tensor)
@@ -228,7 +238,7 @@ for threshold in np.linspace(0.75, 1, 100):
             f"\tThreshold: {threshold}\n{100 * accuracy_score(train_df['label'].values, predictions):.2f}% | F1: {f1_score(train_df['label'].values, predictions, average='macro'):.4f} | P: {precision_score(train_df['label'].values, predictions, average='macro'):.4f} | R: {recall_score(train_df['label'].values, predictions, average='macro'):.4f}")
 """
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     NUM_EPOCHS: int = 10
     BATCH_SIZE: int = 64
     acc: list = []
@@ -241,14 +251,14 @@ if __name__ == '__main__':
             ("Siamese", SiameseContrastiveModel()),
         ]:
             train_df = pd.read_csv("Data/SNLI/train_cleaned.csv")
-            train_df['label'] = train_df['label'].replace(1, 0)
-            train_df['label'] = train_df['label'].replace(2, 1)
+            train_df["label"] = train_df["label"].replace(1, 0)
+            train_df["label"] = train_df["label"].replace(2, 1)
             valid_df = pd.read_csv("Data/SNLI/train_cleaned.csv")
-            valid_df['label'] = valid_df['label'].replace(1, 0)
-            valid_df['label'] = valid_df['label'].replace(2, 1)
+            valid_df["label"] = valid_df["label"].replace(1, 0)
+            valid_df["label"] = valid_df["label"].replace(2, 1)
             test_df = pd.read_csv("Data/SNLI/train_cleaned.csv")
-            test_df['label'] = test_df['label'].replace(1, 0)
-            test_df['label'] = test_df['label'].replace(2, 1)
+            test_df["label"] = test_df["label"].replace(1, 0)
+            test_df["label"] = test_df["label"].replace(2, 1)
 
             model = model_class
 

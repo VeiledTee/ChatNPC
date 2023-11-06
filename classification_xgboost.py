@@ -9,6 +9,7 @@ from ContradictDetectNN import embedding_to_tensor
 from clean_dataset import encode_sentence, label_mapping
 
 from variables import DEVICE
+
 # DEVICE = 'cpu'
 
 from sklearn.model_selection import GridSearchCV
@@ -29,23 +30,23 @@ def x_and_y_from_data(df: pd.DataFrame, encoder, tokenizer) -> Tuple[np.ndarray,
     pair_x = [str(s).strip() for s in df["sentence1"]]  # Isolate sentence 1
     pair_y = [str(s).strip() for s in df["sentence2"]]  # Isolate sentence 2
     X = np.array(
-        [encode_sentence(encoder, tokenizer, f"{x} [SEP] {y}", DEVICE) for x, y in
-         zip(pair_x, pair_y)])  # retrieve all sentence embeddings for each pair of sentences
-    if 'label' in df.columns:
-        y = np.array([int(value) for value in df['label'].tolist()])
+        [encode_sentence(encoder, tokenizer, f"{x} [SEP] {y}", DEVICE) for x, y in zip(pair_x, pair_y)]
+    )  # retrieve all sentence embeddings for each pair of sentences
+    if "label" in df.columns:
+        y = np.array([int(value) for value in df["label"].tolist()])
     else:
         y = np.array([])
     return X, y
 
 
-if __name__ == '__main__':
-    for dataset in ['match', 'mismatch']:
+if __name__ == "__main__":
+    for dataset in ["match", "mismatch"]:
         training_file: str = "Data/MultiNLI/train_cleaned_subset.csv"
         validation_file: str = f"Data/MultiNLI/{dataset}_cleaned.csv"
         testing_file: str = f"Data/MultiNLI/test_{dataset}_cleaned.csv"
 
         # Load the BERT model and tokenizer
-        model_name = 'bert-base-uncased'
+        model_name = "bert-base-uncased"
         bbu_tokenizer = BertTokenizer.from_pretrained(model_name)
         bbu_model = BertModel.from_pretrained(model_name).to(DEVICE)
 
@@ -87,7 +88,7 @@ if __name__ == '__main__':
         # grid_search.fit(X_train, y_train)
 
         # Get the best hyperparameters
-        best_params = {'learning_rate': 0.1, 'max_depth': 6, 'n_estimators': 300}
+        best_params = {"learning_rate": 0.1, "max_depth": 6, "n_estimators": 300}
 
         # print(best_params, type(best_params))
         #
@@ -100,12 +101,14 @@ if __name__ == '__main__':
         # print(f"Validation accuracy: {validation_accuracy}")
 
         # Train an XGBoost classifier
-        model: xgb.XGBClassifier = xgb.XGBClassifier(objective="multi:softmax",
-                                                     num_class=NUM_CLASSES,
-                                                     n_jobs=-1,
-                                                     learning_rate=best_params['learning_rate'],
-                                                     max_depth=best_params['max_depth'],
-                                                     n_estimators=best_params['n_estimators'])
+        model: xgb.XGBClassifier = xgb.XGBClassifier(
+            objective="multi:softmax",
+            num_class=NUM_CLASSES,
+            n_jobs=-1,
+            learning_rate=best_params["learning_rate"],
+            max_depth=best_params["max_depth"],
+            n_estimators=best_params["n_estimators"],
+        )
         # match {'learning_rate': 0.1, 'max_depth': 6, 'n_estimators': 300}
         # mismatch {'learning_rate': 0.1, 'max_depth': 6, 'n_estimators': 300}
         # Fit classifier
@@ -113,14 +116,16 @@ if __name__ == '__main__':
         # Make predictions
         predictions: np.ndarray = model.predict(X_test)
 
-        if training_file.split('/')[1] == 'MultiNLI':
+        if training_file.split("/")[1] == "MultiNLI":
             # Save prediction for kaggle submission
-            output_df: pd.DataFrame = pd.DataFrame({
-                'pairID': test_df['pairID'],
-                'gold_label': predictions,
-            })
+            output_df: pd.DataFrame = pd.DataFrame(
+                {
+                    "pairID": test_df["pairID"],
+                    "gold_label": predictions,
+                }
+            )
 
-            output_df = label_mapping(output_df, 'gold_label', 'gold_label', str_to_int=False)
+            output_df = label_mapping(output_df, "gold_label", "gold_label", str_to_int=False)
 
             output_df.to_csv(f"Data/MultiNLI/XGBoost_{dataset}.csv", index=False)
             print(f"{dataset} saved")

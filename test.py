@@ -223,6 +223,5 @@ import pandas as pd
 
 from classification_bert import create_subset_with_ratio
 
-df = create_subset_with_ratio(pd.read_csv("Data/MultiNLI/train_cleaned.csv"), 0.10,
-                              'gold_label')
+df = create_subset_with_ratio(pd.read_csv("Data/MultiNLI/train_cleaned.csv"), 0.10, "gold_label")
 df.to_csv("Data/MultiNLI/train_cleaned_subset.csv")

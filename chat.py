@@ -1,11 +1,13 @@
 import json
-from typing import List
 
 import openai
 import pinecone
 import torch
 from sentence_transformers import SentenceTransformer
 from tqdm.auto import tqdm
+from variables import DEVICE
+
+from RoBERTaBASENeg import RoBERTaBNeg
 
 
 def get_information(character_name) -> None | tuple:
@@ -41,7 +43,7 @@ def extract_name(file_name: str) -> str:
     return name[:-4]
 
 
-def load_file_information(load_file: str) -> List[str]:
+def load_file_information(load_file: str) -> list[str]:
     """
     Loads data from a file into a list of strings for embedding.
     :param load_file: Path to a file containing the data we want to encrypt.
@@ -54,11 +56,11 @@ def load_file_information(load_file: str) -> List[str]:
 
 
 def chat(
-    namespace: str,
-    data: List[str],
-    receiver: str,
-    job: str,
-    status: str,
+        namespace: str,
+        data: list[str],
+        receiver: str,
+        job: str,
+        status: str,
 ) -> None:
     """
     Initiate a conversation with a character. Stops conversation when player says "bye".
@@ -88,14 +90,14 @@ def chat(
 
 
 def run_query_and_generate_answer(
-    namespace: str,
-    data: List[str],
-    background: bool,
-    receiver: str,
-    job: str,
-    status: str,
-    index_name: str = "thesis-index",
-    save: bool = True,
+        namespace: str,
+        data: list[str],
+        background: bool,
+        receiver: str,
+        job: str,
+        status: str,
+        index_name: str = "thesis-index",
+        save: bool = True,
 ) -> str | None:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
@@ -120,59 +122,101 @@ def run_query_and_generate_answer(
 
     if query.lower() == "bye":
         return None
+    elif query.lower() == "first":
+        delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
+    elif query.lower() == "second":
+        # retrieve the s1 and s2 records
+        s1_vector = index.fetch(ids=['1'], namespace=namespace)
+        s2_vector = index.fetch(ids=['s2'], namespace=namespace)
+        print(s1_vector)
+        # retrieve copy of s1 stored in main KB
+        responses = index.query(
+            s1_vector['vectors']['1']['values'],
+            top_k=1,
+            include_metadata=True,
+            namespace=namespace,
+            filter={
+                "$or": [
+                    {"type": {"$eq": "background"}},
+                    {"type": {"$eq": "response"}},
+                ]
+            },
+        )
+        # delete s1, s2, and s1 copy
+        # delete_response = index.delete(ids=["s1", "s2", responses['matches'][0]['id']], namespace=namespace)
+        # upsert s2 (the true statement) into KB at the index of s1
+        info_dict: dict = {
+            "id": str(responses['matches'][0]['id']),
+            "metadata": {"text": s2_vector['vectors']['1']['metadata']['text'], "type": 'response'},
+            "values": s2_vector['vectors']['1']['values'],
+        }  # build dict for upserting
+        index.upsert(vectors=[info_dict], namespace=namespace)
+    elif query.lower() == "both":
+        delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
+    elif query.lower() == "neither":
+        delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
 
-    generate_conversation(f"Text Summaries/Summaries/{namespace.replace('-', '_')}.txt", True, query)
-    # embed query for processing
-    embedded_query = embed(query=query)
-    # query Pinecone index and get context for model prompting.
-    responses = index.query(
-        embedded_query,
-        top_k=15,
-        include_metadata=True,
-        namespace=namespace,
-        filter={
-            "$or": [
-                {"type": {"$eq": "background"}},
-                {"type": {"$eq": "response"}},
-            ]
-        },
-    )
+    # generate_conversation_record(character_file=f"Text Summaries/Summaries/{namespace.replace('-', '_')}.txt",
+    #                              player=True, next_phrase=query)
+    # # embed query for processing
+    # embedded_query = embed(query=query)
+    # # query Pinecone index and get context for model prompting.
+    # responses = index.query(
+    #     embedded_query,
+    #     top_k=3,
+    #     include_metadata=True,
+    #     namespace=namespace,
+    #     filter={
+    #         "$or": [
+    #             {"type": {"$eq": "background"}},
+    #             {"type": {"$eq": "response"}},
+    #         ]
+    #     },
+    # )
+    #
+    # # Filter out responses containing the string "Player:"
+    # context = [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
+    # context_ids = [x["id"] for x in responses["matches"] if query not in x["metadata"]["text"]]
+    # # delete_response = index.delete(ids=context_ids, namespace=namespace)
+    # print(context)
+    # print(context_ids)
+    #
+    # # generate clean prompt and answer.
+    # clean_prompt = prompt_engineer(query, status, context)
+    # save_prompt: str = clean_prompt.replace("\n", " ")
+    #
+    # generated_answer = answer(clean_prompt, HISTORY)
+    #
+    # if save:
+    #     # save results to file and return generated answer.
+    #     with open("prompt_response.txt", "a") as save_file:
+    #         save_file.write("\n" + "=" * 120 + "\n")
+    #         save_file.write(f"Prompt: {save_prompt}\n")
+    #         save_file.write(f"To: {receiver}, a {job}\n")
+    #         clean_prompt = clean_prompt.replace("\n", " ")
+    #         save_file.write(f"{clean_prompt}\n{generated_answer}")
+    #     # print("Results saved to file.")
+    # else:
+    #     print(generated_answer)
+    #
+    # for i, phrase in enumerate(context):
+    #     if are_contradiction(phrase, generated_answer):
+    #         generated_answer = f"Of the sentences '{phrase}' and '{generated_answer}' which one is true?"
+    #
+    # generate_conversation_record(
+    #     character_file=f"Text Summaries/Summaries/{namespace.replace('-', '_')}.txt",
+    #     player=False,
+    #     next_phrase=generated_answer,
+    # )
+    #
+    # update_history(
+    #     namespace=namespace, info_file=DATA_FILE, prompt=query, response=generated_answer.split(": ")[-1], index=index
+    # )
+    #
+    # return generated_answer
 
-    # Filter out responses containing the string "Player:"
-    context = [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
 
-    # generate clean prompt and answer.
-    clean_prompt = prompt_engineer(query, status, context)
-    save_prompt: str = clean_prompt.replace("\n", " ")
-
-    generated_answer = answer(clean_prompt, HISTORY)
-
-    if save:
-        # save results to file and return generated answer.
-        with open("prompt_response.txt", "a") as save_file:
-            save_file.write("\n" + "=" * 120 + "\n")
-            save_file.write(f"Prompt: {save_prompt}\n")
-            save_file.write(f"To: {receiver}, a {job}\n")
-            clean_prompt = clean_prompt.replace("\n", " ")
-            save_file.write(f"{clean_prompt}\n{generated_answer}")
-        # print("Results saved to file.")
-    else:
-        print(generated_answer)
-
-    generate_conversation(
-        f"Text Summaries/Summaries/{namespace.replace('-', '_')}.txt",
-        False,
-        generated_answer,
-    )
-
-    update_history(
-        namespace=namespace, info_file=DATA_FILE, prompt=query, response=generated_answer.split(": ")[-1], index=index
-    )
-
-    return generated_answer
-
-
-def generate_conversation(character_file: str, player: bool, next_phrase: str) -> None:
+def generate_conversation_record(character_file: str, player: bool, next_phrase: str) -> None:
     """
     Generate a record of the conversation a user has had with the system for feeding into gpt 3.5 turbo
     :param character_file: The file associated with a character's background, not required unless
@@ -193,7 +237,7 @@ def generate_conversation(character_file: str, player: bool, next_phrase: str) -
         HISTORY.append({"role": "assistant", "content": next_phrase})
 
 
-def embed(query: str) -> List[float]:
+def embed(query: str) -> list[float]:
     """
     Take a sentence of text and return the 384-dimension embedding
     :param query: The sentence to be embedded
@@ -208,9 +252,9 @@ def embed(query: str) -> List[float]:
 
 
 def upload_background(
-    namespace: str,
-    data: List[str],
-    index: pinecone.Index,
+        namespace: str,
+        data: list[str],
+        index: pinecone.Index,
 ) -> None:
     """
     Uploads the background of the character associated with the namespace
@@ -238,11 +282,11 @@ def upload_background(
     index.upsert(vectors=data_vectors, namespace=namespace)
 
 
-def upload(
-    namespace: str,
-    data: List[str],
-    index: pinecone.Index,
-    text_type: str = "background",
+def upload_conversation(
+        namespace: str,
+        data: list[str],
+        index: pinecone.Index,
+        text_type: str = "background",
 ) -> None:
     """
     'Upserts' text embedding vectors into pinecone DB at the specific index
@@ -270,6 +314,46 @@ def upload(
     index.upsert(vectors=data_vectors, namespace=namespace)  # upsert all remaining data
 
 
+def upload_contradiction(
+        namespace: str,
+        data: list[str],
+        index: pinecone.Index,
+        text_type: str = "query",
+) -> None:
+    """
+    'Upserts' text embedding vectors of two contradictory sentences into pinecone DB at indexes s1 and s2
+    :param namespace: the pinecone namespace data is uploaded to
+    :param data: The two contradictory sentences
+    :param index: pinecone index to send data to
+    :param text_type: The type of text we are embedding. Choose "background", "response", or "question".
+        Default value: "background"
+    """
+    total_vectors: int = index.describe_index_stats()["namespaces"][namespace][
+        "vector_count"
+    ]  # get num of vectors existing in the namespace
+    data_vectors = []
+    for i, info in enumerate(data):
+        if i == 99:  # recommended batch limit of 100 vectors
+            index.upsert(vectors=data_vectors, namespace=namespace)
+            data_vectors = []
+        info_dict: dict = {
+            f"id": f"s{i + 1}",
+            "metadata": {"text": info, "type": text_type},
+            "values": embed(info),
+        }  # build dict for upserting
+        data_vectors.append(info_dict)
+        total_vectors += 1
+    index.upsert(vectors=data_vectors, namespace=namespace)  # upsert all remaining data
+
+
+def delete_contradiction(
+        namespace: str,
+        record_ids: list[str],
+        index: pinecone.Index,
+) -> None:
+    delete_response = index.delete(ids=record_ids, namespace=namespace)
+
+
 def namespace_exist(namespace: str) -> bool:
     """
     Check if a namespace exists in Pinecone index
@@ -292,7 +376,7 @@ def namespace_exist(namespace: str) -> bool:
     return responses["matches"] != []  # if matches comes back empty namespace doesn't exist
 
 
-def prompt_engineer(prompt: str, status: str, context: List[str]) -> str:
+def prompt_engineer(prompt: str, status: str, context: list[str]) -> str:
     """
     Given a base query and context, format it to be used as prompt
     :param prompt: The prompt query
@@ -312,7 +396,7 @@ def prompt_engineer(prompt: str, status: str, context: List[str]) -> str:
     return prompt_start + prompt_middle + prompt_end
 
 
-def answer(prompt: str, chat_history: List[dict], is_chat: bool = True) -> str:
+def answer(prompt: str, chat_history: list[dict], is_chat: bool = True) -> str:
     """
     Using openAI API, respond ot the provide prompt
     :param prompt: An engineered prompt to get the language model to respond to
@@ -321,7 +405,7 @@ def answer(prompt: str, chat_history: List[dict], is_chat: bool = True) -> str:
     :return: The completed prompt
     """
     if is_chat:
-        msgs: List[dict] = chat_history
+        msgs: list[dict] = chat_history
         msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
         res: str = openai.ChatCompletion.create(
             model="gpt-4",
@@ -346,13 +430,12 @@ def answer(prompt: str, chat_history: List[dict], is_chat: bool = True) -> str:
 
 
 def update_history(
-    namespace: str,
-    info_file: str,
-    prompt: str,
-    response: str,
-    index: pinecone.Index,
-    index_name: str = "thesis_index",
-    character: str = "Player",
+        namespace: str,
+        info_file: str,
+        prompt: str,
+        response: str,
+        index: pinecone.Index,
+        character: str = "Player",
 ) -> None:
     """
     Update the history of the current chat with new responses
@@ -364,8 +447,8 @@ def update_history(
     :param index_name: name of the index associated with the namespace
     :param character: the character we are conversing with
     """
-    upload(namespace, [prompt], index, "query")  # upload prompt to pinecone
-    upload(namespace, [response], index, "response")  # upload response to pinecone
+    upload_conversation(namespace, [prompt], index, "query")  # upload prompt to pinecone
+    upload_conversation(namespace, [response], index, "response")  # upload response to pinecone
 
     info_file = f"{info_file.split('/')[0]}/Chat Logs/{info_file.split('/')[-1]}"  # swap directory
     extension_index = info_file.index(".")
@@ -398,6 +481,28 @@ def name_conversion(to_snake: bool, to_convert: str) -> str:
         return converted
 
 
+def are_contradiction(to_check: str, reply: str) -> bool:
+    return True if model.predict(to_check, reply, DEVICE) == 2 else False
+
+
+def check_context_for_contradiction(context: list[str], reply: str) -> tuple[str, str] | None:
+    for phrase in context:
+        if are_contradiction(phrase, reply):
+            return phrase, reply
+    return None
+
+
+def contradictory_phrases_reply(sentence1: str, sentence2: str) -> str:
+    prompt: str = "distill these sentences down to the fact they convey. ask me in one sentence: " \
+                  "Is {insert first sentence fact} or {insert second sentence fact} true? " \
+                  f"{sentence1}" \
+                  f"{sentence2}" \
+                  f"for example: " \
+                  f"Did you know blackfins live in the east river?" \
+                  f"The west river is home to a large school of blackfish." \
+                  f"Output: Do blackfins live in the east or west river?"
+
+
 if __name__ == "__main__":
     GRAMMAR: dict = {
         "lower": "poor",
@@ -405,7 +510,11 @@ if __name__ == "__main__":
         "high": "formal",
     }
 
-    HISTORY: List[dict] = []
+    HISTORY: list[dict] = []
+
+    # model = RoBERTaBNeg()
+    # model.load_state_dict(torch.load("your_model.pth"))
+    # model.eval()  # Ensure the model is in evaluation mode
 
     # CHARACTER: str = "John Pebble"  # thief
     # CHARACTER: str = "Evelyn Stone-Brown"  # blacksmith

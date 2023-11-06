@@ -115,7 +115,7 @@ def plot_ph_across_dimensions(ph_diagrams):
         ax.set_ylabel("Feature Index", fontsize=14)  # Set y-axis label font size
 
         # Set tick label font sizes
-        ax.tick_params(axis='both', labelsize=14)
+        ax.tick_params(axis="both", labelsize=14)
 
     # Add a title to the entire figure
     # fig.suptitle("Persistent Homology Bar Charts Across Dimensions", fontsize=16)

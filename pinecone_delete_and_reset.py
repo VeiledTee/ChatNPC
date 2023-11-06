@@ -3,7 +3,7 @@ import json
 import pinecone
 from typing import List
 import time
-from chat import extract_name, get_information, load_file_information, upload, embed
+from chat import extract_name, get_information, load_file_information, upload_conversation, embed
 
 
 def delete_all_vectors(names_of_characters) -> None:
@@ -71,7 +71,7 @@ if __name__ == "__main__":
         NAMESPACE: str = extract_name(DATA_FILE).lower()
         char_info: List[str] = load_file_information(DATA_FILE)
 
-        upload(
+        upload_conversation(
             NAMESPACE,
             load_file_information(DATA_FILE),
             index,
