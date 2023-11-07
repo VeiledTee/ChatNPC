@@ -143,7 +143,7 @@ def run_query_and_generate_answer(
             },
         )
         # delete s1, s2, and s1 copy
-        # delete_response = index.delete(ids=["s1", "s2", responses['matches'][0]['id']], namespace=namespace)
+        delete_response = index.delete(ids=["s1", "s2", responses['matches'][0]['id']], namespace=namespace)
         # upsert s2 (the true statement) into KB at the index of s1
         info_dict: dict = {
             "id": str(responses['matches'][0]['id']),
@@ -152,9 +152,36 @@ def run_query_and_generate_answer(
         }  # build dict for upserting
         index.upsert(vectors=[info_dict], namespace=namespace)
     elif query.lower() == "both":
+        s2_vector = index.fetch(ids=['s2'], namespace=namespace)
         delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
+        total_vectors: int = index.describe_index_stats()["namespaces"][namespace][
+            "vector_count"
+        ]  # get num of vectors existing in the namespace
+        # upsert s2 (the true statement) into KB at the index of s1
+        info_dict: dict = {
+            "id": str(total_vectors),
+            "metadata": {"text": s2_vector['vectors']['1']['metadata']['text'], "type": 'response'},
+            "values": s2_vector['vectors']['1']['values'],
+        }  # build dict for upserting
+        index.upsert(vectors=[info_dict], namespace=namespace)
     elif query.lower() == "neither":
-        delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
+        # retrieve the s1 and s2 records
+        s1_vector = index.fetch(ids=['1'], namespace=namespace)
+        # retrieve copy of s1 stored in main KB
+        responses = index.query(
+            s1_vector['vectors']['1']['values'],
+            top_k=1,
+            include_metadata=True,
+            namespace=namespace,
+            filter={
+                "$or": [
+                    {"type": {"$eq": "background"}},
+                    {"type": {"$eq": "response"}},
+                ]
+            },
+        )
+        # delete s1, s2, and s1 copy
+        delete_response = index.delete(ids=["s1", "s2", responses['matches'][0]['id']], namespace=namespace)
 
     # generate_conversation_record(character_file=f"Text Summaries/Summaries/{namespace.replace('-', '_')}.txt",
     #                              player=True, next_phrase=query)
