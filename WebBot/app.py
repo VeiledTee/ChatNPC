@@ -14,6 +14,8 @@ def home():
 @app.route("/chat", methods=["POST"])
 def chat() -> str:
     user_input: str = request.json.get("user_input")  # what user said
+    if user_input.lower() == 'bye':
+        return "Goodbye!"
     selected_character: str = request.json.get("character_select")  # character name
     reply: str = webchat.run_query_and_generate_answer(query=user_input, receiver=selected_character)
     return f"{reply}"
