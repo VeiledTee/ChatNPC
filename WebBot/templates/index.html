@@ -28,6 +28,13 @@
         <input type="text" id="user-input" name="user_input" placeholder="Type your message..." disabled>
         <input type="submit" value="Send" disabled>
     </form>
+
+    <audio autoplay id="auto-play-audio">
+        <!-- Initially, the source is set to a placeholder URL; it will be updated dynamically in JavaScript -->
+        <source src="" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
 </div>
 <!-- Include the chat.js JavaScript file -->
 <script src="{{ url_for('static', filename='chat.js') }}"></script>

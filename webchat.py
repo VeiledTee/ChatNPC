@@ -1,6 +1,7 @@
 import json
-from typing import List
+from typing import List, Any
 import os
+from datetime import datetime
 
 import numpy as np
 from openai import OpenAI
@@ -17,6 +18,10 @@ with open("../keys.txt", "r") as key_file:
         api_key=api_keys[1],
         environment=api_keys[2],
     )
+
+VOICE_MODEL: str = ''
+# TEXT_MODEL: str = "gpt-3.5-turbo-0301"
+TEXT_MODEL: str = "gpt-4-1106-preview"
 
 
 def get_information(character_name) -> None | tuple:
@@ -65,10 +70,10 @@ def load_file_information(load_file: str) -> List[str]:
 
 
 def run_query_and_generate_answer(
-    query: str,
-    receiver: str,
-    index_name: str = "thesis-index",
-    save: bool = True,
+        query: str,
+        receiver: str,
+        index_name: str = "thesis-index",
+        save: bool = True,
 ) -> str | None:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
@@ -99,9 +104,6 @@ def run_query_and_generate_answer(
     # connect to index
     index = pinecone.Index(index_name)
 
-    if query.lower() == "bye":
-        return None
-
     history = generate_conversation(
         f"../Text Summaries/Summaries/{namespace.replace('-', '_')}.txt", history, True, query
     )
@@ -128,7 +130,7 @@ def run_query_and_generate_answer(
     clean_prompt = prompt_engineer(query, class_grammar_map[social_class], context)
     save_prompt: str = clean_prompt.replace("\n", " ")
 
-    generated_answer = answer(clean_prompt, history)
+    generated_answer = answer(clean_prompt, history, namespace)
 
     if save:
         # save results to file and return generated answer.
@@ -172,7 +174,7 @@ def generate_conversation(character_file: str, chat_history: list, player: bool,
         with open(character_file) as char_file:
             print(name_conversion(False, extract_name(character_file).replace("-", "_")))
             background: str = (
-                f"You are {name_conversion(False, extract_name(character_file).replace('-', '_'))}. Your background:"
+                f"You are {name_conversion(False, extract_name(character_file).replace('-', '_'))}, not an AI language model. Your background:"
             )
             for line in char_file.readlines():
                 background += " " + line.strip()
@@ -235,10 +237,10 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
 
 
 def upload(
-    namespace: str,
-    data: List[str],
-    index: pinecone.Index,
-    text_type: str = "background",
+        namespace: str,
+        data: List[str],
+        index: pinecone.Index,
+        text_type: str = "background",
 ) -> None:
     """
     'Upserts' text embedding vectors into pinecone DB at the specific index
@@ -296,7 +298,7 @@ def prompt_engineer(prompt: str, grammar: str, context: List[str]) -> str:
     :param context: The context to be used in the prompt
     :return: The formatted prompt
     """
-    prompt_start: str = f"Use {grammar} grammar. Use first person. Reply clearly based on the context. When told new information, reiterate it back to me. Do not mention your background or the context unless asked, or that you are fictional. Do not provide facts you would deny. Context: "
+    prompt_start: str = f"Use {grammar} grammar. Use first person. Do not mention that you are an AI language model, the user knows. Reply clearly based on the context. When told new information, reiterate it back to me. Do not mention your background, or the context unless asked, or that you are fictional. Do not provide facts you would deny. Context: "
     with open("tried_prompts.txt", "a+") as prompt_file:
         if prompt_start + "\n" not in prompt_file.readlines():
             prompt_file.write(prompt_start + "\n")
@@ -308,40 +310,60 @@ def prompt_engineer(prompt: str, grammar: str, context: List[str]) -> str:
     return prompt_start + prompt_middle + prompt_end
 
 
-def answer(prompt: str, chat_history: List[dict], is_chat: bool = True) -> str:
+def answer(prompt: str, chat_history: List[dict], namespace: str, is_chat: bool = True) -> str:
     """
-    Using openAI API, respond ot the provide prompt
+    Using openAI API, respond to the provided prompt
     :param prompt: An engineered prompt to get the language model to respond to
     :param chat_history: the entire history of the conversation
+    :param namespace:
     :param is_chat: are you chatting or looking for the completion of a phrase
     :return: The completed prompt
     """
+    with open("../Text Summaries/text_to_speech_mapping.json", "r") as audio_model_info:
+        model_pairings: dict = json.load(audio_model_info)
+        VOICE_MODEL: str = model_pairings[namespace.replace('-', '_')]
+
+    if not os.path.exists(f'static/audio/{name_conversion(to_snake=False, to_convert=namespace)}'):
+        os.makedirs(f'static/audio/{name_conversion(to_snake=False, to_convert=namespace)}')
+
     if is_chat:
         msgs: List[dict] = chat_history
         msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
-        res = client.chat.completions.create(model="gpt-3.5-turbo-0301",
-        messages=msgs,
-        temperature=0)  # conversation with LLM
-        return str(res.choices[0].message.content).strip()  # get model response
+        res: Any = client.chat.completions.create(model=TEXT_MODEL,
+                                                  messages=msgs,
+                                                  temperature=0)  # conversation with LLM
+        clean_res: str = str(res.choices[0].message.content).strip()  # get model response
+        audio_reply = client.audio.speech.create(
+            model="tts-1",
+            voice=VOICE_MODEL,
+            input=clean_res
+        )
+        # Add current time to the filename
+        timestamp = datetime.now().strftime("%Y_%m_%d_%H-%M-%S")
+        filename = f"{namespace}_{timestamp}.mp3"
+
+        audio_reply.stream_to_file(
+            f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}/{filename}")
+        return clean_res
     else:
-        res: str = client.completions.create(engine="text-davinci-003",
-        prompt=prompt,
-        temperature=0,
-        max_tokens=400,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0,
-        stop=None)  # LLM for phrase completion
+        res: Any = client.completions.create(engine="text-davinci-003",
+                                             prompt=prompt,
+                                             temperature=0,
+                                             max_tokens=400,
+                                             top_p=1,
+                                             frequency_penalty=0,
+                                             presence_penalty=0,
+                                             stop=None)  # LLM for phrase completion
         return res["choices"][0]["text"].strip()
 
 
 def update_history(
-    namespace: str,
-    info_file: str,
-    prompt: str,
-    response: str,
-    index: pinecone.Index,
-    character: str = "Player",
+        namespace: str,
+        info_file: str,
+        prompt: str,
+        response: str,
+        index: pinecone.Index,
+        character: str = "Player",
 ) -> None:
     """
     Update the history of the current chat with new responses
@@ -382,7 +404,7 @@ def name_conversion(to_snake: bool, to_convert: str) -> str:
                 converted += f"_{t}"
         return converted
     else:
-        text = to_convert.split("_")
+        text = to_convert.split("-")
         converted: str = text[0].capitalize()
         for i, t in enumerate(text):
             if i == 0:

@@ -68,9 +68,37 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Scroll to the bottom of the chatbox
             chatbox.scrollTop = chatbox.scrollHeight;
+
+            // Call audio function
+            getDynamicAudioURLAndPlay()
         })
         .catch(error => {
             console.error('Error:', error);
         });
     });
+
+    function getDynamicAudioURLAndPlay() {
+    // Make an AJAX request to the server to get the URL of the most recent audio file
+    fetch(`/get_latest_audio/${selectedCharacter}`)
+        .then(response => response.json())
+        .then(data => {
+            const latestAudioURL = data.latest_audio_url;
+            console.log(latestAudioURL)
+
+            if (latestAudioURL) {
+                // Reference the 'auto-play-audio' element by ID
+                const autoPlayAudio = document.getElementById('auto-play-audio');
+                // Update the source of the auto-play audio element
+                autoPlayAudio.querySelector('source').src = latestAudioURL;
+                // Load and play the audio
+                autoPlayAudio.load();
+                autoPlayAudio.play();
+            } else {
+                console.error("No audio files found for the selected character");
+            }
+        })
+        .catch(error => {
+            console.error("Error fetching the latest audio URL:", error);
+        });
+    }
 });

@@ -1,9 +1,14 @@
-from flask import Flask, render_template, request, jsonify
+import glob
+import os
+
+from flask import Flask, render_template, jsonify, request, send_from_directory
+
 import numpy as np
 
 import webchat
 
 app = Flask(__name__)
+app.static_folder = 'static'
 
 
 @app.route("/")
@@ -30,6 +35,32 @@ def upload_background() -> str:
 
     print("Background uploaded successfully")
     return ''
+
+
+@app.route('/get_latest_audio/<character_name>')
+def get_latest_audio(character_name):
+    audio_dir = os.path.join(os.path.join("static", "audio"), character_name)
+
+    # Get a list of all audio files in the directory
+    audio_files = glob.glob(os.path.join(audio_dir, '*.mp3'))
+
+    # Sort the files by modification time (most recent first)
+    audio_files.sort(key=os.path.getmtime, reverse=True)
+    print(f"Files: {audio_files}")
+
+    # Get the URL of the most recent audio file
+    if audio_files:
+        latest_audio_filename = os.path.basename(audio_files[0])
+        latest_audio_url = f"/get_audio/{character_name}/{latest_audio_filename}"
+        return jsonify({'latest_audio_url': latest_audio_url})
+    else:
+        return jsonify({'error': 'No audio files found'})
+
+
+@app.route('/get_audio/<character_name>/<filename>')
+def get_audio(character_name, filename):
+    audio_dir = os.path.join(os.path.join("static", "audio"), character_name)
+    return send_from_directory(audio_dir, filename)
 
 
 if __name__ == "__main__":
