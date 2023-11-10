@@ -1,6 +1,8 @@
 import json
 
-import openai
+from openai import OpenAI
+
+client = OpenAI(api_key=api_keys[0])
 import pinecone
 import torch
 from sentence_transformers import SentenceTransformer
@@ -434,25 +436,21 @@ def answer(prompt: str, chat_history: list[dict], is_chat: bool = True) -> str:
     if is_chat:
         msgs: list[dict] = chat_history
         msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
-        res: str = openai.ChatCompletion.create(
-            model="gpt-4",
-            # model="gpt-3.5-turbo-0301",
-            messages=msgs,
-            temperature=0,
-        )  # conversation with LLM
+        res: str = client.chat.completions.create(model="gpt-4",
+        # model="gpt-3.5-turbo-0301",
+        messages=msgs,
+        temperature=0)  # conversation with LLM
 
         return res["choices"][0]["message"]["content"].strip()  # get model response
     else:
-        res: str = openai.Completion.create(
-            engine="text-davinci-003",
-            prompt=prompt,
-            temperature=0,
-            max_tokens=400,
-            top_p=1,
-            frequency_penalty=0,
-            presence_penalty=0,
-            stop=None,
-        )  # LLM for phrase completion
+        res: str = client.completions.create(engine="text-davinci-003",
+        prompt=prompt,
+        temperature=0,
+        max_tokens=400,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0,
+        stop=None)  # LLM for phrase completion
         return res["choices"][0]["text"].strip()
 
 
@@ -565,7 +563,7 @@ if __name__ == "__main__":
 
     with open("keys.txt", "r") as key_file:
         api_keys = [key.strip() for key in key_file.readlines()]
-        openai.api_key = api_keys[0]
+        
         pinecone.init(
             api_key=api_keys[1],
             environment=api_keys[2],
