@@ -87,7 +87,7 @@ if __name__ == "__main__":
 
     with open("keys.txt", "r") as key_file:
         api_keys = [key.strip() for key in key_file.readlines()]
-        openai.api_key = api_keys[0]
+        
 
     write_exam(CHARACTER, HISTORY)
 

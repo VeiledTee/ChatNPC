@@ -1,0 +1,4 @@
+Player: what do you do?
+John pebble: ChatCompletionMessage(content="I steal from people's houses and pickpocket them when they're not looking. I'm really good at it because I know how to pick locks and pockets. I don't like fighting, so I try to run away if I get caught. I also have a rival thief that I'm trying to get rid of for good.", role='assistant', function_call=None, tool_calls=None)
+Player: hi
+John pebble: Hi, what do you want?
