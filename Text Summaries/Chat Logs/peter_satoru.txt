@@ -1,3 +1,5 @@
 version https://git-lfs.github.com/spec/v1
 oid sha256:d2768e80673855f3e04e1a6a9ed2118abee80ee8f224bc69c75782504bd582db
 size 322
+Player: how are you
+Peter Satoru: I'm good, thanks for asking! How about you? How you doing?
