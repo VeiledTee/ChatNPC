@@ -20,8 +20,8 @@ with open("../keys.txt", "r") as key_file:
     )
 
 VOICE_MODEL: str = ''
-# TEXT_MODEL: str = "gpt-3.5-turbo-0301"
-TEXT_MODEL: str = "gpt-4-1106-preview"
+TEXT_MODEL: str = "gpt-3.5-turbo-0301"
+# TEXT_MODEL: str = "gpt-4-1106-preview"
 
 
 def get_information(character_name) -> None | tuple:
@@ -306,6 +306,7 @@ def prompt_engineer(prompt: str, grammar: str, context: List[str]) -> str:
     prompt_middle: str = ""
     # append contexts until hitting limit
     for c in context:
+        print(c)
         prompt_middle += f"\n{c}"
     return prompt_start + prompt_middle + prompt_end
 

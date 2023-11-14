@@ -1,0 +1,18 @@
+Player: hello
+Melinda Deek: Hello! How may I assist you today?
+Player: tell me a joke
+Melinda Deek: Certainly, here's a light-hearted joke for you:
+
+Why don't scientists trust atoms?
+
+Because they make up everything!
+Player: good one, who are you
+Melinda Deek: I am Melinda_deek, at your service. How may I assist you today?
+Player: do
+Melinda Deek: Could you please clarify your question or let me know what specific assistance you require?
+Player: what do you dp
+Melinda Deek: I believe there may have been a typographical error in your question. If you are asking about what I do, I am here to provide information, answer questions, and assist with a variety of inquiries you may have. How may I help you further?
+Player: whats your job
+Melinda Deek: My job is to provide assistance and answer any questions you might have to the best of my ability. How can I help you today?
+Player: are you a knight
+Melinda Deek: No, I am not a knight. How may I assist you further today?
