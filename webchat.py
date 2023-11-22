@@ -410,31 +410,3 @@ def name_conversion(to_snake: bool, to_convert: str) -> str:
                 converted += f" {t.capitalize()}"
         converted = re.sub("(-)\s*([a-zA-Z])", lambda p: p.group(0).upper(), converted)
         return converted.replace("_", " ")
-
-
-def random_sentence():
-    sentences = [
-        "The sky is blue.",
-        "I love eating pizza.",
-        "She plays the piano beautifully.",
-        "The cat is sleeping.",
-        "I enjoy reading books.",
-        "He runs every morning.",
-        "The flowers are blooming in the garden.",
-        "They went for a walk in the park.",
-        "The movie was fantastic.",
-        "We had a great time at the beach.",
-        "She smiled and waved at me.",
-        "The rain is pouring outside.",
-        "He is studying for his exams.",
-        "The coffee tastes delicious.",
-        "I'm going to the gym later.",
-        "They are planning a trip to Europe.",
-        "She wrote a poem for her friend.",
-        "He likes to watch football on weekends.",
-        "The concert was amazing.",
-        "We had a delicious dinner at the restaurant.",
-        "Billy loves cake",
-        "Josh hates cake",
-    ]
-    return sentences[np.random.randint(len(sentences))]
