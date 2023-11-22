@@ -2,6 +2,7 @@ import json
 from typing import List, Any
 import os
 from datetime import datetime
+import re
 
 import numpy as np
 from openai import OpenAI
@@ -53,7 +54,7 @@ def extract_name(file_name: str) -> str:
     # split the filename into a list of parts, using "_" as the delimiter
     name_parts = filename.split("_")
     # join the name parts together with a dash ("-"), and remove the ".txt" extension
-    name = "-".join(name_parts)
+    name = "_".join(name_parts)
     return name[:-4]
 
 
@@ -95,9 +96,7 @@ def run_query_and_generate_answer(
         character_names = json.load(f)
 
     profession, social_class = get_information(receiver)  # get the profession and social status of the character
-    print(f"Conversation with: {receiver} (a {profession})")
     data_file: str = f"../Text Summaries/Summaries/{character_names[receiver]}.txt"
-    print(data_file)
 
     namespace: str = extract_name(data_file).lower()
 
@@ -140,7 +139,6 @@ def run_query_and_generate_answer(
             save_file.write(f"To: {receiver}, a {profession}\n")
             clean_prompt = clean_prompt.replace("\n", " ")
             save_file.write(f"{clean_prompt}\n{generated_answer}")
-        # print("Results saved to file.")
     else:
         print(generated_answer)
 
@@ -150,8 +148,6 @@ def run_query_and_generate_answer(
         player=False,
         next_phrase=generated_answer,
     )
-
-    print(generated_answer)
 
     update_history(
         namespace=namespace, info_file=data_file, prompt=query, response=generated_answer.split(": ")[-1], index=index
@@ -172,9 +168,8 @@ def generate_conversation(character_file: str, chat_history: list, player: bool,
     """
     if not chat_history:
         with open(character_file) as char_file:
-            print(name_conversion(False, extract_name(character_file).replace("-", "_")))
             background: str = (
-                f"You are {name_conversion(False, extract_name(character_file).replace('-', '_'))}, not an AI language model. Your background:"
+                f"You are {name_conversion(False, extract_name(character_file))}, not an AI language model. Your background:"
             )
             for line in char_file.readlines():
                 background += " " + line.strip()
@@ -306,6 +301,7 @@ def prompt_engineer(prompt: str, grammar: str, context: List[str]) -> str:
     prompt_middle: str = ""
     # append contexts until hitting limit
     for c in context:
+        print(f"{c}")
         prompt_middle += f"\n{c}"
     return prompt_start + prompt_middle + prompt_end
 
@@ -329,23 +325,23 @@ def answer(prompt: str, chat_history: List[dict], namespace: str, is_chat: bool 
     if is_chat:
         msgs: List[dict] = chat_history
         msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
-        return "test"
-        # res: Any = client.chat.completions.create(model=TEXT_MODEL,
-        #                                           messages=msgs,
-        #                                           temperature=0)  # conversation with LLM
-        # clean_res: str = str(res.choices[0].message.content).strip()  # get model response
-        # audio_reply = client.audio.speech.create(
-        #     model="tts-1",
-        #     voice=VOICE_MODEL,
-        #     input=clean_res
-        # )
-        # # Add current time to the filename
-        # timestamp = datetime.now().strftime("%Y_%m_%d_%H-%M-%S")
-        # filename = f"{namespace}_{timestamp}.mp3"
-        #
-        # audio_reply.stream_to_file(
-        #     f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}/{filename}")
-        # return clean_res
+        # return "test"
+        res: Any = client.chat.completions.create(model=TEXT_MODEL,
+                                                  messages=msgs,
+                                                  temperature=0)  # conversation with LLM
+        clean_res: str = str(res.choices[0].message.content).strip()  # get model response
+        audio_reply = client.audio.speech.create(
+            model="tts-1",
+            voice=VOICE_MODEL,
+            input=clean_res
+        )
+        # Add current time to the filename
+        timestamp = datetime.now().strftime("%Y_%m_%d_%H-%M-%S")
+        filename = f"{namespace}_{timestamp}.mp3"
+
+        audio_reply.stream_to_file(
+            f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}/{filename}")
+        return clean_res
     else:
         res: Any = client.completions.create(engine="text-davinci-003",
                                              prompt=prompt,
@@ -405,14 +401,15 @@ def name_conversion(to_snake: bool, to_convert: str) -> str:
                 converted += f"_{t}"
         return converted
     else:
-        text = to_convert.split("-")
+        text = to_convert.split("_")
         converted: str = text[0].capitalize()
         for i, t in enumerate(text):
             if i == 0:
                 pass
             else:
                 converted += f" {t.capitalize()}"
-        return converted
+        converted = re.sub("(-)\s*([a-zA-Z])", lambda p: p.group(0).upper(), converted)
+        return converted.replace("_", " ")
 
 
 def random_sentence():

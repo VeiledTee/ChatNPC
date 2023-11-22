@@ -46,7 +46,6 @@ def get_latest_audio(character_name):
 
     # Sort the files by modification time (most recent first)
     audio_files.sort(key=os.path.getmtime, reverse=True)
-    print(f"Files: {audio_files}")
 
     # Get the URL of the most recent audio file
     if audio_files:
