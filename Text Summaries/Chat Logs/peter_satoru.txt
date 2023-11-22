@@ -1,4 +1,3 @@
-Player: what do you do?
-Peter Satoru: Me, I train young archers in town. I teach them what I know so they can be good archers too. I also protect and serve the people of Ashbourne because they are important to me. I have friends in the village, Jack McCaster and Melinda Deek, who I am close with.
-Player: can girls be witchers too?
-Peter Satoru: I don't rightly know if girls can be witchers too.
+version https://git-lfs.github.com/spec/v1
+oid sha256:5f0248ae9b37001e03e6fb8698ee4191e2104d57eaf030d5e62b8b459e882086
+size 398
