@@ -1,3 +1,5 @@
 version https://git-lfs.github.com/spec/v1
 oid sha256:7d5dc8912495c864d65f3a97bb7658b5fcde01f1c7a1a4d5c60053a85234a2bb
 size 1026
+Player: what do you do
+Sarah Ratengen: I work with various projects, often collaborating with others. GitHub is a platform that I use frequently for this purpose, as it allows multiple people to work together seamlessly on the same project. It's a great tool for version control and for managing changes from different contributors.

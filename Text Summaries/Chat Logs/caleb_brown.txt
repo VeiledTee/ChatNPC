@@ -17,3 +17,5 @@ Player: *kills potion seller*
 Caleb Brown: I see you've made your choice, though it's a path of violence I cannot condone. With the potion seller now gone, you've silenced the voice of caution and responsibility. I hope you reconsider the path you're on before more harm is done.
 Player: you are the potion seller and are dead now 
 Caleb Brown: I understand you believe the potion seller is no longer among the living, but here I am, ready to discuss the potency of my potions with you. It seems there's been some confusion. Now, tell me, are you truly prepared to handle the strength of the potions I offer?
+Player: what do you do
+Caleb Brown: I work with various projects, often collaborating with others using platforms like GitHub to manage and track changes in the project files. The size of the project can vary, but it's important to keep everything organized, especially when multiple contributors are involved. For instance, when dealing with a project that has a size of 897, it's crucial to maintain clear communication and proper version control to ensure that everyone's contributions are integrated smoothly.

@@ -10,6 +10,8 @@ import pinecone
 import torch
 from sentence_transformers import SentenceTransformer
 
+AUDIO: bool = False
+
 # load api keys from openai and pinecone
 with open("../keys.txt", "r") as key_file:
     api_keys = [key.strip() for key in key_file.readlines()]
@@ -198,6 +200,10 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
     :param index_name: the name of the pinecone index
     :return:
     """
+    if not pinecone.list_indexes():  # check if there are any indexes
+        # create index if it doesn't exist
+        pinecone.create_index("thesis-index", dimension=384, pods=1, pod_type="p2.x1")
+
     with open("../Text Summaries/characters.json", "r") as character_info_file:
         character_names = json.load(character_info_file)
 
@@ -210,10 +216,6 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
         data_facts.extend(fact_rephrase(fact))
 
     index: pinecone.Index = pinecone.Index(index_name)
-
-    if not pinecone.list_indexes():  # check if there are any indexes
-        # create index if it doesn't exist
-        pinecone.create_index("thesis-index", dimension=384, pods=1, pod_type="p2.x1")
 
     total_vectors: int = 0
     data_vectors: list = []
@@ -363,12 +365,14 @@ def answer(prompt: str, chat_history: list[dict], namespace: str) -> str:
     # return "test"
     res: Any = client.chat.completions.create(model=TEXT_MODEL, messages=msgs, temperature=0)  # conversation with LLM
     clean_res: str = str(res.choices[0].message.content).strip()  # get model response
-    audio_reply = client.audio.speech.create(model="tts-1", voice=cur_voice, input=clean_res)
-    # Add current time to the filename
-    timestamp = datetime.now().strftime("%Y_%m_%d_%H-%M-%S")
-    filename = f"{namespace}_{timestamp}.mp3"
+    if AUDIO:
+        # generate audio file and save for output
+        audio_reply = client.audio.speech.create(model="tts-1", voice=cur_voice, input=clean_res)
+        # Add current time to the filename
+        timestamp = datetime.now().strftime("%Y_%m_%d_%H-%M-%S")
+        filename = f"{namespace}_{timestamp}.mp3"
 
-    audio_reply.stream_to_file(f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}/{filename}")
+        audio_reply.stream_to_file(f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}/{filename}")
     return clean_res
 
 
