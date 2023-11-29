@@ -423,7 +423,8 @@ def update_history(
 
     with open(info_file, "a") as history_file:
         history_file.write(
-            f"{character}: {prompt}\n{name_conversion(False, namespace).replace('-', ' ')}: {response}\n"
+            f"{character}: {prompt}\n"
+            f"{name_conversion(False, namespace).replace('-', ' ')}: {response}\n"
         )  # save chat logs
 
 
