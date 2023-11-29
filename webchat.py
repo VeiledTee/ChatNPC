@@ -148,7 +148,11 @@ def run_query_and_generate_answer(
     )
 
     update_history(
-        namespace=namespace, info_file=data_file, prompt=query, response=generated_answer.split(": ")[-1], index=index
+        namespace=namespace,
+        info_file=data_file,
+        prompt=query,
+        response=generated_answer.split(": ")[-1],
+        index=index
     )
 
     return generated_answer
