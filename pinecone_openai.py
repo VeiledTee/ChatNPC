@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
         with open("keys.txt", "r") as key_file:
             api_keys = [key.strip() for key in key_file.readlines()]
-            
+
             pinecone.init(
                 api_key=api_keys[1],
                 environment=api_keys[2],

@@ -23,23 +23,27 @@ def fact_rephrase(phrase: str) -> list[str]:
     :param phrase: A phrase containing multiple facts to be distilled into separate ones
     :return: The split-up factual statements
     """
-    msgs: list[dict] = [{"role": "system",
-                         "content": "You are a writing assistant. "
-                                    "Help me split up the sentences I provide you into facts. "
-                                    "Each fact should be able to stand on it's own."
-                                    "Tell me each fact on a new line, "
-                                    "do not include anything in your response other than the facts."
-                         }]
+    msgs: list[dict] = [
+        {
+            "role": "system",
+            "content": "You are a writing assistant. "
+            "Help me split up the sentences I provide you into facts. "
+            "Each fact should be able to stand on it's own."
+            "Tell me each fact on a new line, "
+            "do not include anything in your response other than the facts.",
+        }
+    ]
     prompt: str = f"Split this phrase into facts: {phrase}"
     msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
 
-    res: Any = client.chat.completions.create(model=TEXT_MODEL,
-                                              messages=msgs,
-                                              temperature=0)  # conversation with LLM
+    res: Any = client.chat.completions.create(model=TEXT_MODEL, messages=msgs, temperature=0)  # conversation with LLM
     facts: str = str(res.choices[0].message.content).strip()  # get model response
-    return [fact.strip() for fact in facts.split('\n')]
+    return [fact.strip() for fact in facts.split("\n")]
 
 
 if __name__ == "__main__":
-    print(fact_rephrase(
-        "Caleb Brown is married to Evelyn Stone-Brown, the local blacksmith, and they live in a cozy house in Ashbourne."))
+    print(
+        fact_rephrase(
+            "Caleb Brown is married to Evelyn Stone-Brown, the local blacksmith, and they live in a cozy house in Ashbourne."
+        )
+    )

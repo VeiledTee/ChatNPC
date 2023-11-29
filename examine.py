@@ -87,7 +87,6 @@ if __name__ == "__main__":
 
     with open("keys.txt", "r") as key_file:
         api_keys = [key.strip() for key in key_file.readlines()]
-        
 
     write_exam(CHARACTER, HISTORY)
 

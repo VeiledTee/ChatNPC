@@ -23,27 +23,26 @@ def answer(prompt: str, chat_history: List[dict], is_chat: bool = True) -> str:
     if is_chat:
         msgs: List[dict] = chat_history
         msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
-        res: str = client.chat.completions.create(model="gpt-4",
-        messages=msgs,
-        temperature=0)  # conversation with LLM
+        res: str = client.chat.completions.create(model="gpt-4", messages=msgs, temperature=0)  # conversation with LLM
 
         return res["choices"][0]["message"]["content"].strip()  # get model response
     else:
-        res: str = client.completions.create(engine="text-davinci-003",
-        prompt=prompt,
-        temperature=0,
-        max_tokens=400,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0,
-        stop=None)  # LLM for phrase completion
+        res: str = client.completions.create(
+            engine="text-davinci-003",
+            prompt=prompt,
+            temperature=0,
+            max_tokens=400,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0,
+            stop=None,
+        )  # LLM for phrase completion
         return res["choices"][0]["text"].strip()
 
 
 if __name__ == "__main__":
     with open("keys.txt", "r") as key_file:
         api_keys = [key.strip() for key in key_file.readlines()]
-        
 
     df: pd.DataFrame = pd.read_csv("Data/contradiction-dataset.csv").head(15)
     HISTORY: List[dict] = []

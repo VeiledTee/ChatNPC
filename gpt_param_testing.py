@@ -54,17 +54,21 @@ def answer(
     if is_chat:
         msgs: List[dict] = chat_history
         msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
-        res: str = client.chat.completions.create(model="gpt-3.5-turbo", messages=msgs, temperature=temp, top_p=top_p, n=n)  # conversation with LLM
+        res: str = client.chat.completions.create(
+            model="gpt-3.5-turbo", messages=msgs, temperature=temp, top_p=top_p, n=n
+        )  # conversation with LLM
         return res["choices"][0]["message"]["content"].strip()  # get model response
     else:
-        res: str = client.completions.create(engine="text-davinci-003",
-        prompt=prompt,
-        temperature=temp,
-        max_tokens=400,
-        top_p=top_p,
-        n=n,
-        frequency_penalty=0,
-        presence_penalty=0)  # LLM for phrase completion
+        res: str = client.completions.create(
+            engine="text-davinci-003",
+            prompt=prompt,
+            temperature=temp,
+            max_tokens=400,
+            top_p=top_p,
+            n=n,
+            frequency_penalty=0,
+            presence_penalty=0,
+        )  # LLM for phrase completion
         return res["choices"][0]["text"].strip()
 
 
@@ -103,7 +107,6 @@ if __name__ == "__main__":
 
     with open("keys.txt", "r") as key_file:
         api_keys = [key.strip() for key in key_file.readlines()]
-        
 
     temperature_testing(list(np.linspace(0, 2, 11)))
     top_p_testing(list(np.linspace(0, 1, 11)))

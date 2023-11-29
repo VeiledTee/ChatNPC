@@ -58,11 +58,11 @@ def load_file_information(load_file: str) -> list[str]:
 
 
 def chat(
-        namespace: str,
-        data: list[str],
-        receiver: str,
-        job: str,
-        status: str,
+    namespace: str,
+    data: list[str],
+    receiver: str,
+    job: str,
+    status: str,
 ) -> None:
     """
     Initiate a conversation with a character. Stops conversation when player says "bye".
@@ -92,14 +92,14 @@ def chat(
 
 
 def run_query_and_generate_answer(
-        namespace: str,
-        data: list[str],
-        background: bool,
-        receiver: str,
-        job: str,
-        status: str,
-        index_name: str = "thesis-index",
-        save: bool = True,
+    namespace: str,
+    data: list[str],
+    background: bool,
+    receiver: str,
+    job: str,
+    status: str,
+    index_name: str = "thesis-index",
+    save: bool = True,
 ) -> str | None:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
@@ -128,12 +128,12 @@ def run_query_and_generate_answer(
         delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
     elif query.lower() == "second":
         # retrieve the s1 and s2 records
-        s1_vector = index.fetch(ids=['1'], namespace=namespace)
-        s2_vector = index.fetch(ids=['s2'], namespace=namespace)
+        s1_vector = index.fetch(ids=["1"], namespace=namespace)
+        s2_vector = index.fetch(ids=["s2"], namespace=namespace)
         print(s1_vector)
         # retrieve copy of s1 stored in main KB
         responses = index.query(
-            s1_vector['vectors']['1']['values'],
+            s1_vector["vectors"]["1"]["values"],
             top_k=1,
             include_metadata=True,
             namespace=namespace,
@@ -145,16 +145,16 @@ def run_query_and_generate_answer(
             },
         )
         # delete s1, s2, and s1 copy
-        delete_response = index.delete(ids=["s1", "s2", responses['matches'][0]['id']], namespace=namespace)
+        delete_response = index.delete(ids=["s1", "s2", responses["matches"][0]["id"]], namespace=namespace)
         # upsert s2 (the true statement) into KB at the index of s1
         info_dict: dict = {
-            "id": str(responses['matches'][0]['id']),
-            "metadata": {"text": s2_vector['vectors']['1']['metadata']['text'], "type": 'response'},
-            "values": s2_vector['vectors']['1']['values'],
+            "id": str(responses["matches"][0]["id"]),
+            "metadata": {"text": s2_vector["vectors"]["1"]["metadata"]["text"], "type": "response"},
+            "values": s2_vector["vectors"]["1"]["values"],
         }  # build dict for upserting
         index.upsert(vectors=[info_dict], namespace=namespace)
     elif query.lower() == "both":
-        s2_vector = index.fetch(ids=['s2'], namespace=namespace)
+        s2_vector = index.fetch(ids=["s2"], namespace=namespace)
         delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
         total_vectors: int = index.describe_index_stats()["namespaces"][namespace][
             "vector_count"
@@ -162,16 +162,16 @@ def run_query_and_generate_answer(
         # upsert s2 (the true statement) into KB at the index of s1
         info_dict: dict = {
             "id": str(total_vectors),
-            "metadata": {"text": s2_vector['vectors']['1']['metadata']['text'], "type": 'response'},
-            "values": s2_vector['vectors']['1']['values'],
+            "metadata": {"text": s2_vector["vectors"]["1"]["metadata"]["text"], "type": "response"},
+            "values": s2_vector["vectors"]["1"]["values"],
         }  # build dict for upserting
         index.upsert(vectors=[info_dict], namespace=namespace)
     elif query.lower() == "neither":
         # retrieve the s1 and s2 records
-        s1_vector = index.fetch(ids=['1'], namespace=namespace)
+        s1_vector = index.fetch(ids=["1"], namespace=namespace)
         # retrieve copy of s1 stored in main KB
         responses = index.query(
-            s1_vector['vectors']['1']['values'],
+            s1_vector["vectors"]["1"]["values"],
             top_k=1,
             include_metadata=True,
             namespace=namespace,
@@ -183,7 +183,7 @@ def run_query_and_generate_answer(
             },
         )
         # delete s1, s2, and s1 copy
-        delete_response = index.delete(ids=["s1", "s2", responses['matches'][0]['id']], namespace=namespace)
+        delete_response = index.delete(ids=["s1", "s2", responses["matches"][0]["id"]], namespace=namespace)
 
     # generate_conversation_record(character_file=f"Text Summaries/Summaries/{namespace.replace('-', '_')}.txt",
     #                              player=True, next_phrase=query)
@@ -281,9 +281,9 @@ def embed(query: str) -> list[float]:
 
 
 def upload_background(
-        namespace: str,
-        data: list[str],
-        index: pinecone.Index,
+    namespace: str,
+    data: list[str],
+    index: pinecone.Index,
 ) -> None:
     """
     Uploads the background of the character associated with the namespace
@@ -312,10 +312,10 @@ def upload_background(
 
 
 def upload_conversation(
-        namespace: str,
-        data: list[str],
-        index: pinecone.Index,
-        text_type: str = "background",
+    namespace: str,
+    data: list[str],
+    index: pinecone.Index,
+    text_type: str = "background",
 ) -> None:
     """
     'Upserts' text embedding vectors into pinecone DB at the specific index
@@ -344,10 +344,10 @@ def upload_conversation(
 
 
 def upload_contradiction(
-        namespace: str,
-        data: list[str],
-        index: pinecone.Index,
-        text_type: str = "query",
+    namespace: str,
+    data: list[str],
+    index: pinecone.Index,
+    text_type: str = "query",
 ) -> None:
     """
     'Upserts' text embedding vectors of two contradictory sentences into pinecone DB at indexes s1 and s2
@@ -376,9 +376,9 @@ def upload_contradiction(
 
 
 def delete_contradiction(
-        namespace: str,
-        record_ids: list[str],
-        index: pinecone.Index,
+    namespace: str,
+    record_ids: list[str],
+    index: pinecone.Index,
 ) -> None:
     delete_response = index.delete(ids=record_ids, namespace=namespace)
 
@@ -436,31 +436,35 @@ def answer(prompt: str, chat_history: list[dict], is_chat: bool = True) -> str:
     if is_chat:
         msgs: list[dict] = chat_history
         msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
-        res: str = client.chat.completions.create(model="gpt-4",
-        # model="gpt-3.5-turbo-0301",
-        messages=msgs,
-        temperature=0)  # conversation with LLM
+        res: str = client.chat.completions.create(
+            model="gpt-4",
+            # model="gpt-3.5-turbo-0301",
+            messages=msgs,
+            temperature=0,
+        )  # conversation with LLM
 
         return res["choices"][0]["message"]["content"].strip()  # get model response
     else:
-        res: str = client.completions.create(engine="text-davinci-003",
-        prompt=prompt,
-        temperature=0,
-        max_tokens=400,
-        top_p=1,
-        frequency_penalty=0,
-        presence_penalty=0,
-        stop=None)  # LLM for phrase completion
+        res: str = client.completions.create(
+            engine="text-davinci-003",
+            prompt=prompt,
+            temperature=0,
+            max_tokens=400,
+            top_p=1,
+            frequency_penalty=0,
+            presence_penalty=0,
+            stop=None,
+        )  # LLM for phrase completion
         return res["choices"][0]["text"].strip()
 
 
 def update_history(
-        namespace: str,
-        info_file: str,
-        prompt: str,
-        response: str,
-        index: pinecone.Index,
-        character: str = "Player",
+    namespace: str,
+    info_file: str,
+    prompt: str,
+    response: str,
+    index: pinecone.Index,
+    character: str = "Player",
 ) -> None:
     """
     Update the history of the current chat with new responses
@@ -518,14 +522,16 @@ def check_context_for_contradiction(context: list[str], reply: str) -> tuple[str
 
 
 def contradictory_phrases_reply(sentence1: str, sentence2: str) -> str:
-    prompt: str = "distill these sentences down to the fact they convey. ask me in one sentence: " \
-                  "Is {insert first sentence fact} or {insert second sentence fact} true? " \
-                  f"{sentence1}" \
-                  f"{sentence2}" \
-                  f"for example: " \
-                  f"Did you know blackfins live in the east river?" \
-                  f"The west river is home to a large school of blackfish." \
-                  f"Output: Do blackfins live in the east or west river?"
+    prompt: str = (
+        "distill these sentences down to the fact they convey. ask me in one sentence: "
+        "Is {insert first sentence fact} or {insert second sentence fact} true? "
+        f"{sentence1}"
+        f"{sentence2}"
+        f"for example: "
+        f"Did you know blackfins live in the east river?"
+        f"The west river is home to a large school of blackfish."
+        f"Output: Do blackfins live in the east or west river?"
+    )
 
 
 if __name__ == "__main__":
@@ -563,7 +569,7 @@ if __name__ == "__main__":
 
     with open("keys.txt", "r") as key_file:
         api_keys = [key.strip() for key in key_file.readlines()]
-        
+
         pinecone.init(
             api_key=api_keys[1],
             environment=api_keys[2],
