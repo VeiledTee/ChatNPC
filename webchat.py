@@ -206,7 +206,12 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
     """
     if not pinecone.list_indexes():  # check if there are any indexes
         # create index if it doesn't exist
-        pinecone.create_index("thesis-index", dimension=384, pods=1, pod_type="p2.x1")
+        pinecone.create_index(
+            "thesis-index",
+            dimension=384,
+            pods=1,
+            pod_type="p2.x1"
+        )
 
     with open("../Text Summaries/characters.json", "r") as character_info_file:
         character_names = json.load(character_info_file)
@@ -298,7 +303,11 @@ def fact_rephrase(phrase: str) -> list[str]:
     prompt: str = f"Split this phrase into facts: {phrase}"
     msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
 
-    res: Any = client.chat.completions.create(model=TEXT_MODEL, messages=msgs, temperature=0)  # conversation with LLM
+    res: Any = client.chat.completions.create(
+        model=TEXT_MODEL,
+        messages=msgs,
+        temperature=0
+    )  # conversation with LLM
     facts: str = str(res.choices[0].message.content).strip()  # get model response
     return [fact.strip() for fact in facts.split("\n")]
 
@@ -367,16 +376,26 @@ def answer(prompt: str, chat_history: list[dict], namespace: str) -> str:
     msgs: list[dict] = chat_history
     msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
     # return "test"
-    res: Any = client.chat.completions.create(model=TEXT_MODEL, messages=msgs, temperature=0)  # conversation with LLM
+    res: Any = client.chat.completions.create(
+        model=TEXT_MODEL,
+        messages=msgs,
+        temperature=0
+    )  # conversation with LLM
     clean_res: str = str(res.choices[0].message.content).strip()  # get model response
     if AUDIO:
         # generate audio file and save for output
-        audio_reply = client.audio.speech.create(model="tts-1", voice=cur_voice, input=clean_res)
+        audio_reply = client.audio.speech.create(
+            model="tts-1",
+            voice=cur_voice,
+            input=clean_res
+        )
         # Add current time to the filename
         timestamp = datetime.now().strftime("%Y_%m_%d_%H-%M-%S")
         filename = f"{namespace}_{timestamp}.mp3"
 
-        audio_reply.stream_to_file(f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}/{filename}")
+        audio_reply.stream_to_file(
+            f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}/{filename}"
+        )
     return clean_res
 
 
