@@ -1,5 +1,5 @@
 import json
-from typing import List, Any
+from typing import Any
 import os
 from datetime import datetime
 import re
@@ -11,7 +11,7 @@ import pinecone
 import torch
 from sentence_transformers import SentenceTransformer
 
-# load api keys from openai ad pinecone
+# load api keys from openai and pinecone
 with open("../keys.txt", "r") as key_file:
     api_keys = [key.strip() for key in key_file.readlines()]
     client = OpenAI(api_key=api_keys[0])
@@ -58,7 +58,7 @@ def extract_name(file_name: str) -> str:
     return name[:-4]
 
 
-def load_file_information(load_file: str) -> List[str]:
+def load_file_information(load_file: str) -> list[str]:
     """
     Loads data from a file into a list of strings for embedding.
     :param load_file: Path to a file containing the data we want to encrypt.
@@ -90,7 +90,7 @@ def run_query_and_generate_answer(
         "high class": "formal",
     }
 
-    history: List[dict] = []
+    history: list[dict] = []
 
     with open("../Text Summaries/characters.json", "r") as f:
         character_names = json.load(f)
@@ -156,7 +156,7 @@ def run_query_and_generate_answer(
     return generated_answer
 
 
-def generate_conversation(character_file: str, chat_history: list, player: bool, next_phrase: str) -> List[dict]:
+def generate_conversation(character_file: str, chat_history: list, player: bool, next_phrase: str) -> list[dict]:
     """
     Generate a record of the conversation a user has had with the system for feeding into gpt 3.5 turbo
     :param character_file: The file associated with a character's background, not required unless
@@ -182,7 +182,7 @@ def generate_conversation(character_file: str, chat_history: list, player: bool,
     return chat_history
 
 
-def embed(query: str) -> List[float]:
+def embed(query: str) -> list[float]:
     """
     Take a sentence of text and return the 384-dimension embedding
     :param query: The sentence to be embedded
@@ -208,16 +208,22 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
 
     data_file: str = f"../Text Summaries/Summaries/{character_names[character]}.txt"
     namespace: str = extract_name(data_file).lower()
-    data = load_file_information(data_file)
-    # connect to index
-    index = pinecone.Index(index_name)
+    data: list[str] = load_file_information(data_file)
+    data_facts: list[str] = []
+
+    for fact in data:
+        data_facts.extend(fact_rephrase(fact))
+
+    index: pinecone.Index = pinecone.Index(index_name)
 
     if not pinecone.list_indexes():  # check if there are any indexes
         # create index if it doesn't exist
         pinecone.create_index("thesis-index", dimension=384)
+
     total_vectors: int = 0
-    data_vectors = []
-    for i, info in enumerate(data):
+    data_vectors: list = []
+
+    for i, info in enumerate(data_facts):
         if i == 99:  # recommended batch limit of 100 vectors
             index.upsert(vectors=data_vectors, namespace=namespace)
             data_vectors = []
@@ -228,12 +234,13 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
         }
         data_vectors.append(info_dict)
         total_vectors += 1
+
     index.upsert(vectors=data_vectors, namespace=namespace)
 
 
 def upload(
         namespace: str,
-        data: List[str],
+        data: list[str],
         index: pinecone.Index,
         text_type: str = "background",
 ) -> None:
@@ -249,6 +256,14 @@ def upload(
         "vector_count"
     ]  # get num of vectors existing in the namespace
     data_vectors = []
+    if text_type == "response":
+        data_facts: list[str] = []
+
+        for fact in data:
+            data_facts.extend(fact_rephrase(fact))  # make facts out of statements
+
+        data = data_facts
+
     for i, info in enumerate(data):
         if i == 99:  # recommended batch limit of 100 vectors
             index.upsert(vectors=data_vectors, namespace=namespace)
@@ -261,6 +276,29 @@ def upload(
         data_vectors.append(info_dict)
         total_vectors += 1
     index.upsert(vectors=data_vectors, namespace=namespace)  # upsert all remaining data
+
+
+def fact_rephrase(phrase: str) -> list[str]:
+    """
+    Given a sentence, break it up into individual facts.
+    :param phrase: A phrase containing multiple facts to be distilled into separate ones
+    :return: The split-up factual statements
+    """
+    msgs: list[dict] = [{"role": "system",
+                         "content": "You are a writing assistant. "
+                                    "Help me split up the sentences I provide you into facts. "
+                                    "Each fact should be able to stand on it's own."
+                                    "Tell me each fact on a new line, "
+                                    "do not include anything in your response other than the facts."
+                         }]
+    prompt: str = f"Split this phrase into facts: {phrase}"
+    msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
+
+    res: Any = client.chat.completions.create(model=TEXT_MODEL,
+                                              messages=msgs,
+                                              temperature=0)  # conversation with LLM
+    facts: str = str(res.choices[0].message.content).strip()  # get model response
+    return [fact.strip() for fact in facts.split('\n')]
 
 
 def namespace_exist(namespace: str) -> bool:
@@ -285,7 +323,7 @@ def namespace_exist(namespace: str) -> bool:
     return responses["matches"] != []  # if matches comes back empty namespace doesn't exist
 
 
-def prompt_engineer(prompt: str, grammar: str, context: List[str]) -> str:
+def prompt_engineer(prompt: str, grammar: str, context: list[str]) -> str:
     """
     Given a base query and context, format it to be used as prompt
     :param prompt: The prompt query
@@ -306,7 +344,7 @@ def prompt_engineer(prompt: str, grammar: str, context: List[str]) -> str:
     return prompt_start + prompt_middle + prompt_end
 
 
-def answer(prompt: str, chat_history: List[dict], namespace: str, is_chat: bool = True) -> str:
+def answer(prompt: str, chat_history: list[dict], namespace: str, is_chat: bool = True) -> str:
     """
     Using openAI API, respond to the provided prompt
     :param prompt: An engineered prompt to get the language model to respond to
@@ -323,7 +361,7 @@ def answer(prompt: str, chat_history: List[dict], namespace: str, is_chat: bool 
         os.makedirs(f'static/audio/{name_conversion(to_snake=False, to_convert=namespace)}')
 
     if is_chat:
-        msgs: List[dict] = chat_history
+        msgs: list[dict] = chat_history
         msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
         # return "test"
         res: Any = client.chat.completions.create(model=TEXT_MODEL,
