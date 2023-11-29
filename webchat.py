@@ -20,7 +20,6 @@ with open("../keys.txt", "r") as key_file:
         environment=api_keys[2],
     )
 
-VOICE_MODEL: str = ''
 # TEXT_MODEL: str = "gpt-3.5-turbo-0301"
 TEXT_MODEL: str = "gpt-4-1106-preview"
 
@@ -103,9 +102,7 @@ def run_query_and_generate_answer(
     # connect to index
     index = pinecone.Index(index_name)
 
-    history = generate_conversation(
-        data_file, history, True, query
-    )
+    history = generate_conversation(data_file, history, True, query)
     # embed query for processing
     embedded_query = embed(query=query)
     # query Pinecone index and get context for model prompting.
@@ -168,9 +165,7 @@ def generate_conversation(character_file: str, chat_history: list, player: bool,
     """
     if not chat_history:
         with open(character_file) as char_file:
-            background: str = (
-                f"You are {name_conversion(False, extract_name(character_file))}, not an AI language model. Your background:"
-            )
+            background: str = f"You are {name_conversion(False, extract_name(character_file))}, not an AI language model. Your background:"
             for line in char_file.readlines():
                 background += " " + line.strip()
         chat_history.append({"role": "system", "content": background})
@@ -284,21 +279,22 @@ def fact_rephrase(phrase: str) -> list[str]:
     :param phrase: A phrase containing multiple facts to be distilled into separate ones
     :return: The split-up factual statements
     """
-    msgs: list[dict] = [{"role": "system",
-                         "content": "You are a writing assistant. "
-                                    "Help me split up the sentences I provide you into facts. "
-                                    "Each fact should be able to stand on it's own."
-                                    "Tell me each fact on a new line, "
-                                    "do not include anything in your response other than the facts."
-                         }]
+    msgs: list[dict] = [
+        {
+            "role": "system",
+            "content": "You are a writing assistant. "
+                       "Help me split up the sentences I provide you into facts. "
+                       "Each fact should be able to stand on it's own."
+                       "Tell me each fact on a new line, "
+                       "do not include anything in your response other than the facts.",
+        }
+    ]
     prompt: str = f"Split this phrase into facts: {phrase}"
     msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
 
-    res: Any = client.chat.completions.create(model=TEXT_MODEL,
-                                              messages=msgs,
-                                              temperature=0)  # conversation with LLM
+    res: Any = client.chat.completions.create(model=TEXT_MODEL, messages=msgs, temperature=0)  # conversation with LLM
     facts: str = str(res.choices[0].message.content).strip()  # get model response
-    return [fact.strip() for fact in facts.split('\n')]
+    return [fact.strip() for fact in facts.split("\n")]
 
 
 def namespace_exist(namespace: str) -> bool:
@@ -355,41 +351,23 @@ def answer(prompt: str, chat_history: list[dict], namespace: str, is_chat: bool 
     """
     with open("../Text Summaries/text_to_speech_mapping.json", "r") as audio_model_info:
         model_pairings: dict = json.load(audio_model_info)
-        VOICE_MODEL: str = model_pairings[namespace.replace('-', '_')]
+        cur_voice: str = model_pairings[namespace.replace("-", "_")]
 
-    if not os.path.exists(f'static/audio/{name_conversion(to_snake=False, to_convert=namespace)}'):
-        os.makedirs(f'static/audio/{name_conversion(to_snake=False, to_convert=namespace)}')
+    if not os.path.exists(f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}"):
+        os.makedirs(f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}")
 
-    if is_chat:
-        msgs: list[dict] = chat_history
-        msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
-        # return "test"
-        res: Any = client.chat.completions.create(model=TEXT_MODEL,
-                                                  messages=msgs,
-                                                  temperature=0)  # conversation with LLM
-        clean_res: str = str(res.choices[0].message.content).strip()  # get model response
-        audio_reply = client.audio.speech.create(
-            model="tts-1",
-            voice=VOICE_MODEL,
-            input=clean_res
-        )
-        # Add current time to the filename
-        timestamp = datetime.now().strftime("%Y_%m_%d_%H-%M-%S")
-        filename = f"{namespace}_{timestamp}.mp3"
+    msgs: list[dict] = chat_history
+    msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
+    # return "test"
+    res: Any = client.chat.completions.create(model=TEXT_MODEL, messages=msgs, temperature=0)  # conversation with LLM
+    clean_res: str = str(res.choices[0].message.content).strip()  # get model response
+    audio_reply = client.audio.speech.create(model="tts-1", voice=cur_voice, input=clean_res)
+    # Add current time to the filename
+    timestamp = datetime.now().strftime("%Y_%m_%d_%H-%M-%S")
+    filename = f"{namespace}_{timestamp}.mp3"
 
-        audio_reply.stream_to_file(
-            f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}/{filename}")
-        return clean_res
-    else:
-        res: Any = client.completions.create(engine="text-davinci-003",
-                                             prompt=prompt,
-                                             temperature=0,
-                                             max_tokens=400,
-                                             top_p=1,
-                                             frequency_penalty=0,
-                                             presence_penalty=0,
-                                             stop=None)  # LLM for phrase completion
-        return res["choices"][0]["text"].strip()
+    audio_reply.stream_to_file(f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}/{filename}")
+    return clean_res
 
 
 def update_history(
