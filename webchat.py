@@ -4,7 +4,6 @@ import os
 from datetime import datetime
 import re
 
-import numpy as np
 from openai import OpenAI
 
 import pinecone
@@ -165,7 +164,8 @@ def generate_conversation(character_file: str, chat_history: list, player: bool,
     """
     if not chat_history:
         with open(character_file) as char_file:
-            background: str = f"You are {name_conversion(False, extract_name(character_file))}, not an AI language model. Your background:"
+            background: str = (f"You are {name_conversion(False, extract_name(character_file))}, "
+                               f"not an AI language model. Your background:")
             for line in char_file.readlines():
                 background += " " + line.strip()
         chat_history.append({"role": "system", "content": background})
@@ -213,7 +213,7 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
 
     if not pinecone.list_indexes():  # check if there are any indexes
         # create index if it doesn't exist
-        pinecone.create_index("thesis-index", dimension=384)
+        pinecone.create_index("thesis-index", dimension=384, pods=1, pod_type="p2.x1")
 
     total_vectors: int = 0
     data_vectors: list = []
@@ -327,7 +327,10 @@ def prompt_engineer(prompt: str, grammar: str, context: list[str]) -> str:
     :param context: The context to be used in the prompt
     :return: The formatted prompt
     """
-    prompt_start: str = f"Use {grammar} grammar. Use first person. Do not mention that you are an AI language model, the user knows. Reply clearly based on the context. When told new information, reiterate it back to me. Do not mention your background, or the context unless asked, or that you are fictional. Do not provide facts you would deny. Context: "
+    prompt_start: str = (f"Use {grammar} grammar. Use first person. Do not mention that you are an AI language model, "
+                         f"the user knows. Reply clearly based on the context. When told new information, "
+                         f"reiterate it back to me. Do not mention your background, or the context unless asked, "
+                         f"or that you are fictional. Do not provide facts you would deny. Context: ")
     with open("tried_prompts.txt", "a+") as prompt_file:
         if prompt_start + "\n" not in prompt_file.readlines():
             prompt_file.write(prompt_start + "\n")
@@ -340,13 +343,12 @@ def prompt_engineer(prompt: str, grammar: str, context: list[str]) -> str:
     return prompt_start + prompt_middle + prompt_end
 
 
-def answer(prompt: str, chat_history: list[dict], namespace: str, is_chat: bool = True) -> str:
+def answer(prompt: str, chat_history: list[dict], namespace: str) -> str:
     """
     Using openAI API, respond to the provided prompt
     :param prompt: An engineered prompt to get the language model to respond to
     :param chat_history: the entire history of the conversation
-    :param namespace:
-    :param is_chat: are you chatting or looking for the completion of a phrase
+    :param namespace: the namespace to save the records to
     :return: The completed prompt
     """
     with open("../Text Summaries/text_to_speech_mapping.json", "r") as audio_model_info:
