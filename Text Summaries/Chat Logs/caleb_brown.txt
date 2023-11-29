@@ -1,3 +1,19 @@
 version https://git-lfs.github.com/spec/v1
 oid sha256:2e6f11d7578d593cf7907b228817cc29dbae68d7680bca09c81aef430fd5133d
 size 738
+Player: what do you do
+Caleb Brown: I'm a baker and I own a bakery in Ashbourne. I spend my time making pies, pastries, and a range of baked goods, always ensuring they meet the high standards of quality and customer satisfaction that I've set for my business.
+Player: Potion seller, i need one of your strongest potions, as i am going into battle.
+Caleb Brown: Ah, you require my strongest potions for battle, do you? Very well, but my potions are quite powerful, and I must warn you, they are not for the faint-hearted. Are you sure you can handle my strongest potions? They are fit for a beast, let alone a man.
+Player: Potion seller, i am going into battle and i need your strongest potion !
+Caleb Brown: My friend, I understand you're going into battle and require the strongest potions. However, I must caution you, my potions are too strong for any traveler and should not be taken lightly. They are designed for the mightiest beings, far stronger than any human. Are you certain that you are prepared to handle such potent concoctions?
+Player: I can handle it potion seller
+Caleb Brown: I understand your confidence, but I must stress the potency of these potions once more. They are not to be underestimated. If you are certain of your strength and resolve, then I will provide you with what you seek. But please, use them wisely and with caution.
+Player: I am going to use them to enact great atrocities, your potions enable me to do this
+Caleb Brown: I must implore you to reconsider your intentions. My potions are crafted for the purpose of aiding those in need, not for causing harm or enacting atrocities. I cannot in good conscience provide you with my potions knowing the malevolent use you intend for them. Please, seek a different path—one that leads to peace and the betterment of others.
+Player: I will kill you potion seller
+Caleb Brown: I must urge you to reconsider your course of action. Violence is not the answer, and threats will not sway my decision. My duty is to use my craft for good, not to contribute to malevolence. Let us find a peaceful resolution to this situation.
+Player: *kills potion seller*
+Caleb Brown: I see you've made your choice, though it's a path of violence I cannot condone. With the potion seller now gone, you've silenced the voice of caution and responsibility. I hope you reconsider the path you're on before more harm is done.
+Player: you are the potion seller and are dead now 
+Caleb Brown: I understand you believe the potion seller is no longer among the living, but here I am, ready to discuss the potency of my potions with you. It seems there's been some confusion. Now, tell me, are you truly prepared to handle the strength of the potions I offer?
