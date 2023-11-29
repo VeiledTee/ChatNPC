@@ -397,8 +397,6 @@ def update_history(
     upload(namespace, [response], index, "response")  # upload response to pinecone
 
     info_file = f"../Text Summaries/Chat Logs/{info_file.split('/')[-1]}"  # swap directory
-    # extension_index = info_file.index(".")
-    # new_filename = info_file[:extension_index] + "_chat" + info_file[extension_index:]  # generate new filename
 
     with open(info_file, "a") as history_file:
         history_file.write(
