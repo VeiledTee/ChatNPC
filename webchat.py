@@ -207,7 +207,8 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
     if not pinecone.list_indexes():  # check if there are any indexes
         # create index if it doesn't exist
         pinecone.create_index(
-            "thesis-index",
+            name="thesis-index",
+            metric="cosine",
             dimension=384,
             pods=1,
             pod_type="p2.x1"
