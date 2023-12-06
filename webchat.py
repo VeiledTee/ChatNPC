@@ -103,6 +103,70 @@ def run_query_and_generate_answer(
     # connect to index
     index = pinecone.Index(index_name)
 
+    # Contradictory statement kb updates
+    if query.lower() == "bye":
+        return None
+    elif query.lower() == "first":
+        delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
+    elif query.lower() == "second":
+        # retrieve the s1 and s2 records
+        s1_vector = index.fetch(ids=["1"], namespace=namespace)
+        s2_vector = index.fetch(ids=["s2"], namespace=namespace)
+        print(s1_vector)
+        # retrieve copy of s1 stored in main KB
+        responses = index.query(
+            s1_vector["vectors"]["1"]["values"],
+            top_k=1,
+            include_metadata=True,
+            namespace=namespace,
+            filter={
+                "$or": [
+                    {"type": {"$eq": "background"}},
+                    {"type": {"$eq": "response"}},
+                ]
+            },
+        )
+        # delete s1, s2, and s1 copy
+        delete_response = index.delete(ids=["s1", "s2", responses["matches"][0]["id"]], namespace=namespace)
+        # upsert s2 (the true statement) into KB at the index of s1
+        info_dict: dict = {
+            "id": str(responses["matches"][0]["id"]),
+            "metadata": {"text": s2_vector["vectors"]["1"]["metadata"]["text"], "type": "response"},
+            "values": s2_vector["vectors"]["1"]["values"],
+        }  # build dict for upserting
+        index.upsert(vectors=[info_dict], namespace=namespace)
+    elif query.lower() == "both":
+        s2_vector = index.fetch(ids=["s2"], namespace=namespace)
+        delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
+        total_vectors: int = index.describe_index_stats()["namespaces"][namespace][
+            "vector_count"
+        ]  # get num of vectors existing in the namespace
+        # upsert s2 (the true statement) into KB at the index of s1
+        info_dict: dict = {
+            "id": str(total_vectors),
+            "metadata": {"text": s2_vector["vectors"]["1"]["metadata"]["text"], "type": "response"},
+            "values": s2_vector["vectors"]["1"]["values"],
+        }  # build dict for upserting
+        index.upsert(vectors=[info_dict], namespace=namespace)
+    elif query.lower() == "neither":
+        # retrieve the s1 and s2 records
+        s1_vector = index.fetch(ids=["1"], namespace=namespace)
+        # retrieve copy of s1 stored in main KB
+        responses = index.query(
+            s1_vector["vectors"]["1"]["values"],
+            top_k=1,
+            include_metadata=True,
+            namespace=namespace,
+            filter={
+                "$or": [
+                    {"type": {"$eq": "background"}},
+                    {"type": {"$eq": "response"}},
+                ]
+            },
+        )
+        # delete s1, s2, and s1 copy
+        delete_response = index.delete(ids=["s1", "s2", responses["matches"][0]["id"]], namespace=namespace)
+
     history = generate_conversation(data_file, history, True, query)
     # embed query for processing
     embedded_query = embed(query=query)
@@ -242,6 +306,46 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
         total_vectors += 1
 
     index.upsert(vectors=data_vectors, namespace=namespace)
+
+
+def upload_contradiction(
+        namespace: str,
+        data: list[str],
+        index: pinecone.Index,
+        text_type: str = "query",
+) -> None:
+    """
+    'Upserts' text embedding vectors of two contradictory sentences into pinecone DB at indexes s1 and s2
+    :param namespace: the pinecone namespace data is uploaded to
+    :param data: The two contradictory sentences
+    :param index: pinecone index to send data to
+    :param text_type: The type of text we are embedding. Choose "background", "response", or "question".
+        Default value: "background"
+    """
+    total_vectors: int = index.describe_index_stats()["namespaces"][namespace][
+        "vector_count"
+    ]  # get num of vectors existing in the namespace
+    data_vectors = []
+    for i, info in enumerate(data):
+        if i == 99:  # recommended batch limit of 100 vectors
+            index.upsert(vectors=data_vectors, namespace=namespace)
+            data_vectors = []
+        info_dict: dict = {
+            f"id": f"s{i + 1}",
+            "metadata": {"text": info, "type": text_type},
+            "values": embed(info),
+        }  # build dict for upserting
+        data_vectors.append(info_dict)
+        total_vectors += 1
+    index.upsert(vectors=data_vectors, namespace=namespace)  # upsert all remaining data
+
+
+def delete_contradiction(
+        namespace: str,
+        record_ids: list[str],
+        index: pinecone.Index,
+) -> None:
+    delete_response = index.delete(ids=record_ids, namespace=namespace)
 
 
 def upload(
@@ -454,3 +558,27 @@ def name_conversion(to_snake: bool, to_convert: str) -> str:
                 converted += f" {t.capitalize()}"
         converted = re.sub("(-)\s*([a-zA-Z])", lambda p: p.group(0).upper(), converted)
         return converted.replace("_", " ")
+
+
+def are_contradiction(to_check: str, reply: str) -> bool:
+    return True if model.predict(to_check, reply, DEVICE) == 2 else False
+
+
+def check_context_for_contradiction(context: list[str], reply: str) -> tuple[str, str] | None:
+    for phrase in context:
+        if are_contradiction(phrase, reply):
+            return phrase, reply
+    return None
+
+
+def contradictory_phrases_reply(sentence1: str, sentence2: str) -> str:
+    prompt: str = (
+        "distill these sentences down to the fact they convey. ask me in one sentence: "
+        "Is {insert first sentence fact} or {insert second sentence fact} true? "
+        f"{sentence1}"
+        f"{sentence2}"
+        f"for example: "
+        f"Did you know blackfins live in the east river?"
+        f"The west river is home to a large school of blackfish."
+        f"Output: Do blackfins live in the east or west river?"
+    )

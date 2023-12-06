@@ -58,11 +58,11 @@ def load_file_information(load_file: str) -> list[str]:
 
 
 def chat(
-    namespace: str,
-    data: list[str],
-    receiver: str,
-    job: str,
-    status: str,
+        namespace: str,
+        data: list[str],
+        receiver: str,
+        job: str,
+        status: str,
 ) -> None:
     """
     Initiate a conversation with a character. Stops conversation when player says "bye".
@@ -92,14 +92,14 @@ def chat(
 
 
 def run_query_and_generate_answer(
-    namespace: str,
-    data: list[str],
-    background: bool,
-    receiver: str,
-    job: str,
-    status: str,
-    index_name: str = "thesis-index",
-    save: bool = True,
+        namespace: str,
+        data: list[str],
+        background: bool,
+        receiver: str,
+        job: str,
+        status: str,
+        index_name: str = "thesis-index",
+        save: bool = True,
 ) -> str | None:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
@@ -281,9 +281,9 @@ def embed(query: str) -> list[float]:
 
 
 def upload_background(
-    namespace: str,
-    data: list[str],
-    index: pinecone.Index,
+        namespace: str,
+        data: list[str],
+        index: pinecone.Index,
 ) -> None:
     """
     Uploads the background of the character associated with the namespace
@@ -312,10 +312,10 @@ def upload_background(
 
 
 def upload_conversation(
-    namespace: str,
-    data: list[str],
-    index: pinecone.Index,
-    text_type: str = "background",
+        namespace: str,
+        data: list[str],
+        index: pinecone.Index,
+        text_type: str = "background",
 ) -> None:
     """
     'Upserts' text embedding vectors into pinecone DB at the specific index
@@ -344,10 +344,10 @@ def upload_conversation(
 
 
 def upload_contradiction(
-    namespace: str,
-    data: list[str],
-    index: pinecone.Index,
-    text_type: str = "query",
+        namespace: str,
+        data: list[str],
+        index: pinecone.Index,
+        text_type: str = "query",
 ) -> None:
     """
     'Upserts' text embedding vectors of two contradictory sentences into pinecone DB at indexes s1 and s2
@@ -376,9 +376,9 @@ def upload_contradiction(
 
 
 def delete_contradiction(
-    namespace: str,
-    record_ids: list[str],
-    index: pinecone.Index,
+        namespace: str,
+        record_ids: list[str],
+        index: pinecone.Index,
 ) -> None:
     delete_response = index.delete(ids=record_ids, namespace=namespace)
 
@@ -459,12 +459,12 @@ def answer(prompt: str, chat_history: list[dict], is_chat: bool = True) -> str:
 
 
 def update_history(
-    namespace: str,
-    info_file: str,
-    prompt: str,
-    response: str,
-    index: pinecone.Index,
-    character: str = "Player",
+        namespace: str,
+        info_file: str,
+        prompt: str,
+        response: str,
+        index: pinecone.Index,
+        character: str = "Player",
 ) -> None:
     """
     Update the history of the current chat with new responses
@@ -508,30 +508,6 @@ def name_conversion(to_snake: bool, to_convert: str) -> str:
             else:
                 converted += f" {t.capitalize()}"
         return converted
-
-
-def are_contradiction(to_check: str, reply: str) -> bool:
-    return True if model.predict(to_check, reply, DEVICE) == 2 else False
-
-
-def check_context_for_contradiction(context: list[str], reply: str) -> tuple[str, str] | None:
-    for phrase in context:
-        if are_contradiction(phrase, reply):
-            return phrase, reply
-    return None
-
-
-def contradictory_phrases_reply(sentence1: str, sentence2: str) -> str:
-    prompt: str = (
-        "distill these sentences down to the fact they convey. ask me in one sentence: "
-        "Is {insert first sentence fact} or {insert second sentence fact} true? "
-        f"{sentence1}"
-        f"{sentence2}"
-        f"for example: "
-        f"Did you know blackfins live in the east river?"
-        f"The west river is home to a large school of blackfish."
-        f"Output: Do blackfins live in the east or west river?"
-    )
 
 
 if __name__ == "__main__":
