@@ -74,7 +74,7 @@ def run_query_and_generate_answer(
         receiver: str,
         index_name: str = "thesis-index",
         save: bool = True,
-) -> str | None:
+) -> str:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
     :param query: The query to be run on the index.
@@ -104,7 +104,7 @@ def run_query_and_generate_answer(
 
     # Contradictory statement kb updates
     if query.lower() == "bye":
-        return None
+        return "Goodbye!"
     elif query.lower() == "first":
         delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
     elif query.lower() == "second":
