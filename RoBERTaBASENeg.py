@@ -18,13 +18,13 @@ class RoBERTaBNeg:
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
 
     def fit(
-            self,
-            training_data: pd.DataFrame,
-            validation_data: pd.DataFrame,
-            batch_size: int,
-            num_epochs: int,
-            device: str,
-            verbose: bool = False,
+        self,
+        training_data: pd.DataFrame,
+        validation_data: pd.DataFrame,
+        batch_size: int,
+        num_epochs: int,
+        device: str,
+        verbose: bool = False,
     ) -> None:
         self.model.to(device)
 
@@ -52,16 +52,16 @@ class RoBERTaBNeg:
             all_predicted_labels: list = []
             for i in range(0, len(training_data), batch_size):
                 batch_sentences1 = [
-                    str(sentence) for sentence in training_data["sentence1"].values.tolist()[i: i + batch_size]
+                    str(sentence) for sentence in training_data["sentence1"].values.tolist()[i : i + batch_size]
                 ]
                 batch_sentences2 = [
-                    str(sentence) for sentence in training_data["sentence2"].values.tolist()[i: i + batch_size]
+                    str(sentence) for sentence in training_data["sentence2"].values.tolist()[i : i + batch_size]
                 ]
                 batch_negation = torch.tensor(
-                    training_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
+                    training_data["negation"].values.tolist()[i : i + batch_size], dtype=torch.long
                 ).to(device)
                 batch_labels = torch.tensor(
-                    training_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
+                    training_data["label"].values.tolist()[i : i + batch_size], dtype=torch.long
                 ).to(device)
 
                 # Tokenize and encode the batch
@@ -117,16 +117,16 @@ class RoBERTaBNeg:
             with torch.no_grad():
                 for i in range(0, len(validation_data), batch_size):
                     batch_sentences1 = [
-                        str(sentence) for sentence in validation_data["sentence1"].values.tolist()[i: i + batch_size]
+                        str(sentence) for sentence in validation_data["sentence1"].values.tolist()[i : i + batch_size]
                     ]
                     batch_sentences2 = [
-                        str(sentence) for sentence in validation_data["sentence2"].values.tolist()[i: i + batch_size]
+                        str(sentence) for sentence in validation_data["sentence2"].values.tolist()[i : i + batch_size]
                     ]
                     batch_negation = torch.tensor(
-                        validation_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
+                        validation_data["negation"].values.tolist()[i : i + batch_size], dtype=torch.long
                     ).to(device)
                     batch_labels = torch.tensor(
-                        validation_data["label"].values.tolist()[i: i + batch_size], dtype=torch.long
+                        validation_data["label"].values.tolist()[i : i + batch_size], dtype=torch.long
                     ).to(device)
 
                     # Tokenize and encode the batch
@@ -186,14 +186,14 @@ class RoBERTaBNeg:
         with torch.no_grad():
             for i in range(0, len(test_data), batch_size):
                 batch_sentences1 = [
-                    str(sentence) for sentence in test_data["sentence1"].values.tolist()[i: i + batch_size]
+                    str(sentence) for sentence in test_data["sentence1"].values.tolist()[i : i + batch_size]
                 ]
                 batch_sentences2 = [
-                    str(sentence) for sentence in test_data["sentence2"].values.tolist()[i: i + batch_size]
+                    str(sentence) for sentence in test_data["sentence2"].values.tolist()[i : i + batch_size]
                 ]
 
                 batch_negation = torch.tensor(
-                    test_data["negation"].values.tolist()[i: i + batch_size], dtype=torch.long
+                    test_data["negation"].values.tolist()[i : i + batch_size], dtype=torch.long
                 ).to(device)
 
                 # Tokenize and encode the batch
@@ -270,57 +270,67 @@ if __name__ == "__main__":
             #                                                   label_mapping(pd.read_csv("Data/SemEval2014T1/test.csv")),
             #                                               ]).reset_index()
             #                                               ],
-            ["Sem + SNLI\nSem + SNLI\nSem",
-             pd.concat(
-                 [
-                     label_mapping(
-                         pd.read_csv("Data/SemEval2014T1/train.csv")),
-                     label_mapping(pd.read_csv("Data/SNLI/train.csv")),
-                 ]).reset_index(), pd.concat(
-                [
-                    label_mapping(pd.read_csv("Data/SemEval2014T1/valid.csv")),
-                    label_mapping(pd.read_csv("Data/SNLI/valid.csv")),
-                ]
-            ).reset_index(), pd.concat(
-                [
-                    label_mapping(pd.read_csv("Data/SemEval2014T1/test.csv")),
-                ]
-            ).reset_index()
-             ], ["Sem + MNLI\nSem + SNLI + Match\nSem",
-                 pd.concat([
-                     label_mapping(
-                         pd.read_csv("Data/SemEval2014T1/train.csv")),
-                     label_mapping(
-                         pd.read_csv("Data/MultiNLI/train.csv")),
-                 ]).reset_index(),
-                 pd.concat([
-                     label_mapping(
-                         pd.read_csv("Data/SemEval2014T1/valid.csv")),
-                     label_mapping(
-                         pd.read_csv("Data/MultiNLI/match.csv")),
-                 ]).reset_index(),
-                 pd.concat([
-                     label_mapping(
-                         pd.read_csv("Data/SemEval2014T1/test.csv")),
-                 ]).reset_index()
-                 ],
-            ["Sem + MNLI\nSem + SNLI + Mismatch\nSem",
-             pd.concat([
-                 label_mapping(
-                     pd.read_csv("Data/SemEval2014T1/train.csv")),
-                 label_mapping(pd.read_csv("Data/MultiNLI/train.csv")),
-             ]).reset_index(),
-             pd.concat([
-                 label_mapping(
-                     pd.read_csv("Data/SemEval2014T1/valid.csv")),
-                 label_mapping(pd.read_csv("Data/MultiNLI/mismatch.csv")),
-             ]).reset_index(),
-             pd.concat([
-                 label_mapping(pd.read_csv("Data/SemEval2014T1/test.csv")),
-             ]).reset_index()
-             ]
+            [
+                "Sem + SNLI\nSem + SNLI\nSem",
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/train.csv")),
+                        label_mapping(pd.read_csv("Data/SNLI/train.csv")),
+                    ]
+                ).reset_index(),
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/valid.csv")),
+                        label_mapping(pd.read_csv("Data/SNLI/valid.csv")),
+                    ]
+                ).reset_index(),
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/test.csv")),
+                    ]
+                ).reset_index(),
+            ],
+            [
+                "Sem + MNLI\nSem + SNLI + Match\nSem",
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/train.csv")),
+                        label_mapping(pd.read_csv("Data/MultiNLI/train.csv")),
+                    ]
+                ).reset_index(),
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/valid.csv")),
+                        label_mapping(pd.read_csv("Data/MultiNLI/match.csv")),
+                    ]
+                ).reset_index(),
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/test.csv")),
+                    ]
+                ).reset_index(),
+            ],
+            [
+                "Sem + MNLI\nSem + SNLI + Mismatch\nSem",
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/train.csv")),
+                        label_mapping(pd.read_csv("Data/MultiNLI/train.csv")),
+                    ]
+                ).reset_index(),
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/valid.csv")),
+                        label_mapping(pd.read_csv("Data/MultiNLI/mismatch.csv")),
+                    ]
+                ).reset_index(),
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/test.csv")),
+                    ]
+                ).reset_index(),
+            ],
         ]:
-
             # train_df = pd.concat(
             #     [
             #         label_mapping(pd.read_csv("Data/SemEval2014T1/train.csv")),

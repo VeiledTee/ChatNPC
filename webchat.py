@@ -1,13 +1,12 @@
 import json
-from typing import Any
 import os
-from datetime import datetime
 import re
-
-from openai import OpenAI
+from datetime import datetime
+from typing import Any
 
 import pinecone
 import torch
+from openai import OpenAI
 from sentence_transformers import SentenceTransformer
 
 AUDIO: bool = False
@@ -212,11 +211,7 @@ def run_query_and_generate_answer(
     )
 
     update_history(
-        namespace=namespace,
-        info_file=data_file,
-        prompt=query,
-        response=generated_answer.split(": ")[-1],
-        index=index
+        namespace=namespace, info_file=data_file, prompt=query, response=generated_answer.split(": ")[-1], index=index
     )
 
     return generated_answer
@@ -234,8 +229,10 @@ def generate_conversation(character_file: str, chat_history: list, player: bool,
     """
     if not chat_history:
         with open(character_file) as char_file:
-            background: str = (f"You are {name_conversion(False, extract_name(character_file))}, "
-                               f"not an AI language model. Your background:")
+            background: str = (
+                f"You are {name_conversion(False, extract_name(character_file))}, "
+                f"not an AI language model. Your background:"
+            )
             for line in char_file.readlines():
                 background += " " + line.strip()
         chat_history.append({"role": "system", "content": background})
@@ -270,12 +267,7 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
     """
     if not pinecone.list_indexes():  # check if there are any indexes
         # create index if it doesn't exist
-        pinecone.create_index(
-            "thesis-index",
-            dimension=384,
-            pods=1,
-            pod_type="p2.x1"
-        )
+        pinecone.create_index("thesis-index", dimension=384, pods=1, pod_type="p2.x1")
 
     with open("../Text Summaries/characters.json", "r") as character_info_file:
         character_names = json.load(character_info_file)
@@ -407,11 +399,7 @@ def fact_rephrase(phrase: str) -> list[str]:
     prompt: str = f"Split this phrase into facts: {phrase}"
     msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
 
-    res: Any = client.chat.completions.create(
-        model=TEXT_MODEL,
-        messages=msgs,
-        temperature=0
-    )  # conversation with LLM
+    res: Any = client.chat.completions.create(model=TEXT_MODEL, messages=msgs, temperature=0)  # conversation with LLM
     facts: str = str(res.choices[0].message.content).strip()  # get model response
     return [fact.strip() for fact in facts.split("\n")]
 
@@ -446,10 +434,12 @@ def prompt_engineer(prompt: str, grammar: str, context: list[str]) -> str:
     :param context: The context to be used in the prompt
     :return: The formatted prompt
     """
-    prompt_start: str = (f"Use {grammar} grammar. Use first person. Do not mention that you are an AI language model, "
-                         f"the user knows. Reply clearly based on the context. When told new information, "
-                         f"reiterate it back to me. Do not mention your background, or the context unless asked, "
-                         f"or that you are fictional. Do not provide facts you would deny. Context: ")
+    prompt_start: str = (
+        f"Use {grammar} grammar. Use first person. Do not mention that you are an AI language model, "
+        f"the user knows. Reply clearly based on the context. When told new information, "
+        f"reiterate it back to me. Do not mention your background, or the context unless asked, "
+        f"or that you are fictional. Do not provide facts you would deny. Context: "
+    )
     with open("tried_prompts.txt", "a+") as prompt_file:
         if prompt_start + "\n" not in prompt_file.readlines():
             prompt_file.write(prompt_start + "\n")
@@ -480,26 +470,16 @@ def answer(prompt: str, chat_history: list[dict], namespace: str) -> str:
     msgs: list[dict] = chat_history
     msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
     # return "test"
-    res: Any = client.chat.completions.create(
-        model=TEXT_MODEL,
-        messages=msgs,
-        temperature=0
-    )  # conversation with LLM
+    res: Any = client.chat.completions.create(model=TEXT_MODEL, messages=msgs, temperature=0)  # conversation with LLM
     clean_res: str = str(res.choices[0].message.content).strip()  # get model response
     if AUDIO:
         # generate audio file and save for output
-        audio_reply = client.audio.speech.create(
-            model="tts-1",
-            voice=cur_voice,
-            input=clean_res
-        )
+        audio_reply = client.audio.speech.create(model="tts-1", voice=cur_voice, input=clean_res)
         # Add current time to the filename
         timestamp = datetime.now().strftime("%Y_%m_%d_%H-%M-%S")
         filename = f"{namespace}_{timestamp}.mp3"
 
-        audio_reply.stream_to_file(
-            f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}/{filename}"
-        )
+        audio_reply.stream_to_file(f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}/{filename}")
     return clean_res
 
 
@@ -527,8 +507,7 @@ def update_history(
 
     with open(info_file, "a") as history_file:
         history_file.write(
-            f"{character}: {prompt}\n"
-            f"{name_conversion(False, namespace).replace('-', ' ')}: {response}\n"
+            f"{character}: {prompt}\n" f"{name_conversion(False, namespace).replace('-', ' ')}: {response}\n"
         )  # save chat logs
 
 
