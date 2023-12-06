@@ -6,7 +6,7 @@ import torch
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-from clean_dataset import count_negations, create_subset_with_ratio
+from clean_dataset import count_negations, create_subset_with_ratio, label_mapping
 from variables import DEVICE
 
 
@@ -232,29 +232,124 @@ if __name__ == "__main__":
     BATCH_SIZE: int = 16
     NUM_CLASSES: int = 3
     for name, model in [("RoBERTaBNeg", RoBERTaBNeg(NUM_CLASSES))]:
-        for dataset_percentage in [0.1]:
-            print(name)
-            acc = []
-            f1 = []
-            precision = []
-            recall = []
-            # train_df = pd.read_csv("Data/SemEval2014T1/train_cleaned.csv")
-            # valid_df = pd.read_csv("Data/SemEval2014T1/valid_cleaned.csv")
-            test_df = pd.read_csv("Data/SemEval2014T1/test_cleaned.csv")
-            train_df = pd.concat(
-                [
-                    pd.read_csv("Data/SemEval2014T1/train_cleaned.csv"),
-                    create_subset_with_ratio(
-                        pd.read_csv("Data/SNLI/train_cleaned.csv"), dataset_percentage, "gold_label"
-                    ),
-                ]
-            ).reset_index()
-            valid_df = pd.concat(
-                [pd.read_csv("Data/SemEval2014T1/valid_cleaned.csv"), pd.read_csv("Data/SNLI/valid_cleaned.csv")]
-            ).reset_index()
-            test_df = pd.concat(
-                [pd.read_csv("Data/SemEval2014T1/test_cleaned.csv"), pd.read_csv("Data/SNLI/test_cleaned.csv")]
-            ).reset_index()
+        print(name)
+        acc = []
+        f1 = []
+        precision = []
+        recall = []
+
+        for description, train_df, valid_df, test_df in [
+            # ["Sem + SNLI + MNLI\nSem + SNLI + Match\nSem", pd.concat(
+            #     [
+            #         label_mapping(pd.read_csv("Data/SemEval2014T1/train.csv")),
+            #         label_mapping(pd.read_csv("Data/SNLI/train.csv")),
+            #         label_mapping(pd.read_csv("Data/MultiNLI/train.csv")),
+            #     ]).reset_index(), pd.concat(
+            # [
+            #     label_mapping(pd.read_csv("Data/SemEval2014T1/valid.csv")),
+            #     label_mapping(pd.read_csv("Data/SNLI/valid.csv")),
+            #     label_mapping(pd.read_csv("Data/MultiNLI/match.csv")),
+            # ]).reset_index(), pd.concat(
+            # [
+            #     label_mapping(pd.read_csv("Data/SemEval2014T1/test.csv")),
+            # ]).reset_index()],
+            #                                              ["Sem + SNLI + MNLI\nSem + SNLI + Mismatch\nSem",
+            #                                               pd.concat([
+            #                                                   label_mapping(
+            #                                                       pd.read_csv("Data/SemEval2014T1/train.csv")),
+            #                                                   label_mapping(pd.read_csv("Data/SNLI/train.csv")),
+            #                                                   label_mapping(pd.read_csv("Data/MultiNLI/train.csv")),
+            #                                               ]).reset_index(),
+            #                                               pd.concat([
+            #                                                   label_mapping(
+            #                                                       pd.read_csv("Data/SemEval2014T1/valid.csv")),
+            #                                                   label_mapping(pd.read_csv("Data/SNLI/valid.csv")),
+            #                                                   label_mapping(pd.read_csv("Data/MultiNLI/mismatch.csv")),
+            #                                               ]).reset_index(),
+            #                                               pd.concat([
+            #                                                   label_mapping(pd.read_csv("Data/SemEval2014T1/test.csv")),
+            #                                               ]).reset_index()
+            #                                               ],
+            [
+                "Sem + SNLI\nSem + SNLI\nSem",
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/train.csv")),
+                        label_mapping(pd.read_csv("Data/SNLI/train.csv")),
+                    ]
+                ).reset_index(),
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/valid.csv")),
+                        label_mapping(pd.read_csv("Data/SNLI/valid.csv")),
+                    ]
+                ).reset_index(),
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/test.csv")),
+                    ]
+                ).reset_index(),
+            ],
+            [
+                "Sem + MNLI\nSem + SNLI + Match\nSem",
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/train.csv")),
+                        label_mapping(pd.read_csv("Data/MultiNLI/train.csv")),
+                    ]
+                ).reset_index(),
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/valid.csv")),
+                        label_mapping(pd.read_csv("Data/MultiNLI/match.csv")),
+                    ]
+                ).reset_index(),
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/test.csv")),
+                    ]
+                ).reset_index(),
+            ],
+            [
+                "Sem + MNLI\nSem + SNLI + Mismatch\nSem",
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/train.csv")),
+                        label_mapping(pd.read_csv("Data/MultiNLI/train.csv")),
+                    ]
+                ).reset_index(),
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/valid.csv")),
+                        label_mapping(pd.read_csv("Data/MultiNLI/mismatch.csv")),
+                    ]
+                ).reset_index(),
+                pd.concat(
+                    [
+                        label_mapping(pd.read_csv("Data/SemEval2014T1/test.csv")),
+                    ]
+                ).reset_index(),
+            ],
+        ]:
+            # train_df = pd.concat(
+            #     [
+            #         label_mapping(pd.read_csv("Data/SemEval2014T1/train.csv")),
+            #         label_mapping(pd.read_csv("Data/SNLI/train.csv")),
+            #         label_mapping(pd.read_csv("Data/MultiNLI/train.csv")),
+            #     ]
+            # ).reset_index()
+            # valid_df = pd.concat(
+            #     [
+            #         label_mapping(pd.read_csv("Data/SemEval2014T1/train.csv")),
+            #     ]
+            # ).reset_index()
+            # test_df = pd.concat(
+            #     [
+            #         label_mapping(pd.read_csv("Data/SemEval2014T1/test.csv")),
+            #         label_mapping(pd.read_csv("Data/SNLI/test.csv")),
+            #         label_mapping(pd.read_csv("Data/MultiNLI/test_match.csv.csv")),
+            #     ]
+            # ).reset_index()
             # test_df = pd.read_csv("Data/SNLI/test_cleaned.csv")
             # train_df = pd.read_csv("Data/SemEval2014T1/train_cleaned_ph.csv")
             # valid_df = pd.read_csv("Data/SemEval2014T1/valid_cleaned_ph.csv")
@@ -266,7 +361,8 @@ if __name__ == "__main__":
             #     to_col='label')
             # valid_df = label_mapping(pd.read_csv(f"Data/MultiNLI/{dataset}_cleaned.csv"))
             # test_df = pd.read_csv(f"Data/MultiNLI/test_{dataset}_cleaned.csv")
-            for i in range(3):
+            print(description)
+            for i in range(1):
                 sentenceBERT = model
                 start_time = time.time()
                 sentenceBERT.fit(
@@ -295,7 +391,7 @@ if __name__ == "__main__":
                     recall.append(test_recall)
                 print(f"Iteration {i + 1} took {elapsed_time:.2f} seconds")
 
-            print(f"\t{name} Average | {dataset_percentage * 100}% of original training data")
+            print(f"\t{name} Average")
             print(
                 f"{100 * sum(acc) / len(acc):.2f}% | F1: {sum(f1) / len(f1):.4f} | "
                 f"P: {sum(precision) / len(precision):.4f} | R: {sum(recall) / len(recall):.4f}"
