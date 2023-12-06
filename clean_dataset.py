@@ -11,6 +11,14 @@ import csv
 def label_mapping(
     df: pd.DataFrame, from_col: str = "gold_label", to_col: str = "label", str_to_int: bool = True
 ) -> pd.DataFrame:
+    """
+    Map natural language labels in a dataset to integers
+    :param df: Dataframe containing the labels that needs to be mapped
+    :param from_col: The column containing the original labels
+    :param to_col: The new column to save integer labels to
+    :param str_to_int: The direction to map. When True, converts sting labels to integer ones. When False, integer labels are converted to string labels.
+    :return: The dataframe with an extra column added for the new labels
+    """
     if str_to_int:
         mapping = {
             "neutral": 0,
