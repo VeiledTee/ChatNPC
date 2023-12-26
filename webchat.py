@@ -105,66 +105,6 @@ def run_query_and_generate_answer(
     # Contradictory statement kb updates
     if query.lower() == "bye":
         return "Goodbye!"
-    elif query.lower() == "first":
-        delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
-    elif query.lower() == "second":
-        # retrieve the s1 and s2 records
-        s1_vector = index.fetch(ids=["1"], namespace=namespace)
-        s2_vector = index.fetch(ids=["s2"], namespace=namespace)
-        print(s1_vector)
-        # retrieve copy of s1 stored in main KB
-        responses = index.query(
-            s1_vector["vectors"]["1"]["values"],
-            top_k=1,
-            include_metadata=True,
-            namespace=namespace,
-            filter={
-                "$or": [
-                    {"type": {"$eq": "background"}},
-                    {"type": {"$eq": "response"}},
-                ]
-            },
-        )
-        # delete s1, s2, and s1 copy
-        delete_response = index.delete(ids=["s1", "s2", responses["matches"][0]["id"]], namespace=namespace)
-        # upsert s2 (the true statement) into KB at the index of s1
-        info_dict: dict = {
-            "id": str(responses["matches"][0]["id"]),
-            "metadata": {"text": s2_vector["vectors"]["1"]["metadata"]["text"], "type": "response"},
-            "values": s2_vector["vectors"]["1"]["values"],
-        }  # build dict for upserting
-        index.upsert(vectors=[info_dict], namespace=namespace)
-    elif query.lower() == "both":
-        s2_vector = index.fetch(ids=["s2"], namespace=namespace)
-        delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
-        total_vectors: int = index.describe_index_stats()["namespaces"][namespace][
-            "vector_count"
-        ]  # get num of vectors existing in the namespace
-        # upsert s2 (the true statement) into KB at the index of s1
-        info_dict: dict = {
-            "id": str(total_vectors),
-            "metadata": {"text": s2_vector["vectors"]["1"]["metadata"]["text"], "type": "response"},
-            "values": s2_vector["vectors"]["1"]["values"],
-        }  # build dict for upserting
-        index.upsert(vectors=[info_dict], namespace=namespace)
-    elif query.lower() == "neither":
-        # retrieve the s1 and s2 records
-        s1_vector = index.fetch(ids=["1"], namespace=namespace)
-        # retrieve copy of s1 stored in main KB
-        responses = index.query(
-            s1_vector["vectors"]["1"]["values"],
-            top_k=1,
-            include_metadata=True,
-            namespace=namespace,
-            filter={
-                "$or": [
-                    {"type": {"$eq": "background"}},
-                    {"type": {"$eq": "response"}},
-                ]
-            },
-        )
-        # delete s1, s2, and s1 copy
-        delete_response = index.delete(ids=["s1", "s2", responses["matches"][0]["id"]], namespace=namespace)
 
     history = generate_conversation(data_file, history, True, query)
     # embed query for processing
@@ -215,6 +155,79 @@ def run_query_and_generate_answer(
     )
 
     return generated_answer
+
+
+def handle_contradiction(query: str, index: pinecone.Index, namespace: str) -> None:
+    """
+    This function deals with contradictory facts in the context and query.
+    When the first fact is identified as false, remove it from the KB and replace with the second
+    When the second fact is identified as false, ignore it
+    When both facts are identified as true, store them as separate new facts in the KB
+    When both facts are identified as false, remove the frist from the KB and ignore the second
+    :param query: The query proposed to the system by the player
+    :param index: The Pinecone index
+    :param namespace: Namespace of the character user is speaking to
+    :return: None, KB is updated within the function
+    """
+    # retrieve the s1 and s2 records
+    s1_vector = index.fetch(ids=["1"], namespace=namespace)
+    s2_vector = index.fetch(ids=["s2"], namespace=namespace)
+    if query.lower() == "first":
+        delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
+    elif query.lower() == "second":
+        print(s1_vector)
+        # retrieve copy of s1 stored in main KB
+        responses = index.query(
+            s1_vector["vectors"]["1"]["values"],
+            top_k=1,
+            include_metadata=True,
+            namespace=namespace,
+            filter={
+                "$or": [
+                    {"type": {"$eq": "background"}},
+                    {"type": {"$eq": "response"}},
+                ]
+            },
+        )
+        # delete s1, s2, and s1 copy
+        delete_response = index.delete(ids=["s1", "s2", responses["matches"][0]["id"]], namespace=namespace)
+        # upsert s2 (the true statement) into KB at the index of s1
+        info_dict: dict = {
+            "id": str(responses["matches"][0]["id"]),
+            "metadata": {"text": s2_vector["vectors"]["1"]["metadata"]["text"], "type": "response"},
+            "values": s2_vector["vectors"]["1"]["values"],
+        }  # build dict for upserting
+        index.upsert(vectors=[info_dict], namespace=namespace)
+    elif query.lower() == "both":
+        delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
+        total_vectors: int = index.describe_index_stats()["namespaces"][namespace][
+            "vector_count"
+        ]  # get num of vectors existing in the namespace
+        # upsert s2 (the true statement) into KB at the index of s1
+        info_dict: dict = {
+            "id": str(total_vectors),
+            "metadata": {"text": s2_vector["vectors"]["1"]["metadata"]["text"], "type": "response"},
+            "values": s2_vector["vectors"]["1"]["values"],
+        }  # build dict for upserting
+        index.upsert(vectors=[info_dict], namespace=namespace)
+    elif query.lower() == "neither":
+        # retrieve the s1 and s2 records
+        s1_vector = index.fetch(ids=["1"], namespace=namespace)
+        # retrieve copy of s1 stored in main KB
+        responses = index.query(
+            s1_vector["vectors"]["1"]["values"],
+            top_k=1,
+            include_metadata=True,
+            namespace=namespace,
+            filter={
+                "$or": [
+                    {"type": {"$eq": "background"}},
+                    {"type": {"$eq": "response"}},
+                ]
+            },
+        )
+        # delete s1, s2, and s1 copy
+        delete_response = index.delete(ids=["s1", "s2", responses["matches"][0]["id"]], namespace=namespace)
 
 
 def generate_conversation(character_file: str, chat_history: list, player: bool, next_phrase: str) -> list[dict]:
