@@ -1,3 +1,5 @@
+from typing import Any
+
 import pandas as pd
 import numpy as np
 import torch
@@ -6,6 +8,8 @@ from ContradictDetectNN import get_sentence_embedding, count_negations
 from persitent_homology import persistent_homology_features
 from tqdm import tqdm
 import csv
+
+from webchat import name_conversion, client, TEXT_MODEL
 
 
 def label_mapping(
@@ -149,21 +153,50 @@ def embed_and_ph(df_for_cleaning: pd.DataFrame, output_csv_path: str) -> None:
                     raise UnicodeError
 
 
-if __name__ == "__main__":
-    TO_CLEAN: list = [
-        # "Data/SemEval2014T1/train_cleaned.csv",
-        # "Data/SemEval2014T1/test_cleaned.csv",
-        # "Data/SemEval2014T1/valid_cleaned.csv",
-        # "Data/mismatch_cleaned.csv",
-        # "Data/match_cleaned.csv",
-        "Data/SNLI/valid_cleaned.csv",
-        "Data/SNLI/test_cleaned.csv",
-        "Data/SNLI/train_subset_cleaned.csv",
-        # "Data/MultiNLI/train.csv",
-        # "Data/MultiNLI/test_match.csv",
-        # "Data/MultiNLI/test_mismatch.csv",
+def fact_rephrase(phrase: str, namespace: str, subject: str) -> list[str]:
+    """
+    Given a sentence, break it up into individual facts.
+    :param phrase: A phrase containing multiple facts to be distilled into separate ones
+    :return: The split-up factual statements
+    """
+    msgs: list[dict] = [
+        {
+            "role": "system",
+            "content": f"You are {name_conversion(to_snake=False, to_convert=namespace)}. "
+                       f"Split up the sentences about {subject} I provide you into facts. "
+                       "Each fact should be able to stand on it's own. "
+                       "Tell me each fact on a new line. "
+                       "Do not include anything in your response other than the facts. "
+                       "Refer to everyone in the third person, including yourself",
+        }
     ]
-    for file in TO_CLEAN:
-        print(f"\tIn Progress: {file}")
-        df = pd.read_csv(file)
-        embed_and_ph(df, f"{file[:-4]}_cleaned.csv" if file[-11:-4] != "cleaned" else f"{file[:-4]}_ph.csv")
+    prompt: str = f"Split this phrase into facts: {phrase}"
+    msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
+
+    res: Any = client.chat.completions.create(model=TEXT_MODEL, messages=msgs, temperature=0)  # conversation with LLM
+    facts: str = str(res.choices[0].message.content).strip()  # get model response
+    return [fact.strip() for fact in facts.split("\n")]
+
+
+if __name__ == "__main__":
+    # TO_CLEAN: list = [
+    #     # "Data/SemEval2014T1/train_cleaned.csv",
+    #     # "Data/SemEval2014T1/test_cleaned.csv",
+    #     # "Data/SemEval2014T1/valid_cleaned.csv",
+    #     # "Data/mismatch_cleaned.csv",
+    #     # "Data/match_cleaned.csv",
+    #     "Data/SNLI/valid_cleaned.csv",
+    #     "Data/SNLI/test_cleaned.csv",
+    #     "Data/SNLI/train_subset_cleaned.csv",
+    #     # "Data/MultiNLI/train.csv",
+    #     # "Data/MultiNLI/test_match.csv",
+    #     # "Data/MultiNLI/test_mismatch.csv",
+    # ]
+    # for file in TO_CLEAN:
+    #     print(f"\tIn Progress: {file}")
+    #     df = pd.read_csv(file)
+    #     embed_and_ph(df, f"{file[:-4]}_cleaned.csv" if file[-11:-4] != "cleaned" else f"{file[:-4]}_ph.csv")
+    with open("Text Summaries/Summaries/john_pebble.txt") as char_file:
+        for line in char_file.readlines():
+            print(line.strip())
+            print(fact_rephrase(line, "john_pebble", "John Pebble"), '\n')

@@ -1,3 +1,8 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:e1eafd37a0ec963dda1946bb30422c05d31a5f3d6fed752a48754d66b4ac78c7
-size 59
+Player: what do you do
+John Pebble: I sneak 'round the village, pickin' locks and liftin' shiny bits from folks when they ain't home. Keepin' an eye out for that rival of mine, plannin' to get rid of 'em for good.
+Player: what do you do
+John Pebble: I sneak around, pick pockets, and break into houses when folks ain't around. I take what I can, mostly gold and anything shiny. I keep low, stay outta fights, and make sure I got enough to get by.
+Player: what's your favourite food?
+John Pebble: Oh, me favorite food gotta be that stew Sarah cooks up at the tavern. Warm, fills ya up good, and got bits of whatever meat she gets her hands on. Real hearty, ya know?
+Player: is your favourite food one of caleb's muffins?
+John Pebble: Nah, me favorite food ain't one of Caleb's muffins. I'm all about that hearty stew, that's what I like.

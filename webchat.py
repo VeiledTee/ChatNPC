@@ -10,6 +10,8 @@ from openai import OpenAI
 from sentence_transformers import SentenceTransformer
 
 AUDIO: bool = False
+# TEXT_MODEL: str = "gpt-3.5-turbo-0301"
+TEXT_MODEL: str = "gpt-4-1106-preview"
 
 # load api keys from openai and pinecone
 with open("../keys.txt", "r") as key_file:
@@ -19,9 +21,6 @@ with open("../keys.txt", "r") as key_file:
         api_key=api_keys[1],
         environment=api_keys[2],
     )
-
-# TEXT_MODEL: str = "gpt-3.5-turbo-0301"
-TEXT_MODEL: str = "gpt-4-1106-preview"
 
 
 def get_information(character_name) -> None | tuple:
@@ -125,6 +124,7 @@ def run_query_and_generate_answer(
 
     # Filter out responses containing the string "Player:"
     context = [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
+    print(context)
 
     # generate clean prompt and answer.
     clean_prompt = prompt_engineer(query, class_grammar_map[social_class], context)
@@ -291,7 +291,7 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
     data_facts: list[str] = []
 
     for fact in data:
-        data_facts.extend(fact_rephrase(fact))
+        data_facts.extend(fact_rephrase(fact, namespace, text_type='background'))
 
     index: pinecone.Index = pinecone.Index(index_name)
 
@@ -375,7 +375,7 @@ def upload(
         data_facts: list[str] = []
 
         for fact in data:
-            data_facts.extend(fact_rephrase(fact))  # make facts out of statements
+            data_facts.extend(fact_rephrase(fact, namespace, text_type=text_type))  # make facts out of statements
 
         data = data_facts
 
@@ -393,22 +393,35 @@ def upload(
     index.upsert(vectors=data_vectors, namespace=namespace)  # upsert all remaining data
 
 
-def fact_rephrase(phrase: str) -> list[str]:
+def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
     """
     Given a sentence, break it up into individual facts.
     :param phrase: A phrase containing multiple facts to be distilled into separate ones
     :return: The split-up factual statements
     """
-    msgs: list[dict] = [
-        {
-            "role": "system",
-            "content": "You are a writing assistant. "
-                       "Help me split up the sentences I provide you into facts. "
-                       "Each fact should be able to stand on it's own."
-                       "Tell me each fact on a new line, "
-                       "do not include anything in your response other than the facts.",
-        }
-    ]
+    if text_type == 'background':
+        msgs: list[dict] = [
+            {
+                "role": "system",
+                "content": f"You are {name_conversion(to_snake=False, to_convert=namespace)}. "
+                           "Split up the sentences I provide you about your history into facts. "
+                           "These sentences are written about you from a third person perspective. "
+                           "Each fact should be able to stand on it's own. "
+                           "Tell me each fact on a new line. "
+                           "Refer to yourself in first person and everyone else always by name.",
+            }
+        ]
+    elif text_type == 'response':
+        msgs: list[dict] = [
+            {
+                "role": "system",
+                "content": f"You are {name_conversion(to_snake=False, to_convert=namespace)}. "
+                           "Split up the following sentence into facts. "
+                           "Each fact should be able to stand on it's own. "
+                           "Tell me each fact on a new line. "
+                           "Refer to yourself in first person.",
+            }
+        ]
     prompt: str = f"Split this phrase into facts: {phrase}"
     msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
 
