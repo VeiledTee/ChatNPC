@@ -1,13 +1,13 @@
 import json
 import os
-import re
 from datetime import datetime
 from typing import Any
 
 import pinecone
-import torch
 from openai import OpenAI
-from sentence_transformers import SentenceTransformer
+
+from global_functions import embed, extract_name, name_conversion, namespace_exist
+
 
 AUDIO: bool = False
 # TEXT_MODEL: str = "gpt-3.5-turbo-0301"
@@ -37,23 +37,6 @@ def get_information(character_name) -> None | tuple:
             return character["profession"], character["social status"]
 
     return None  # character not found
-
-
-def extract_name(file_name: str) -> str:
-    """
-    Extracts the name of a character from their descriptions file name
-    :param file_name: the file containing the character's description
-    :return: the character's name, separated by a hyphen
-    """
-    # split the string into a list of parts, using "/" as the delimiter
-    parts = file_name.split("/")
-    # take the last part of the list (i.e. "john_pebble.txt")
-    filename = parts[-1]
-    # split the filename into a list of parts, using "_" as the delimiter
-    name_parts = filename.split("_")
-    # join the name parts together with a dash ("-"), and remove the ".txt" extension
-    name = "_".join(name_parts)
-    return name[:-4]
 
 
 def load_file_information(load_file: str) -> list[str]:
@@ -127,7 +110,7 @@ def run_query_and_generate_answer(
     print(context)
 
     # generate clean prompt and answer.
-    clean_prompt = prompt_engineer(query, class_grammar_map[social_class], context)
+    clean_prompt = prompt_engineer_character_reply(query, class_grammar_map[social_class], context)
     save_prompt: str = clean_prompt.replace("\n", " ")
 
     generated_answer = answer(clean_prompt, history, namespace)
@@ -257,20 +240,6 @@ def generate_conversation(character_file: str, chat_history: list, player: bool,
     return chat_history
 
 
-def embed(query: str) -> list[float]:
-    """
-    Take a sentence of text and return the 384-dimension embedding
-    :param query: The sentence to be embedded
-    :return: Embedding representation of the sentence
-    """
-    # create SentenceTransformer model and embed query
-    model = SentenceTransformer("all-MiniLM-L6-v2")  # fast and good, 384
-    # model = SentenceTransformer("all-mpnet-base-v2")  # slow and great, 768
-    device = "cuda" if torch.cuda.is_available() else "cpu"  # gpu check
-    model = model.to(device)
-    return model.encode(query).tolist()
-
-
 def upload_background(character: str, index_name: str = "thesis-index") -> None:
     """
     Uploads the background of the character associated with the namespace
@@ -297,6 +266,7 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
 
     total_vectors: int = 0
     data_vectors: list = []
+    cur_time = str(datetime.now())
 
     for i, info in enumerate(data_facts):
         if i == 99:  # recommended batch limit of 100 vectors
@@ -304,7 +274,7 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
             data_vectors = []
         info_dict: dict = {
             "id": str(total_vectors),
-            "metadata": {"text": info, "type": "background"},
+            "metadata": {"text": info, "type": "background", 'poignancy':10, 'last_accessed':cur_time},
             "values": embed(info),
         }
         data_vectors.append(info_dict)
@@ -360,7 +330,7 @@ def upload(
         text_type: str = "background",
 ) -> None:
     """
-    'Upserts' text embedding vectors into pinecone DB at the specific index
+    Sends records to the namespace at the specified pinecone index
     :param namespace: the pinecone namespace data is uploaded to
     :param data: Data to be embedded and stored
     :param index: pinecone index to send data to
@@ -371,6 +341,7 @@ def upload(
         "vector_count"
     ]  # get num of vectors existing in the namespace
     data_vectors = []
+    # if a reply, break into facts
     if text_type == "response":
         data_facts: list[str] = []
 
@@ -379,13 +350,17 @@ def upload(
 
         data = data_facts
 
+    # get current time memory is added
+    cur_time = str(datetime.now())
+
+    # add new data to database
     for i, info in enumerate(data):
         if i == 99:  # recommended batch limit of 100 vectors
             index.upsert(vectors=data_vectors, namespace=namespace)
             data_vectors = []
         info_dict: dict = {
             "id": str(total_vectors),
-            "metadata": {"text": info, "type": text_type},
+            "metadata": {"text": info, "type": text_type, 'poignancy': 10, 'last_accessed': cur_time},
             "values": embed(info),
         }  # build dict for upserting
         data_vectors.append(info_dict)
@@ -430,29 +405,71 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
     return [fact.strip() for fact in facts.split("\n")]
 
 
-def namespace_exist(namespace: str) -> bool:
-    """
-    Check if a namespace exists in Pinecone index
-    :param namespace: the namespace in question
-    :return: boolean showing if the namespace exists or not
-    """
-    index = pinecone.Index("thesis-index")  # get index
-    responses = index.query(
-        embed(" "),
-        top_k=1,
-        include_metadata=True,
-        namespace=namespace,
-        filter={
-            "$or": [
-                {"type": {"$eq": "background"}},
-                {"type": {"$eq": "response"}},
-            ]
-        },
-    )  # query index
-    return responses["matches"] != []  # if matches comes back empty namespace doesn't exist
+def find_importance(fact: str) -> int:
+    gpt_param = {"engine": "text-davinci-002", "max_tokens": 15,
+                 "temperature": 0, "top_p": 1, "stream": False,
+                 "frequency_penalty": 0, "presence_penalty": 0, "stop": None}
+
+    prompt_template = "Prompts/poignancy.txt"
+    prompt_input = create_prompt_input(persona, event_description)
+    prompt = generate_prompt(prompt_input, prompt_template)
+
+    def generate_prompt(curr_input, prompt_lib_file):
+        """
+        Takes in the current input (e.g. fact that you want to classify) and
+        the path to a prompt file. The prompt file contains the raw str prompt that
+        will be used, which contains the following substr: !<INPUT>! -- this
+        function replaces this substr with the actual curr_input to produce the
+        final prompt that will be sent to the GPT3 server.
+        ARGS:
+          curr_input: the input we want to feed in (IF THERE ARE MORE THAN ONE
+                      INPUT, THIS CAN BE A LIST.)
+          prompt_lib_file: the path to the prompt file.
+        RETURNS:
+          a str prompt that will be sent to OpenAI's GPT server.
+        """
+        if type(curr_input) == type("string"):
+            curr_input = [curr_input]
+        curr_input = [str(i) for i in curr_input]
+
+        f = open(prompt_lib_file, "r")
+        prompt = f.read()
+        f.close()
+        for count, i in enumerate(curr_input):
+            prompt = prompt.replace(f"!<INPUT {count}>!", i)
+        if "<commentblockmarker>###</commentblockmarker>" in prompt:
+            prompt = prompt.split("<commentblockmarker>###</commentblockmarker>")[1]
+        return prompt.strip()
+
+    example_output = "5"  ########
+    special_instruction = "ONLY include ONE integer value on the scale of 1 to 10 as the output."
+    fail_safe = 5  # if unsure, average importance
+
+    res: Any = client.chat.completions.create(
+        model=TEXT_MODEL,
+        temperature=0,
+        top_p=1,
+        max_tokens=1,
+        stream=False,
+        presence_penalty=0,
+        frequency_penalty=0
+    )  # conversation with LLM
 
 
-def prompt_engineer(prompt: str, grammar: str, context: list[str]) -> str:
+    output = ChatGPT_safe_generate_response(prompt, example_output, special_instruction, 3, fail_safe,
+                                            __chat_func_validate, __chat_func_clean_up, True)
+    if output != False:
+        return output, [output, prompt, gpt_param, prompt_input, fail_safe]
+    return int('5')
+
+
+def prompt_engineer_importance_check(template: str) -> str:
+
+    pass
+
+
+
+def prompt_engineer_character_reply(prompt: str, grammar: str, context: list[str]) -> str:
     """
     Given a base query and context, format it to be used as prompt
     :param prompt: The prompt query
@@ -535,34 +552,6 @@ def update_history(
         history_file.write(
             f"{character}: {prompt}\n" f"{name_conversion(False, namespace).replace('-', ' ')}: {response}\n"
         )  # save chat logs
-
-
-def name_conversion(to_snake: bool, to_convert: str) -> str:
-    """
-    Convert a namespace to character name or character name to namespace
-    :param to_snake: Do you convert to namespace or not
-    :param to_convert: String to convert
-    :return: Converted string
-    """
-    if to_snake:
-        text = to_convert.lower().split(" ")
-        converted: str = text[0]
-        for i, t in enumerate(text):
-            if i == 0:
-                pass
-            else:
-                converted += f"_{t}"
-        return converted
-    else:
-        text = to_convert.split("_")
-        converted: str = text[0].capitalize()
-        for i, t in enumerate(text):
-            if i == 0:
-                pass
-            else:
-                converted += f" {t.capitalize()}"
-        converted = re.sub("(-)\s*([a-zA-Z])", lambda p: p.group(0).upper(), converted)
-        return converted.replace("_", " ")
 
 
 def are_contradiction(to_check: str, reply: str) -> bool:
