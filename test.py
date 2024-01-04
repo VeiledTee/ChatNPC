@@ -12,9 +12,8 @@ def find_importance(fact: str) -> int:
     # prompt_input = create_prompt_input(persona, event_description)
     prompt = ("Here is a brief description of Peter Satoru. "
               "Peter Satoru is a respected and experienced archer in the town of Ashbourne. He has lived there his entire life, and at 65 years old, he still possesses excellent archery skills and a wealth of knowledge about combat and strategy. Despite his age, Peter is patient, resilient, and wise, making him a valuable asset to the community. He spends much of his time training younger archers in the town, passing on his expertise to the next generation. Peter's family background includes a father who was also an archer, which suggests a long tradition of archery in his family. His social status is lower class, but his allegiances lie with the people of Ashbourne, whom he serves and protects. Peter has formed close relationships with Jack McCaster, a local fisherman, and Melinda Deek, a fellow knight in the village. "
-              "On the scale of 1 to 10, "
-              "where 1 is purely mundane (e.g., I need to do the dishes, I need to walk the dog) "
-              "and 10 is extremely significant (e.g., I wish to become a professor, I love Elie), "
+              "On a scale of 1 to 10, where 1 is purely mundane "
+              "and 10 is extremely significant, "
               "rate the likely significance of the following information to Peter Satoru. Information: "
               "Jack McCaster's favourite fish is cod."
               "Rate (return a number between 1 to 10):")
@@ -38,8 +37,8 @@ def find_importance(fact: str) -> int:
     )  # conversation with LLM
     clean_res: str = str(res.choices[0].message.content).strip()  # get model response
 
-
     print(clean_res)
+    return int(clean_res)
 
 find_importance('')
 
