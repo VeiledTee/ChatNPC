@@ -1,6 +1,9 @@
+import re
+
 import torch
 from sentence_transformers import SentenceTransformer
 import pinecone
+import psutil
 
 
 def embed(query: str) -> list[float]:
