@@ -53,17 +53,18 @@ def relevance_score(record_embedding: list, query_embedding: list) -> float:
     return cos_sim(np.array(record_embedding), np.array(query_embedding))
 
 
-def retrieval(namespace: str, query: str, n: int, index_name: str = 'thesis-index') -> list[str]:
+def retrieval(namespace: str, query_embedding: list[float], n: int, index_name: str = 'thesis-index') -> list[str]:
     """
     Ranks character memories by a retrieval score.
     Retrieval score calculated by multiplying their importance, recency, and relevance scores together.
     Selects the top n of these records to be used as context when replying to the user's query.
     :return: Text from the n memories
     """
+    # get index to query for records
     index: pinecone.Index = pinecone.Index(index_name)
+    # count number of vectors in the namespace
     total_vectors: int = index.describe_index_stats()["namespaces"][namespace]["vector_count"]
-    query_embedding = embed(query=query)
-    # query Pinecone index and get context for model prompting.
+    # query Pinecone and get all records in namespace
     responses = index.query(
         query_embedding,
         top_k=total_vectors + 1,  # +1 to get all vectors in a namespace
@@ -76,20 +77,25 @@ def retrieval(namespace: str, query: str, n: int, index_name: str = 'thesis-inde
             ]
         },
     )
-    cur_time = datetime.now()  # find current access time
+    # find current access time
+    cur_time = datetime.now()
+    # calculate retrieval score and keep track of record IDs
+    # score_id_pairs format: [SCORE, RECORD]
     score_id_pairs: list = [
             (recency_score(x['last_accessed'], cur_time) * importance_score(x) * x['score'], x)
             for x in responses["matches"]
             if query not in x["metadata"]["text"]
-    ]  # calculate retrieval score and keep track of record IDs
-
-    sorted_score_id_pairs = sorted(score_id_pairs, key=lambda pair: pair[0], reverse=True)  # sort records by retrieval score
-
-    top_records = [x['metadata']['text'] for x in sorted_score_id_pairs[:3]]  # select top 3
+    ]
+    # sort records by retrieval score
+    sorted_score_id_pairs = sorted(score_id_pairs, key=lambda pair: pair[0], reverse=True)
+    # select top n memories
+    top_records = [x['metadata']['text'] for x in sorted_score_id_pairs[:n]]
 
     # update records with new access times
-    for _, record in top_records:
-        pass
+    for _, record in enumerate(top_records):
+        index.update(id=record['id'],
+                     set_metadata={'last_accessed': str(cur_time)},
+                     namespace=namespace
+                     )
 
     return top_records
-

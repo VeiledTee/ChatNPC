@@ -2,10 +2,12 @@ import json
 import os
 from datetime import datetime
 from typing import Any
+from retrieval import retrieval
 
 import pinecone
 from openai import OpenAI
 
+import retrieval
 from global_functions import embed, extract_name, name_conversion, namespace_exist, prompt_engineer_from_template
 
 AUDIO: bool = False
@@ -89,25 +91,28 @@ def run_query_and_generate_answer(
 
     history = generate_conversation(data_file, history, True, query)
     # embed query for processing
-    embedded_query = embed(query=query)
-    # query Pinecone index and get context for model prompting.
-    responses = index.query(
-        embedded_query,
-        top_k=3,
-        include_metadata=True,
-        namespace=namespace,
-        filter={
-            "$or": [
-                {"type": {"$eq": "background"}},
-                {"type": {"$eq": "response"}},
-            ]
-        },
-    )
+    embedded_query: list[float] = embed(query=query)
+    # retrieve memories using ONLY cosine similarity
+    # responses = index.query(
+    #     embedded_query,
+    #     top_k=3,
+    #     include_metadata=True,
+    #     namespace=namespace,
+    #     filter={
+    #         "$or": [
+    #             {"type": {"$eq": "background"}},
+    #             {"type": {"$eq": "response"}},
+    #         ]
+    #     },
+    # )
+    #
+    # # Filter out responses containing the string "Player:"
+    # context = [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
 
-    # Filter out responses containing the string "Player:"
-    context = [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
+    # retrieve memories using recency, poignancy, and relevance metrics
+    context: list[str] = retrieval(namespace=namespace, query_embedding=embedded_query, n=3)
+
     print(context)
-
     # generate clean prompt and answer.
     clean_prompt = prompt_engineer_character_reply(query, class_grammar_map[social_class], context)
     save_prompt: str = clean_prompt.replace("\n", " ")
@@ -398,7 +403,7 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
 
 def find_importance(namespace: str, fact: str) -> int:
     character_name: str = name_conversion(to_snake=False, to_convert=namespace)
-    character_info: str = f"Text Summaries/Summaries/{namespace}.txt"
+    character_info: str = f"../Text Summaries/Summaries/{namespace}.txt"
 
     prompt = prompt_engineer_from_template(template_file="Prompts/poignancy.txt",
                                            data=[character_name, character_info, character_name, fact]
