@@ -2,13 +2,13 @@ import json
 import os
 from datetime import datetime
 from typing import Any
-from retrieval import retrieval
+from retrieval import context_retrieval
 
 import pinecone
 from openai import OpenAI
 
-import retrieval
 from global_functions import embed, extract_name, name_conversion, namespace_exist, prompt_engineer_from_template
+from variables import DATE_FORMAT
 
 AUDIO: bool = False
 # TEXT_MODEL: str = "gpt-3.5-turbo-0301"
@@ -110,7 +110,7 @@ def run_query_and_generate_answer(
     # context = [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
 
     # retrieve memories using recency, poignancy, and relevance metrics
-    context: list[str] = retrieval(namespace=namespace, query_embedding=embedded_query, n=3)
+    context: list[str] = context_retrieval(namespace=namespace, query_embedding=embedded_query, n=3)
 
     print(context)
     # generate clean prompt and answer.
@@ -269,7 +269,7 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
 
     total_vectors: int = 0
     data_vectors: list = []
-    cur_time = str(datetime.now())
+    cur_time = datetime.now()
 
     for i, info in enumerate(data_facts):
         if i == 99:  # recommended batch limit of 100 vectors
@@ -277,7 +277,7 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
             data_vectors = []
         info_dict: dict = {
             "id": str(total_vectors),
-            "metadata": {"text": info, "type": "background", 'poignancy': 10, 'last_accessed': cur_time},
+            "metadata": {"text": info, "type": "background", 'poignancy': 10, 'last_accessed': cur_time.strftime(DATE_FORMAT)},
             "values": embed(info),
         }
         data_vectors.append(info_dict)
@@ -354,7 +354,7 @@ def upload(
         data = data_facts
 
     # get current time memory is added
-    cur_time = str(datetime.now())
+    cur_time = datetime.now()
 
     # add new data to database
     for i, info in enumerate(data):
@@ -363,7 +363,7 @@ def upload(
             data_vectors = []
         info_dict: dict = {
             "id": str(total_vectors),
-            "metadata": {"text": info, "type": text_type, 'poignancy': find_importance(namespace, info), 'last_accessed': cur_time},
+            "metadata": {"text": info, "type": text_type, 'poignancy': find_importance(namespace, info), 'last_accessed': cur_time.strftime(DATE_FORMAT)},
             "values": embed(info),
         }  # build dict for upserting
         data_vectors.append(info_dict)
@@ -381,7 +381,7 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
         msgs: list[dict] = [
             {
                 "role": "system",
-                "content": prompt_engineer_from_template(template_file="Prompts/background_rephrase.txt",
+                "content": prompt_engineer_from_template(template_file="../Prompts/background_rephrase.txt",
                                                          data=[name_conversion(to_snake=False, to_convert=namespace)]),
             }
         ]
@@ -389,7 +389,7 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
         msgs: list[dict] = [
             {
                 "role": "system",
-                "content": prompt_engineer_from_template(template_file="Prompts/response_rephrase.txt",
+                "content": prompt_engineer_from_template(template_file="../Prompts/response_rephrase.txt",
                                                          data=[name_conversion(to_snake=False, to_convert=namespace)]),
             }
         ]
@@ -405,7 +405,7 @@ def find_importance(namespace: str, fact: str) -> int:
     character_name: str = name_conversion(to_snake=False, to_convert=namespace)
     character_info: str = f"../Text Summaries/Summaries/{namespace}.txt"
 
-    prompt = prompt_engineer_from_template(template_file="Prompts/poignancy.txt",
+    prompt = prompt_engineer_from_template(template_file="../Prompts/poignancy.txt",
                                            data=[character_name, character_info, character_name, fact]
                                            )  # get prompt for poignancy score
 
@@ -443,7 +443,7 @@ def prompt_engineer_character_reply(prompt: str, grammar: str, context: list[str
     :return: The formatted prompt
     """
     prompt_start: str = \
-    prompt_engineer_from_template(template_file="Prompts/character_reply.txt", data=[grammar]).split('<1>')[0]
+    prompt_engineer_from_template(template_file="../Prompts/character_reply.txt", data=[grammar]).split('<1>')[0]
     with open("tried_prompts.txt", "a+") as prompt_file:
         if prompt_start + "\n" not in prompt_file.readlines():
             prompt_file.write(prompt_start + "\n")
@@ -453,7 +453,7 @@ def prompt_engineer_character_reply(prompt: str, grammar: str, context: list[str
     for c in context:
         print(f"{c}")
         prompt_middle += f"\n{c}"
-    return prompt_engineer_from_template(template_file="Prompts/character_reply.txt",
+    return prompt_engineer_from_template(template_file="../Prompts/character_reply.txt",
                                          data=[grammar, prompt_middle, prompt_end])
 
 
