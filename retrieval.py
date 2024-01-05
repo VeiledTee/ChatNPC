@@ -84,7 +84,6 @@ def retrieval(namespace: str, query_embedding: list[float], n: int, index_name: 
     score_id_pairs: list = [
             (recency_score(x['last_accessed'], cur_time) * importance_score(x) * x['score'], x)
             for x in responses["matches"]
-            if query not in x["metadata"]["text"]
     ]
     # sort records by retrieval score
     sorted_score_id_pairs = sorted(score_id_pairs, key=lambda pair: pair[0], reverse=True)
