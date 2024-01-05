@@ -6,6 +6,7 @@ from flask import Flask, render_template, jsonify, request, send_from_directory
 import numpy as np
 
 import webchat
+from global_functions import get_network_usage
 
 app = Flask(__name__)
 app.static_folder = 'static'
@@ -63,4 +64,13 @@ def get_audio(character_name, filename):
 
 
 if __name__ == "__main__":
+    start_sent, start_recv = get_network_usage()
     app.run(debug=True)
+    end_sent, end_recv = get_network_usage()
+
+    # Calculate the difference in bytes
+    bytes_sent = end_sent - start_sent
+    bytes_recv = end_recv - start_recv
+
+    print(f"Sent: {bytes_sent / (1024 * 1024):.2f} MB")  # convert to MB
+    print(f"Received: {bytes_recv / (1024 * 1024):.2f} MB")  # convert to MB
