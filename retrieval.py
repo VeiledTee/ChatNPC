@@ -15,13 +15,13 @@ def cos_sim(a: np.ndarray, b: np.ndarray) -> float:
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 
-def exponential_decay(current_time: datetime, earlier_time: datetime, decay_rate=0.01) -> float:
+def exponential_decay(earlier_time: datetime, current_time: datetime, decay_rate=0.01) -> float:
     time_difference = (current_time - earlier_time).total_seconds()
     score = 1 / (1 + decay_rate * time_difference)
     return score
 
 
-def recency_score(record_recent_access: str, cur_time: datetime) -> float:
+def recency_score(record_recent_access: datetime, cur_time: datetime) -> float:
     """
     Calculates the recency value a record has to the current query.
     Leverages exponential decay from the time the current query was posed to assign a score.
@@ -29,7 +29,7 @@ def recency_score(record_recent_access: str, cur_time: datetime) -> float:
     :param cur_time: The time when the user's query was posed to the character
     :return: The recency score of the presented record
     """
-    return exponential_decay(cur_time, datetime.strptime(record_recent_access, DATE_FORMAT))
+    return exponential_decay(record_recent_access, cur_time)
 
 
 def importance_score(record: dict) -> float:
@@ -76,26 +76,28 @@ def context_retrieval(namespace: str, query_embedding: list[float], n: int, inde
         },
     )
 
-    print(responses)
-
     # find current access time
     cur_time = datetime.now()
     # calculate retrieval score and keep track of record IDs
     # score_id_pairs format: [SCORE, RECORD]
     score_id_pairs: list = [
-            (recency_score(x['metadata']['last_accessed'], cur_time) * importance_score(x) * x['score'], x)
+            (recency_score(cur_time, x['metadata']['last_accessed']) * importance_score(x) * x['score'], x)
             for x in responses["matches"]
     ]
     # sort records by retrieval score
     sorted_score_id_pairs = sorted(score_id_pairs, key=lambda pair: pair[0], reverse=True)
     # select top n memories
-    top_records = [x['metadata']['text'] for x in sorted_score_id_pairs[:n]]
+    top_records: list[dict] = []
+    top_context: list[str] = []
+    for score, record in sorted_score_id_pairs[:n]:
+        top_records.append(record)
+        top_context.append(record['metadata']['text'])
 
     # update records with new access times
-    for _, record in enumerate(top_records):
+    for record in top_records:
         index.update(id=record['id'],
                      set_metadata={'last_accessed': str(cur_time)},
                      namespace=namespace
                      )
 
-    return top_records
+    return top_context

@@ -36,6 +36,7 @@ def extract_name(file_name: str) -> str:
     name = "_".join(name_parts)
     return name[:-4]
 
+
 def name_conversion(to_snake: bool, to_convert: str) -> str:
     """
     Convert a namespace to character name or character name to namespace

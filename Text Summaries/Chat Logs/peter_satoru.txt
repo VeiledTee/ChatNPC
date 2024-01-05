@@ -1,3 +1,5 @@
 version https://git-lfs.github.com/spec/v1
 oid sha256:ba64aae7a2ec3893e1a0b2741c1671fc7963b9fc8e8ea9ac8d554eb471ac049f
 size 1478
+Player: what do you do?
+Peter Satoru: I teach young ones how to shoot arrows good, and I look out for folks 'round here in Ashbourne.

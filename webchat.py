@@ -112,7 +112,6 @@ def run_query_and_generate_answer(
     # retrieve memories using recency, poignancy, and relevance metrics
     context: list[str] = context_retrieval(namespace=namespace, query_embedding=embedded_query, n=3)
 
-    print(context)
     # generate clean prompt and answer.
     clean_prompt = prompt_engineer_character_reply(query, class_grammar_map[social_class], context)
     save_prompt: str = clean_prompt.replace("\n", " ")
@@ -403,20 +402,20 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
 
 def find_importance(namespace: str, fact: str) -> int:
     character_name: str = name_conversion(to_snake=False, to_convert=namespace)
-    character_info: str = f"../Text Summaries/Summaries/{namespace}.txt"
+    with open(f"../Text Summaries/Summaries/{namespace}.txt", 'r') as character_file:
+        character_info: str = character_file.read()
 
     prompt = prompt_engineer_from_template(template_file="../Prompts/poignancy.txt",
                                            data=[character_name, character_info, character_name, fact]
                                            )  # get prompt for poignancy score
 
-    example_output = "5"
+    example_output = 5
+    fail_safe_output: int = 3  # used when the LLM can't assign a value
     special_instruction = "ONLY include ONE integer value on the scale of 1 to 10 as the output."
 
     prompt += f"{special_instruction}\n"
     prompt += "Example output integer:\n"
     prompt += str(example_output)
-
-    print(prompt)
 
     res = client.chat.completions.create(
         model=TEXT_MODEL,
@@ -430,8 +429,10 @@ def find_importance(namespace: str, fact: str) -> int:
     )  # conversation with LLM
     clean_res: str = str(res.choices[0].message.content).strip()  # get model response
 
-    print(clean_res)
-    return int(clean_res)
+    try:
+        return int(clean_res)
+    except ValueError:  # if model replies with a string, assume failsafe output
+        return fail_safe_output
 
 
 def prompt_engineer_character_reply(prompt: str, grammar: str, context: list[str]) -> str:
