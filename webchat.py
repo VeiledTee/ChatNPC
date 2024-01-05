@@ -6,8 +6,7 @@ from typing import Any
 import pinecone
 from openai import OpenAI
 
-from global_functions import embed, extract_name, name_conversion, namespace_exist
-
+from global_functions import embed, extract_name, name_conversion, namespace_exist, prompt_engineer_from_template
 
 AUDIO: bool = False
 # TEXT_MODEL: str = "gpt-3.5-turbo-0301"
@@ -245,7 +244,6 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
     Uploads the background of the character associated with the namespace
     :param character: the character we're working with
     :param index_name: the name of the pinecone index
-    :return:
     """
     if not pinecone.list_indexes():  # check if there are any indexes
         # create index if it doesn't exist
@@ -274,7 +272,7 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
             data_vectors = []
         info_dict: dict = {
             "id": str(total_vectors),
-            "metadata": {"text": info, "type": "background", 'poignancy':10, 'last_accessed':cur_time},
+            "metadata": {"text": info, "type": "background", 'poignancy': 10, 'last_accessed': cur_time},
             "values": embed(info),
         }
         data_vectors.append(info_dict)
@@ -290,7 +288,7 @@ def upload_contradiction(
         text_type: str = "query",
 ) -> None:
     """
-    'Upserts' text embedding vectors of two contradictory sentences into pinecone DB at indexes s1 and s2
+    Sends text embedding vectors of two contradictory sentences into pinecone DB at indexes s1 and s2
     :param namespace: the pinecone namespace data is uploaded to
     :param data: The two contradictory sentences
     :param index: pinecone index to send data to
@@ -360,7 +358,7 @@ def upload(
             data_vectors = []
         info_dict: dict = {
             "id": str(total_vectors),
-            "metadata": {"text": info, "type": text_type, 'poignancy': 10, 'last_accessed': cur_time},
+            "metadata": {"text": info, "type": text_type, 'poignancy': find_importance(namespace, info), 'last_accessed': cur_time},
             "values": embed(info),
         }  # build dict for upserting
         data_vectors.append(info_dict)
@@ -378,23 +376,16 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
         msgs: list[dict] = [
             {
                 "role": "system",
-                "content": f"You are {name_conversion(to_snake=False, to_convert=namespace)}. "
-                           "Split up the sentences I provide you about your history into facts. "
-                           "These sentences are written about you from a third person perspective. "
-                           "Each fact should be able to stand on it's own. "
-                           "Tell me each fact on a new line. "
-                           "Refer to yourself in first person and everyone else always by name.",
+                "content": prompt_engineer_from_template(template_file="Prompts/background_rephrase.txt",
+                                                         data=[name_conversion(to_snake=False, to_convert=namespace)]),
             }
         ]
     elif text_type == 'response':
         msgs: list[dict] = [
             {
                 "role": "system",
-                "content": f"You are {name_conversion(to_snake=False, to_convert=namespace)}. "
-                           "Split up the following sentence into facts. "
-                           "Each fact should be able to stand on it's own. "
-                           "Tell me each fact on a new line. "
-                           "Refer to yourself in first person.",
+                "content": prompt_engineer_from_template(template_file="Prompts/response_rephrase.txt",
+                                                         data=[name_conversion(to_snake=False, to_convert=namespace)]),
             }
         ]
     prompt: str = f"Split this phrase into facts: {phrase}"
@@ -405,68 +396,37 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
     return [fact.strip() for fact in facts.split("\n")]
 
 
-def find_importance(fact: str) -> int:
-    gpt_param = {"engine": "text-davinci-002", "max_tokens": 15,
-                 "temperature": 0, "top_p": 1, "stream": False,
-                 "frequency_penalty": 0, "presence_penalty": 0, "stop": None}
+def find_importance(namespace: str, fact: str) -> int:
+    character_name: str = name_conversion(to_snake=False, to_convert=namespace)
+    character_info: str = f"Text Summaries/Summaries/{namespace}.txt"
 
-    prompt_template = "Prompts/poignancy.txt"
-    prompt_input = create_prompt_input(persona, event_description)
-    prompt = generate_prompt(prompt_input, prompt_template)
+    prompt = prompt_engineer_from_template(template_file="Prompts/poignancy.txt",
+                                           data=[character_name, character_info, character_name, fact]
+                                           )  # get prompt for poignancy score
 
-    def generate_prompt(curr_input, prompt_lib_file):
-        """
-        Takes in the current input (e.g. fact that you want to classify) and
-        the path to a prompt file. The prompt file contains the raw str prompt that
-        will be used, which contains the following substr: !<INPUT>! -- this
-        function replaces this substr with the actual curr_input to produce the
-        final prompt that will be sent to the GPT3 server.
-        ARGS:
-          curr_input: the input we want to feed in (IF THERE ARE MORE THAN ONE
-                      INPUT, THIS CAN BE A LIST.)
-          prompt_lib_file: the path to the prompt file.
-        RETURNS:
-          a str prompt that will be sent to OpenAI's GPT server.
-        """
-        if type(curr_input) == type("string"):
-            curr_input = [curr_input]
-        curr_input = [str(i) for i in curr_input]
-
-        f = open(prompt_lib_file, "r")
-        prompt = f.read()
-        f.close()
-        for count, i in enumerate(curr_input):
-            prompt = prompt.replace(f"!<INPUT {count}>!", i)
-        if "<commentblockmarker>###</commentblockmarker>" in prompt:
-            prompt = prompt.split("<commentblockmarker>###</commentblockmarker>")[1]
-        return prompt.strip()
-
-    example_output = "5"  ########
+    example_output = "5"
     special_instruction = "ONLY include ONE integer value on the scale of 1 to 10 as the output."
-    fail_safe = 5  # if unsure, average importance
 
-    res: Any = client.chat.completions.create(
+    prompt += f"{special_instruction}\n"
+    prompt += "Example output integer:\n"
+    prompt += str(example_output)
+
+    print(prompt)
+
+    res = client.chat.completions.create(
         model=TEXT_MODEL,
+        messages=[{"role": "user", "content": prompt}],
         temperature=0,
         top_p=1,
         max_tokens=1,
         stream=False,
         presence_penalty=0,
-        frequency_penalty=0
+        frequency_penalty=0,
     )  # conversation with LLM
+    clean_res: str = str(res.choices[0].message.content).strip()  # get model response
 
-
-    output = ChatGPT_safe_generate_response(prompt, example_output, special_instruction, 3, fail_safe,
-                                            __chat_func_validate, __chat_func_clean_up, True)
-    if output != False:
-        return output, [output, prompt, gpt_param, prompt_input, fail_safe]
-    return int('5')
-
-
-def prompt_engineer_importance_check(template: str) -> str:
-
-    pass
-
+    print(clean_res)
+    return int(clean_res)
 
 
 def prompt_engineer_character_reply(prompt: str, grammar: str, context: list[str]) -> str:
@@ -477,12 +437,8 @@ def prompt_engineer_character_reply(prompt: str, grammar: str, context: list[str
     :param context: The context to be used in the prompt
     :return: The formatted prompt
     """
-    prompt_start: str = (
-        f"Use {grammar} grammar. Use first person. Do not mention that you are an AI language model, "
-        f"the user knows. Reply clearly based on the context. When told new information, "
-        f"reiterate it back to me. Do not mention your background, or the context unless asked, "
-        f"or that you are fictional. Do not provide facts you would deny. Context: "
-    )
+    prompt_start: str = \
+    prompt_engineer_from_template(template_file="Prompts/character_reply.txt", data=[grammar]).split('<1>')[0]
     with open("tried_prompts.txt", "a+") as prompt_file:
         if prompt_start + "\n" not in prompt_file.readlines():
             prompt_file.write(prompt_start + "\n")
@@ -492,7 +448,8 @@ def prompt_engineer_character_reply(prompt: str, grammar: str, context: list[str
     for c in context:
         print(f"{c}")
         prompt_middle += f"\n{c}"
-    return prompt_start + prompt_middle + prompt_end
+    return prompt_engineer_from_template(template_file="Prompts/character_reply.txt",
+                                         data=[grammar, prompt_middle, prompt_end])
 
 
 def answer(prompt: str, chat_history: list[dict], namespace: str) -> str:
