@@ -81,3 +81,22 @@ def namespace_exist(namespace: str) -> bool:
         },
     )  # query index
     return responses["matches"] != []  # if matches comes back empty namespace doesn't exist
+
+
+def prompt_engineer_from_template(template_file: str, data: list[str]) -> str:
+    """
+    Takes the template of a prompt to be given to OpenAI GPT models and fills the blank spaces with provided information
+    :param template_file: Path to the prompt template we need
+    :param data: A list of strings containing the data to inject into the prompt
+    :return: The template filled with the correct information
+    """
+    with open(template_file, 'r') as file:
+        prompt = file.read()
+    for index, information in enumerate(data):
+        prompt = prompt.replace(f"<{index}>", information)
+    return prompt
+
+
+def get_network_usage():
+    net_io = psutil.net_io_counters()
+    return net_io.bytes_sent, net_io.bytes_recv
