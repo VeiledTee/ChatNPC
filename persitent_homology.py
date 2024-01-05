@@ -8,7 +8,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from ripser import ripser
+# from ripser import ripser
 from transformers import BertTokenizer, BertModel
 from variables import DEVICE
 
@@ -19,7 +19,7 @@ import concurrent.futures
 
 # Disable the logging level for the transformers library
 logging.getLogger("transformers").setLevel(logging.ERROR)
-matplotlib.use("TkAgg")
+# matplotlib.use("TkAgg")
 
 
 def get_bert_embeddings(sentence: str) -> np.ndarray:
