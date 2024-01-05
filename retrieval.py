@@ -3,9 +3,7 @@ from datetime import datetime
 import pinecone
 
 from global_functions import embed
-
-date_format = "%Y-%m-%d %H:%M:%S"
-
+from variables import DATE_FORMAT
 
 def cos_sim(a: np.ndarray, b: np.ndarray) -> float:
     """
@@ -31,7 +29,7 @@ def recency_score(record_recent_access: str, cur_time: datetime) -> float:
     :param cur_time: The time when the user's query was posed to the character
     :return: The recency score of the presented record
     """
-    return exponential_decay(cur_time, datetime.strptime(record_recent_access, date_format))
+    return exponential_decay(cur_time, datetime.strptime(record_recent_access, DATE_FORMAT))
 
 
 def importance_score(record: dict) -> float:
@@ -53,7 +51,7 @@ def relevance_score(record_embedding: list, query_embedding: list) -> float:
     return cos_sim(np.array(record_embedding), np.array(query_embedding))
 
 
-def retrieval(namespace: str, query_embedding: list[float], n: int, index_name: str = 'thesis-index') -> list[str]:
+def context_retrieval(namespace: str, query_embedding: list[float], n: int, index_name: str = 'thesis-index') -> list[str]:
     """
     Ranks character memories by a retrieval score.
     Retrieval score calculated by multiplying their importance, recency, and relevance scores together.
@@ -77,12 +75,15 @@ def retrieval(namespace: str, query_embedding: list[float], n: int, index_name: 
             ]
         },
     )
+
+    print(responses)
+
     # find current access time
     cur_time = datetime.now()
     # calculate retrieval score and keep track of record IDs
     # score_id_pairs format: [SCORE, RECORD]
     score_id_pairs: list = [
-            (recency_score(x['last_accessed'], cur_time) * importance_score(x) * x['score'], x)
+            (recency_score(x['metadata']['last_accessed'], cur_time) * importance_score(x) * x['score'], x)
             for x in responses["matches"]
     ]
     # sort records by retrieval score
