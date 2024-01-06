@@ -257,15 +257,19 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
         character_names = json.load(character_info_file)
 
     data_file: str = f"../Text Summaries/Summaries/{character_names[character]}.txt"
+    setting_file: str = "../Text Summaries/Summaries/ashbourne.txt"
     namespace: str = extract_name(data_file).lower()
     # background has already been uploaded if namespace exists so can skip repeat uploads
     if namespace_exist(namespace):
         return None
 
-    data: list[str] = load_file_information(data_file)
+    character_data: list[str] = load_file_information(data_file)
+    setting_data: list[str] = load_file_information(setting_file)
     data_facts: list[str] = []
 
-    for fact in data:
+    for fact in character_data:
+        data_facts.extend(fact_rephrase(fact, namespace, text_type='background'))
+    for fact in setting_data:
         data_facts.extend(fact_rephrase(fact, namespace, text_type='background'))
 
     index: pinecone.Index = pinecone.Index(index_name)
