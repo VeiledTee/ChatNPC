@@ -9,7 +9,9 @@ html, body {
 
 .container {
     position: relative;
-    width: 100%;
+    width: 80%; /* Take up 80% of the available width */
+    margin: 0 auto; /* Center the container */
+    max-width: 1200px; /* Set a max-width if needed */
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -18,6 +20,7 @@ html, body {
 h1 {
     text-align: center;
     margin: 0;
+    font-size: 56px;
 }
 
 #chatbox {
@@ -25,32 +28,70 @@ h1 {
     overflow-y: auto; /* Enable vertical scrolling */
     padding: 10px;
     background-color: #838383; /* Set the chatbox background color */
+    font-family: Consolas, monospace; /* Use Consolas for dialogue elements */
 }
 
 #chat-form {
     display: flex;
-    justify-content: space-between;
-    padding: 10px;
-    background-color: #838383; /* Set the form background color */
-    box-shadow: 0px -1px 5px rgba(0, 0, 0, 0.2); /* Add shadow at the top */
+    flex-direction: column; /* Change to column layout */
+    padding: 50px;
+    background-color: #838383;
+    box-shadow: 0px -1px 5px rgba(0, 0, 0, 0.2);
+    margin-top: auto; /* Push the form to the bottom */
+}
+
+.character-container {
+    display: flex;
+    align-items: center; /* Align items vertically */
+    margin-bottom: 10px; /* Add space below */
+}
+
+.character-label {
+    font-size: 24px;
+    color: white;
+    margin-right: 10px; /* Add some space between label and dropdown */
+}
+
+#character-select {
+    width: 30%; /* Set width of the dropdown */
+    background-color: #fff; /* Set background color */
+    color: #000; /* Set text color */
+    font-size: 18px; /* Increase font size */
+}
+
+
+.input-box {
+    display: flex;
+    align-items: center;
+    width: 100%; /* Ensure the input box and button span the line's width */
 }
 
 #user-input {
-    flex: 1; /* Allow input to grow and take remaining space */
-    margin-right: 10px;
-    background-color: #fff; /* Set the input background color */
-    color: #000; /* Set the input text color to black */
+    flex: 1;
+    padding: 0.5% 2.5% 0.5%;
+    background-color: #fff;
+    color: #000;
+    font-size: 18px;
+    width: 85%; /* Occupy 85% of the width, considering the 5% padding on each side */
+    box-sizing: border-box;
 }
 
-h1 {
-    font-size: 56px;
-}
-
-/* Style for the specific label with the character-label class */
-.character-label {
+#send-button {
+    flex: 0 0 15%; /* Constrain button to 15% without growing or shrinking */
+    color: black;
+    border: none;
+    padding: 3px 10px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
     font-size: 24px;
-    color: white; /* Set the label text color to white */
+    transition: box-shadow 0.3s ease;
 }
+
+#send-button.active {
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4), -2px -2px 5px rgba(255, 255, 255, 0.4); /* Add shadows */
+}
+
 
 #chatbox, .player-response, .character-response {
     font-family: Consolas, monospace; /* Use Consolas for dialogue elements */

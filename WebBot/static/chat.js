@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const chatbox = document.getElementById('chatbox');
     const userInput = document.getElementById('user-input');
     const characterSelect = document.getElementById('character-select');
+    const sendButton = document.getElementById('send-button'); // Added
 
     let selectedCharacter = ''; // Initialize the selected character name
 
@@ -12,7 +13,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (characterSelect.value !== '') {
             // Enable the form elements when a character is selected
             userInput.disabled = false;
-            form.querySelector('input[type="submit"]').disabled = false;
+            sendButton.disabled = false; // Enable the send button
+            sendButton.classList.add('active'); // Add 'active' class to the send button
 
             // Make an HTTP request to call the Python function
             fetch('/upload_background', {
@@ -38,7 +40,8 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             // Disable the form elements if no character is selected
             userInput.disabled = true;
-            form.querySelector('input[type="submit"]').disabled = true;
+            sendButton.disabled = true; // Disable the send button
+            sendButton.classList.remove('active'); // Remove 'active' class from the send button
         }
     });
 
