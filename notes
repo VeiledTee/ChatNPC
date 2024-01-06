@@ -16,6 +16,14 @@ NOTES:
     - edit rounding to 0.5 to 0.004
         - not good idea, when more records included predictions went from ~0.002- 0.005 to ~2e-8-4e-8
 
+=== Jan 2024 ===
+- can only query one namespace at a time => must include setting info and character info when storing background info
+- website redesign (ongoing)
+- fact rephrasing vetting and testing
+- contradiction detection necessary?
+- add in stormlight money system for fun
+-
+
 ------------------------------------------------------------------------------------------------------
 - semantic role labeling
 	- go from phrase to topic
