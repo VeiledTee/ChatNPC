@@ -258,6 +258,10 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
 
     data_file: str = f"../Text Summaries/Summaries/{character_names[character]}.txt"
     namespace: str = extract_name(data_file).lower()
+    # background has already been uploaded if namespace exists so can skip repeat uploads
+    if namespace_exist(namespace):
+        return None
+
     data: list[str] = load_file_information(data_file)
     data_facts: list[str] = []
 
