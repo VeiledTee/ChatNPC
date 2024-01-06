@@ -20,6 +20,14 @@ def home():
 def chat() -> str:
     user_input: str = request.json.get("user_input")  # what user said
     if user_input.lower() == 'bye':
+        end_sent, end_recv = get_network_usage()
+
+        # Calculate the difference in bytes
+        bytes_sent = end_sent - start_sent
+        bytes_recv = end_recv - start_recv
+
+        print(f"Sent: {bytes_sent / (1024 * 1024):.2f} MB")  # convert to MB
+        print(f"Received: {bytes_recv / (1024 * 1024):.2f} MB")  # convert to MB
         return "Goodbye!"
     selected_character: str = request.json.get("character_select")  # character name
     reply: str = webchat.run_query_and_generate_answer(query=user_input, receiver=selected_character)
@@ -33,7 +41,7 @@ def upload_background() -> str:
 
     webchat.upload_background(selected_character)
 
-    print("Background uploaded successfully")
+    print(f"Background uploaded successfully for {selected_character}")
     return ''
 
 
@@ -64,11 +72,3 @@ def get_audio(character_name, filename):
 
 if __name__ == "__main__":
     app.run(debug=True)
-    end_sent, end_recv = get_network_usage()
-
-    # Calculate the difference in bytes
-    bytes_sent = end_sent - start_sent
-    bytes_recv = end_recv - start_recv
-
-    print(f"Sent: {bytes_sent / (1024 * 1024):.2f} MB")  # convert to MB
-    print(f"Received: {bytes_recv / (1024 * 1024):.2f} MB")  # convert to MB
