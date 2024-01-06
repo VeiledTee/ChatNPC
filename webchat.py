@@ -110,7 +110,7 @@ def run_query_and_generate_answer(
     # context = [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
 
     # retrieve memories using recency, poignancy, and relevance metrics
-    context: list[str] = context_retrieval(namespace=namespace, query_embedding=embedded_query, n=3)
+    context: list[str] = context_retrieval(namespace=namespace, query_embedding=embedded_query, n=5)
 
     # generate clean prompt and answer.
     clean_prompt = prompt_engineer_character_reply(query, class_grammar_map[social_class], context)
