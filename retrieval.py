@@ -16,6 +16,15 @@ def cos_sim(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def exponential_decay(earlier_time: datetime, current_time: datetime, decay_rate=0.01) -> float:
+    """
+    Calculates an exponential decay score based on the time difference between two timestamps.
+    :param earlier_time: The timestamp indicating when the memory was last accessed.
+    :param current_time: The current timestamp.
+    :param decay_rate: The rate of decay. Defaults to 0.01.
+
+    :returns:
+    - float: The calculated exponential decay score.
+    """
     time_difference = (current_time - earlier_time).total_seconds()
     score = 1 / (1 + decay_rate * time_difference)
     return score
