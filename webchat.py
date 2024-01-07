@@ -419,9 +419,8 @@ def find_importance(namespace: str, fact: str) -> int:
 
     example_output = 5
     fail_safe_output: int = 3  # used when the LLM can't assign a value
-    special_instruction = "ONLY include ONE integer value on the scale of 1 to 10 as the output."
 
-    prompt += f"{special_instruction}\n"
+    prompt += f"ONLY include ONE integer value on the scale of 1 to 10 as the output.\n"
     prompt += "Example output integer:\n"
     prompt += str(example_output)
 
