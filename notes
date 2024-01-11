@@ -22,7 +22,22 @@ NOTES:
 - fact rephrasing vetting and testing
 - contradiction detection necessary?
 - add in stormlight money system for fun
--
+
+=== 2x2 table - sec / reply token
+        |  no fact  | fact  |
+cos     |           |       |
+impact  |           |       |
+
+=== 2x2 table - sent MB / conversation of X prompt and Y reply tokens
+        |  no fact  | fact  |
+cos     |           |       |
+impact  |           |       |
+
+=== 2x2 table - received MB / conversation of X prompt and Y reply tokens
+        |  no fact  | fact  |
+cos     |           |       |
+impact  |           |       |
+
 
 ------------------------------------------------------------------------------------------------------
 - semantic role labeling
