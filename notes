@@ -23,6 +23,11 @@ NOTES:
 - contradiction detection necessary?
 - add in stormlight money system for fun
 
+Each of following tests asked same 3 questions
+    * what do you do?
+    * what's your favourite drink to make? what're the secret ingredients?
+    * does your favourite drink to make pair nicely with any dishes on your menu?
+k=3 for all
 === 2x2 table - sec / reply token
         |  no fact  |  fact  |
 cos     |  0.1405   | 0.3179 |
