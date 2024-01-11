@@ -103,11 +103,20 @@ def prompt_engineer_from_template(template_file: str, data: list[str]) -> str:
 
 
 def get_network_usage():
+    """
+    Gets the number of bytes sent and received using psutil
+    :return: bytes sent, bytes received
+    """
     net_io = psutil.net_io_counters()
     return net_io.bytes_sent, net_io.bytes_recv
 
 
 def delete_all_vectors(index_name: str = 'thesis-index') -> None:
+    """
+    Deletes all vectors and namespaces in the pinecone database
+    :param index_name: name of the index data is stored in
+    :return: None
+    """
     index: pinecone.Index = pinecone.Index(index_name)
 
     with open("Text Summaries/characters.json", "r") as f:
@@ -118,12 +127,12 @@ def delete_all_vectors(index_name: str = 'thesis-index') -> None:
         print(character)
         data: str = f"Text Summaries/Summaries/{names[character].lower()}.txt"
         namespace: str = extract_name(data).lower()
-        # index.delete(deleteAll=True, namespace=namespace)
+        index.delete(deleteAll=True, namespace=namespace)
 
 
 def delete_specific_vectors(character_name: str, index_name: str = 'thesis-index') -> None:
     """
-    Delectes all vectors in a specific namespace
+    Deletes all vectors in a specific namespace
     :param character_name: character's name who's memory needs to be wiped (namespace or full name)
     :param index_name: Name of the pinecone index everything is stored in
     :return: None
