@@ -1,3 +1,4 @@
+import json
 import re
 
 import torch
@@ -104,3 +105,41 @@ def prompt_engineer_from_template(template_file: str, data: list[str]) -> str:
 def get_network_usage():
     net_io = psutil.net_io_counters()
     return net_io.bytes_sent, net_io.bytes_recv
+
+
+def delete_all_vectors(index_name: str = 'thesis-index') -> None:
+    index: pinecone.Index = pinecone.Index(index_name)
+
+    with open("Text Summaries/characters.json", "r") as f:
+        names = json.load(f)
+
+    for i in range(len(names)):
+        character: str = list(names.keys())[i]
+        print(character)
+        data: str = f"Text Summaries/Summaries/{names[character].lower()}.txt"
+        namespace: str = extract_name(data).lower()
+        # index.delete(deleteAll=True, namespace=namespace)
+
+
+def delete_specific_vectors(character_name: str, index_name: str = 'thesis-index') -> None:
+    """
+    Delectes all vectors in a specific namespace
+    :param character_name: character's name who's memory needs to be wiped (namespace or full name)
+    :param index_name: Name of the pinecone index everything is stored in
+    :return: None
+    """
+    index: pinecone.Index = pinecone.Index(index_name)
+    if '_' not in character_name:
+        namespace: str = name_conversion(to_snake=True, to_convert=character_name)
+    index.delete(deleteAll=True, namespace=namespace)
+
+
+if __name__ == '__main__':
+    with open("keys.txt", "r") as key_file:
+        api_keys = [key.strip() for key in key_file.readlines()]
+        pinecone.init(
+            api_key=api_keys[1],
+            environment=api_keys[2],
+        )
+
+    delete_specific_vectors('Sarah Ratengen')
