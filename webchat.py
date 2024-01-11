@@ -471,7 +471,7 @@ def answer(prompt: str, chat_history: list[dict], namespace: str) -> tuple[str, 
     :param prompt: An engineered prompt to get the language model to respond to
     :param chat_history: the entire history of the conversation
     :param namespace: the namespace to save the records to
-    :return: The completed prompt
+    :return: The completed prompt, the number of tokens used in the prompt, the number of tokens in the reply
     """
     with open("../Text Summaries/text_to_speech_mapping.json", "r") as audio_model_info:
         model_pairings: dict = json.load(audio_model_info)
