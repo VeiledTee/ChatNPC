@@ -1,9 +1,8 @@
 import numpy as np
 from datetime import datetime
 import pinecone
+import math
 
-from global_functions import embed
-from variables import DATE_FORMAT
 
 def cos_sim(a: np.ndarray, b: np.ndarray) -> float:
     """
@@ -17,16 +16,15 @@ def cos_sim(a: np.ndarray, b: np.ndarray) -> float:
 
 def exponential_decay(earlier_time: datetime, current_time: datetime, decay_rate=0.01) -> float:
     """
-    Calculates an exponential decay score based on the time difference between two timestamps.
+    Calculates an exponential decay score based on the time difference between two timestamps using log space.
     :param earlier_time: The timestamp indicating when the memory was last accessed.
     :param current_time: The current timestamp.
     :param decay_rate: The rate of decay. Defaults to 0.01.
 
-    :returns:
-    - float: The calculated exponential decay score.
+    :returns: The calculated exponential decay score.
     """
     time_difference = (current_time - earlier_time).total_seconds()
-    score = 1 / (1 + decay_rate * time_difference)
+    score = math.exp(-decay_rate * time_difference)
     return score
 
 
@@ -60,7 +58,8 @@ def relevance_score(record_embedding: list, query_embedding: list) -> float:
     return cos_sim(np.array(record_embedding), np.array(query_embedding))
 
 
-def context_retrieval(namespace: str, query_embedding: list[float], n: int, index_name: str = 'thesis-index') -> list[str]:
+def context_retrieval(namespace: str, query_embedding: list[float], n: int, index_name: str = 'thesis-index') -> list[
+    str]:
     """
     Ranks character memories by a retrieval score.
     Retrieval score calculated by multiplying their importance, recency, and relevance scores together.
@@ -93,8 +92,9 @@ def context_retrieval(namespace: str, query_embedding: list[float], n: int, inde
     # calculate retrieval score and keep track of record IDs
     # score_id_pairs format: [SCORE, RECORD]
     score_id_pairs: list = [
-            (recency_score(cur_time, record['metadata']['last_accessed']) * importance_score(record) * record['score'], record)
-            for record in responses["matches"]
+        (recency_score(cur_time, record['metadata']['last_accessed']) * importance_score(record) * record['score'],
+         record)
+        for record in responses["matches"]
     ]
     # sort records by retrieval score
     sorted_score_id_pairs = sorted(score_id_pairs, key=lambda pair: pair[0], reverse=True)
