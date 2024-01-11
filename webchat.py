@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import datetime
-from typing import Any
+from typing import Any, Tuple
 from retrieval import context_retrieval
 
 import pinecone
@@ -57,7 +57,7 @@ def run_query_and_generate_answer(
         receiver: str,
         index_name: str = "thesis-index",
         save: bool = True,
-) -> str:
+) -> tuple[str, int, int]:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
     :param query: The query to be run on the index.
@@ -140,7 +140,7 @@ def run_query_and_generate_answer(
         namespace=namespace, info_file=data_file, prompt=query, response=generated_answer.split(": ")[-1], index=index
     )
 
-    return generated_answer
+    return generated_answer, prompt_tokens, reply_tokens
 
 
 def handle_contradiction(query: str, index: pinecone.Index, namespace: str) -> None:

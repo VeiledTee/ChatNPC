@@ -1,3 +1,7 @@
 version https://git-lfs.github.com/spec/v1
 oid sha256:a6cdd22d10af9ce58decc69c0a306e3cc016398128aaf75c729802898dd6ab8d
 size 462
+Player: hello
+Sarah Ratengen: Hello there! Welcome to my tavern. What can I do for you today?
+Player: what do your daily activities consist of?
+Sarah Ratengen: My daily activities are quite varied, but they revolve around ensuring that the tavern runs smoothly. I start my mornings early, checking our supplies of food and drink to make sure we're well-stocked for the day. I spend a good amount of time in the kitchen, preparing hearty meals and baking bread with the flour Caleb Brown provides. Throughout the day, I serve our patrons, pouring ales and wines, and offering a listening ear to anyone who needs it. I also keep the hearth warm and inviting, using the firewood from the forest. Cleaning is a constant task, as I like to keep the tavern cozy and welcoming. And of course, I take a moment now and then to admire the Fire Poppies and Azure Asters that add a splash of color to the place. In the evenings, I often chat with friends like Jack McCaster, who might stop by after a day of fishing. Once the last guest has left, I tidy up, take stock for the next day, and then retire to my quarters upstairs to rest.

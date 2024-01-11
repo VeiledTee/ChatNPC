@@ -5,6 +5,7 @@ from flask import Flask, render_template, jsonify, request, send_from_directory
 
 import webchat
 from global_functions import get_network_usage
+from time import time
 
 start_sent, start_recv = get_network_usage()
 app = Flask(__name__)
@@ -19,6 +20,7 @@ def home():
 @app.route("/chat", methods=["POST"])
 def chat() -> str:
     user_input: str = request.json.get("user_input")  # what user said
+
     if user_input.lower() == 'bye':
         end_sent, end_recv = get_network_usage()
 
@@ -29,8 +31,21 @@ def chat() -> str:
         print(f"Sent: {bytes_sent / (1024 * 1024):.2f} MB")  # convert to MB
         print(f"Received: {bytes_recv / (1024 * 1024):.2f} MB")  # convert to MB
         return "Goodbye!"
+
     selected_character: str = request.json.get("character_select")  # character name
-    reply: str = webchat.run_query_and_generate_answer(query=user_input, receiver=selected_character)
+
+    time_start = time()
+    reply, prompt_tokens, reply_tokens = webchat.run_query_and_generate_answer(query=user_input, receiver=selected_character)
+    time_end = time()
+
+    time_difference = time_end - time_start
+    time_passed_per_prompt_token = time_difference / prompt_tokens
+    time_passed_per_reply_token = time_difference / reply_tokens
+
+    print(f"Time taken to reply: {time_difference:.2f} seconds")
+    print(f"Time per prompt token: {time_passed_per_prompt_token:.4f} seconds/token")
+    print(f"Time per reply token: {time_passed_per_reply_token:.4f} seconds/token")
+
     return f"{reply}"
 
 

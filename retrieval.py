@@ -24,7 +24,7 @@ def exponential_decay(earlier_time: datetime, current_time: datetime, decay_rate
     :returns: The calculated exponential decay score.
     """
     time_difference = (current_time - earlier_time).total_seconds()
-    score = math.exp(-decay_rate * time_difference)
+    score = 1 / (1 + decay_rate * time_difference)
     return score
 
 
@@ -84,7 +84,7 @@ def context_retrieval(namespace: str, query_embedding: list[float], n: int, inde
         },
     )  # don't need to return values cuz we get score
 
-    for _, record in responses['matches']:
+    for record in responses['matches']:
         print(record['metadata']['text'])
 
     # find current access time
