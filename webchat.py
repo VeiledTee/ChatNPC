@@ -116,7 +116,7 @@ def run_query_and_generate_answer(
     clean_prompt = prompt_engineer_character_reply(query, class_grammar_map[social_class], context)
     save_prompt: str = clean_prompt.replace("\n", " ")
 
-    generated_answer = answer(clean_prompt, history, namespace)
+    generated_answer, prompt_tokens, reply_tokens = answer(clean_prompt, history, namespace)
 
     if save:
         # save results to file and return generated answer.
@@ -465,7 +465,7 @@ def prompt_engineer_character_reply(prompt: str, grammar: str, context: list[str
                                          data=[grammar, prompt_middle, prompt_end])
 
 
-def answer(prompt: str, chat_history: list[dict], namespace: str) -> str:
+def answer(prompt: str, chat_history: list[dict], namespace: str) -> tuple[str, int, int]:
     """
     Using openAI API, respond to the provided prompt
     :param prompt: An engineered prompt to get the language model to respond to
@@ -493,7 +493,7 @@ def answer(prompt: str, chat_history: list[dict], namespace: str) -> str:
         filename = f"{namespace}_{timestamp}.mp3"
 
         audio_reply.stream_to_file(f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}/{filename}")
-    return clean_res
+    return clean_res, int(res.usage.prompt_tokens), int(res.usage.completion_tokens)
 
 
 def update_history(
