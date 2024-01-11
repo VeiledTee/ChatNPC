@@ -92,7 +92,7 @@ def run_query_and_generate_answer(
     history = generate_conversation(data_file, history, True, query)
     # embed query for processing
     embedded_query: list[float] = embed(query=query)
-    # retrieve memories using ONLY cosine similarity
+    # # retrieve memories using ONLY cosine similarity
     # responses = index.query(
     #     embedded_query,
     #     top_k=3,
@@ -110,7 +110,7 @@ def run_query_and_generate_answer(
     # context = [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
 
     # retrieve memories using recency, poignancy, and relevance metrics
-    context: list[str] = context_retrieval(namespace=namespace, query_embedding=embedded_query, n=5)
+    context: list[str] = context_retrieval(namespace=namespace, query_embedding=embedded_query, n=3)
 
     # generate clean prompt and answer.
     clean_prompt = prompt_engineer_character_reply(query, class_grammar_map[social_class], context)
@@ -266,6 +266,9 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
     character_data: list[str] = load_file_information(data_file)
     setting_data: list[str] = load_file_information(setting_file)
     data_facts: list[str] = []
+
+    # data_facts.extend(character_data)
+    # data_facts.extend(setting_data)
 
     for fact in character_data:
         data_facts.extend(fact_rephrase(fact, namespace, text_type='background'))

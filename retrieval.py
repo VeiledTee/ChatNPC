@@ -84,9 +84,6 @@ def context_retrieval(namespace: str, query_embedding: list[float], n: int, inde
         },
     )  # don't need to return values cuz we get score
 
-    for record in responses['matches']:
-        print(record['metadata']['text'])
-
     # find current access time
     cur_time = datetime.now()
     # calculate retrieval score and keep track of record IDs
@@ -99,8 +96,8 @@ def context_retrieval(namespace: str, query_embedding: list[float], n: int, inde
     # sort records by retrieval score
     sorted_score_id_pairs = sorted(score_id_pairs, key=lambda pair: pair[0], reverse=True)
 
-    for _, record in sorted_score_id_pairs:
-        print(record['metadata']['text'])
+    # for _, record in sorted_score_id_pairs:
+    #     print(record['metadata']['text'])
 
     # select top n memories
     top_records: list[dict] = []

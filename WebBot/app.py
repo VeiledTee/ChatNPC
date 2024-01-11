@@ -53,7 +53,7 @@ def chat() -> str:
 def upload_background() -> str:
     data = request.get_json()
     selected_character = data.get('character')
-
+    print('Backgrounding')
     webchat.upload_background(selected_character)
 
     print(f"Background uploaded successfully for {selected_character}")
