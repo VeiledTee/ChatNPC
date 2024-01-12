@@ -20,8 +20,10 @@ NOTES:
 - can only query one namespace at a time => must include setting info and character info when storing background info
 - website redesign (ongoing)
 - fact rephrasing vetting and testing
-- contradiction detection necessary?
+- contradiction detection model
 - add in stormlight money system for fun
+
+- 3 records from both setting and character memory
 
 Each of following tests asked same 3 questions
     * what do you do?
@@ -34,15 +36,14 @@ cos     |  0.1405   | 0.3179 |
 impact  |  0.1096   | 0.3889 |
 
 === 2x2 table - sent MB / conversation of X prompt and Y reply tokens
-        |  no fact  | fact  |
-cos     |   1.10    | 2.00  |
-impact  |   1.12    | 3.51  |
+        |  no fact  | fact |
+cos     |   1.10    | 2.00 |
+impact  |   1.12    | 3.51 |
 
 === 2x2 table - received MB / conversation of X prompt and Y reply tokens
-        |  no fact  | fact  |
-cos     |   0.86    | 1.08  |
-impact  |   0.92    | 2.57  |
-
+        |  no fact  | fact |
+cos     |   0.86    | 1.08 |
+impact  |   0.92    | 2.57 |
 
 ------------------------------------------------------------------------------------------------------
 - semantic role labeling
