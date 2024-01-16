@@ -1,5 +1,6 @@
-- bullet point
-* to do
+Remove huggingface models:
+pip install huggingface_hub["cli"]
+huggingface-cli delete-cache
 ------------------------------------------------------------------------------------------------------
 NOTES:
 - use vector database for efficient storage and retrieval of data
@@ -238,8 +239,6 @@ https://aclanthology.org/W16-5004.pdf
 		* Local overlap: overlap of stemmed word tokens found using Smith-Waterman algorithm
 	- Classifiers: Nearest centroids and random forest
 	- Using text similarity can account for varying sequences of tokens ("the cat chased the mouse" and "the mouse was chased by the cat" both say the same thing in different ways
-
-
 
 
 

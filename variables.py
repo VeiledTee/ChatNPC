@@ -1,5 +1,7 @@
 import math
 import torch
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+
 
 #  Specify dataset to use (train/match/mismatch)
 DATASET = "train"
@@ -24,3 +26,7 @@ if torch.cuda.is_available():
     DEVICE = torch.device("cuda")
 else:
     DEVICE = torch.device("cpu")
+
+MODEL_NAME = "MoritzLaurer/mDeBERTa-v3-base-xnli-multilingual-nli-2mil7"
+TOKENIZER = AutoTokenizer.from_pretrained(MODEL_NAME)
+MODEL = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
