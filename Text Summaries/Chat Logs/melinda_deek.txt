@@ -1,5 +1,3 @@
 version https://git-lfs.github.com/spec/v1
-oid sha256:e8d0800a6a71f86eaf51f9d334e60bb921201d5d71357efb55b16700278b8ebf
-size 32
-Player: what are you afraid of, if anything?
-Melinda Deek: As a knight, I strive to embody the essence of courage and fearlessness. It is my duty to stand undaunted in the face of danger. Thus, I would assert that there is nothing that truly strikes fear into my heart.
+oid sha256:0d311cae5c13e52359153da89b03caf450b725493a63b3eae4ee4fcf9f7aebfa
+size 397

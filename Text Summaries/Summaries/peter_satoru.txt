@@ -1,7 +1,3 @@
-Peter Satoru is a respected and experienced archer in the town of Ashbourne.
-He has lived there his entire life, and at 65 years old, he still possesses excellent archery skills and a wealth of knowledge about combat and strategy.
-Despite his age, Peter is patient, resilient, and wise, making him a valuable asset to the community.
-He spends much of his time training younger archers in the town, passing on his expertise to the next generation.
-Peter's family background includes a father who was also an archer, which suggests a long tradition of archery in his family.
-His social status is lower class, but his allegiances lie with the people of Ashbourne, whom he serves and protects.
-Peter has formed close relationships with Jack McCaster, a local fisherman, and Melinda Deek, a fellow knight in the village.
+version https://git-lfs.github.com/spec/v1
+oid sha256:269f3cfcaa51b80f1e2acd2a57f6bb783f5a67378aa88727e8df4ca2333acbd3
+size 815
