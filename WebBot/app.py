@@ -1,7 +1,7 @@
 import glob
 import os
 
-from flask import Flask, render_template, jsonify, request, send_from_directory
+from flask import Flask, render_template, jsonify, request, send_from_directory, Response
 
 import webchat
 from global_functions import get_network_usage
@@ -18,8 +18,8 @@ def home():
 
 
 @app.route("/chat", methods=["POST"])
-def chat() -> str:
-    user_input: str = request.json.get("user_input")  # what user said
+def chat() -> Response:
+    user_input: str = request.json.get("user_input")  # what the user said
 
     if user_input.lower() == 'bye':
         end_sent, end_recv = get_network_usage()
@@ -35,7 +35,17 @@ def chat() -> str:
     selected_character: str = request.json.get("character_select")  # character name
 
     time_start = time()
-    reply, prompt_tokens, reply_tokens = webchat.run_query_and_generate_answer(query=user_input, receiver=selected_character)
+
+    # Check for the specific flag
+    if user_input.lower() == 'flag':
+        response_text = f"{selected_character}: Which of the following statements is true?"
+        options = ["Option A", "Option B", "Option C", "Option D"]
+        return jsonify({'character': selected_character, 'response': response_text, 'options': options})
+
+    # If the flag is not detected, proceed with the regular response generation
+    reply, prompt_tokens, reply_tokens = webchat.run_query_and_generate_answer(query=user_input,
+                                                                               receiver=selected_character)
+
     time_end = time()
 
     time_difference = time_end - time_start
@@ -46,7 +56,10 @@ def chat() -> str:
     print(f"Time per prompt token: {time_passed_per_prompt_token:.4f} seconds/token")
     print(f"Time per reply token: {time_passed_per_reply_token:.4f} seconds/token")
 
-    return f"{reply}"
+    # Include the character's name in the response
+    response_text_with_name = f"{selected_character}: {reply}"
+
+    return jsonify({'character': selected_character, 'response': response_text_with_name})
 
 
 @app.route('/upload_background', methods=['POST'])

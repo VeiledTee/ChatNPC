@@ -30,6 +30,29 @@ h1 {
     font-family: Consolas, monospace; /* Use Consolas for dialogue elements */
 }
 
+/* Add styles for multiple-choice options */
+#chatbox ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+#chatbox li {
+    background-color: #4CAF50;
+    color: white;
+    padding: 8px;
+    margin: 4px 0;
+    border-radius: 5px;
+}
+
+#message-list li {
+    background-color: #4CAF50; /* Adjusted */
+    color: white;
+    padding: 8px;
+    margin: 4px 0;
+    border-radius: 5px;
+}
+
 #chat-form {
     display: flex;
     flex-direction: column; /* Change to column layout */
@@ -58,7 +81,6 @@ h1 {
     color: #000; /* Set text color */
     font-size: 18px; /* Increase font size */
 }
-
 
 .input-box {
     display: flex;
@@ -92,7 +114,6 @@ h1 {
     box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4), -2px -2px 5px rgba(255, 255, 255, 0.4); /* Add shadows */
 }
 
-
-#chatbox, .player-response, .character-response {
+#message-list, .player-response, .character-response {
     font-family: Consolas, monospace; /* Use Consolas for dialogue elements */
 }

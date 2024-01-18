@@ -64,16 +64,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 'Content-Type': 'application/json'
             }
         })
-        .then(response => response.text())
+        .then(response => response.json())
         .then(data => {
-            // Append the character's name and response to the chatbox
-            chatbox.innerHTML += `<p><strong>${selectedCharacter}:</strong> ${data}</p>`;
+            const responseText = data.response;
+            const options = data.options;
 
-            // Scroll to the bottom of the chatbox
+            if (options && options.length > 0) {
+                chatbox.innerHTML += `<p>${responseText}</p><ul>${options.map(option => `<li>${option}</li>`).join('')}</ul>`;
+            } else {
+                chatbox.innerHTML += `<p>${responseText}</p>`;
+            }
+
             chatbox.scrollTop = chatbox.scrollHeight;
 
-            // Call audio function
-            getDynamicAudioURLAndPlay()
+            getDynamicAudioURLAndPlay();
         })
         .catch(error => {
             console.error('Error:', error);

@@ -257,14 +257,14 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
         character_names = json.load(character_info_file)
 
     data_file: str = f"../Text Summaries/Summaries/{character_names[character]}.txt"
-    setting_file: str = "../Text Summaries/Summaries/ashbourne.txt"
+    # setting_file: str = "../Text Summaries/Summaries/ashbourne.txt"
     namespace: str = extract_name(data_file).lower()
     # background has already been uploaded if namespace exists so can skip repeat uploads
     if namespace_exist(namespace):
         return None
 
     character_data: list[str] = load_file_information(data_file)
-    setting_data: list[str] = load_file_information(setting_file)
+    # setting_data: list[str] = load_file_information(setting_file)
     data_facts: list[str] = []
 
     # data_facts.extend(character_data)
@@ -272,8 +272,8 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
 
     for fact in character_data:
         data_facts.extend(fact_rephrase(fact, namespace, text_type='background'))
-    for fact in setting_data:
-        data_facts.extend(fact_rephrase(fact, namespace, text_type='background'))
+    # for fact in setting_data:
+    #     data_facts.extend(fact_rephrase(fact, namespace, text_type='background'))
 
     index: pinecone.Index = pinecone.Index(index_name)
 
@@ -287,7 +287,8 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
             data_vectors = []
         info_dict: dict = {
             "id": str(total_vectors),
-            "metadata": {"text": info, "type": "background", 'poignancy': 10, 'last_accessed': cur_time.strftime(DATE_FORMAT)},
+            "metadata": {"text": info, "type": "background", 'poignancy': 10,
+                         'last_accessed': cur_time.strftime(DATE_FORMAT)},
             "values": embed(info),
         }
         data_vectors.append(info_dict)
@@ -373,7 +374,8 @@ def upload(
             data_vectors = []
         info_dict: dict = {
             "id": str(total_vectors),
-            "metadata": {"text": info, "type": text_type, 'poignancy': find_importance(namespace, info), 'last_accessed': cur_time.strftime(DATE_FORMAT)},
+            "metadata": {"text": info, "type": text_type, 'poignancy': find_importance(namespace, info),
+                         'last_accessed': cur_time.strftime(DATE_FORMAT)},
             "values": embed(info),
         }  # build dict for upserting
         data_vectors.append(info_dict)
@@ -454,7 +456,7 @@ def prompt_engineer_character_reply(prompt: str, grammar: str, context: list[str
     :return: The formatted prompt
     """
     prompt_start: str = \
-    prompt_engineer_from_template(template_file="../Prompts/character_reply.txt", data=[grammar]).split('<1>')[0]
+        prompt_engineer_from_template(template_file="../Prompts/character_reply.txt", data=[grammar]).split('<1>')[0]
     with open("tried_prompts.txt", "a+") as prompt_file:
         if prompt_start + "\n" not in prompt_file.readlines():
             prompt_file.write(prompt_start + "\n")
