@@ -95,7 +95,7 @@ def prompt_engineer_from_template(template_file: str, data: list[str]) -> str:
     :param data: A list of strings containing the data to inject into the prompt
     :return: The template filled with the correct information
     """
-    with open(template_file, 'r') as file:
+    with open(template_file, "r") as file:
         prompt = file.read()
     for index, information in enumerate(data):
         prompt = prompt.replace(f"<{index}>", information)
@@ -111,7 +111,7 @@ def get_network_usage():
     return net_io.bytes_sent, net_io.bytes_recv
 
 
-def delete_all_vectors(index_name: str = 'thesis-index') -> None:
+def delete_all_vectors(index_name: str = "thesis-index") -> None:
     """
     Deletes all vectors and namespaces in the pinecone database
     :param index_name: name of the index data is stored in
@@ -130,7 +130,7 @@ def delete_all_vectors(index_name: str = 'thesis-index') -> None:
         index.delete(deleteAll=True, namespace=namespace)
 
 
-def delete_specific_vectors(character_name: str, index_name: str = 'thesis-index') -> None:
+def delete_specific_vectors(character_name: str, index_name: str = "thesis-index") -> None:
     """
     Deletes all vectors in a specific namespace
     :param character_name: character's name who's memory needs to be wiped (namespace or full name)
@@ -138,12 +138,12 @@ def delete_specific_vectors(character_name: str, index_name: str = 'thesis-index
     :return: None
     """
     index: pinecone.Index = pinecone.Index(index_name)
-    if '_' not in character_name:
+    if "_" not in character_name:
         namespace: str = name_conversion(to_snake=True, to_convert=character_name)
     index.delete(deleteAll=True, namespace=namespace)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     with open("keys.txt", "r") as key_file:
         api_keys = [key.strip() for key in key_file.readlines()]
         pinecone.init(
@@ -151,4 +151,4 @@ if __name__ == '__main__':
             environment=api_keys[2],
         )
 
-    delete_specific_vectors('Sarah Ratengen')
+    delete_specific_vectors("Sarah Ratengen")

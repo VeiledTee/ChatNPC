@@ -8,6 +8,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+
 # from ripser import ripser
 from transformers import BertTokenizer, BertModel
 from variables import DEVICE

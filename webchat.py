@@ -53,10 +53,10 @@ def load_file_information(load_file: str) -> list[str]:
 
 
 def run_query_and_generate_answer(
-        query: str,
-        receiver: str,
-        index_name: str = "thesis-index",
-        save: bool = True,
+    query: str,
+    receiver: str,
+    index_name: str = "thesis-index",
+    save: bool = True,
 ) -> tuple[str, int, int]:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
@@ -271,7 +271,7 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
     # data_facts.extend(setting_data)
 
     for fact in character_data:
-        data_facts.extend(fact_rephrase(fact, namespace, text_type='background'))
+        data_facts.extend(fact_rephrase(fact, namespace, text_type="background"))
     # for fact in setting_data:
     #     data_facts.extend(fact_rephrase(fact, namespace, text_type='background'))
 
@@ -287,8 +287,12 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
             data_vectors = []
         info_dict: dict = {
             "id": str(total_vectors),
-            "metadata": {"text": info, "type": "background", 'poignancy': 10,
-                         'last_accessed': cur_time.strftime(DATE_FORMAT)},
+            "metadata": {
+                "text": info,
+                "type": "background",
+                "poignancy": 10,
+                "last_accessed": cur_time.strftime(DATE_FORMAT),
+            },
             "values": embed(info),
         }
         data_vectors.append(info_dict)
@@ -298,10 +302,10 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
 
 
 def upload_contradiction(
-        namespace: str,
-        data: list[str],
-        index: pinecone.Index,
-        text_type: str = "query",
+    namespace: str,
+    data: list[str],
+    index: pinecone.Index,
+    text_type: str = "query",
 ) -> None:
     """
     Sends text embedding vectors of two contradictory sentences into pinecone DB at indexes s1 and s2
@@ -330,18 +334,18 @@ def upload_contradiction(
 
 
 def delete_contradiction(
-        namespace: str,
-        record_ids: list[str],
-        index: pinecone.Index,
+    namespace: str,
+    record_ids: list[str],
+    index: pinecone.Index,
 ) -> None:
     delete_response = index.delete(ids=record_ids, namespace=namespace)
 
 
 def upload(
-        namespace: str,
-        data: list[str],
-        index: pinecone.Index,
-        text_type: str = "background",
+    namespace: str,
+    data: list[str],
+    index: pinecone.Index,
+    text_type: str = "background",
 ) -> None:
     """
     Sends records to the namespace at the specified pinecone index
@@ -374,8 +378,12 @@ def upload(
             data_vectors = []
         info_dict: dict = {
             "id": str(total_vectors),
-            "metadata": {"text": info, "type": text_type, 'poignancy': find_importance(namespace, info),
-                         'last_accessed': cur_time.strftime(DATE_FORMAT)},
+            "metadata": {
+                "text": info,
+                "type": text_type,
+                "poignancy": find_importance(namespace, info),
+                "last_accessed": cur_time.strftime(DATE_FORMAT),
+            },
             "values": embed(info),
         }  # build dict for upserting
         data_vectors.append(info_dict)
@@ -389,20 +397,24 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
     :param phrase: A phrase containing multiple facts to be distilled into separate ones
     :return: The split-up factual statements
     """
-    if text_type == 'background':
+    if text_type == "background":
         msgs: list[dict] = [
             {
                 "role": "system",
-                "content": prompt_engineer_from_template(template_file="../Prompts/background_rephrase.txt",
-                                                         data=[name_conversion(to_snake=False, to_convert=namespace)]),
+                "content": prompt_engineer_from_template(
+                    template_file="../Prompts/background_rephrase.txt",
+                    data=[name_conversion(to_snake=False, to_convert=namespace)],
+                ),
             }
         ]
-    elif text_type == 'response':
+    elif text_type == "response":
         msgs: list[dict] = [
             {
                 "role": "system",
-                "content": prompt_engineer_from_template(template_file="../Prompts/response_rephrase.txt",
-                                                         data=[name_conversion(to_snake=False, to_convert=namespace)]),
+                "content": prompt_engineer_from_template(
+                    template_file="../Prompts/response_rephrase.txt",
+                    data=[name_conversion(to_snake=False, to_convert=namespace)],
+                ),
             }
         ]
     prompt: str = f"Split this phrase into facts: {phrase}"
@@ -415,12 +427,12 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
 
 def find_importance(namespace: str, fact: str) -> int:
     character_name: str = name_conversion(to_snake=False, to_convert=namespace)
-    with open(f"../Text Summaries/Summaries/{namespace}.txt", 'r') as character_file:
+    with open(f"../Text Summaries/Summaries/{namespace}.txt", "r") as character_file:
         character_info: str = character_file.read()
 
-    prompt = prompt_engineer_from_template(template_file="../Prompts/poignancy.txt",
-                                           data=[character_name, character_info, character_name, fact]
-                                           )  # get prompt for poignancy score
+    prompt = prompt_engineer_from_template(
+        template_file="../Prompts/poignancy.txt", data=[character_name, character_info, character_name, fact]
+    )  # get prompt for poignancy score
 
     example_output = 5
     fail_safe_output: int = 3  # used when the LLM can't assign a value
@@ -455,8 +467,9 @@ def prompt_engineer_character_reply(prompt: str, grammar: str, context: list[str
     :param context: The context to be used in the prompt
     :return: The formatted prompt
     """
-    prompt_start: str = \
-        prompt_engineer_from_template(template_file="../Prompts/character_reply.txt", data=[grammar]).split('<1>')[0]
+    prompt_start: str = prompt_engineer_from_template(
+        template_file="../Prompts/character_reply.txt", data=[grammar]
+    ).split("<1>")[0]
     with open("tried_prompts.txt", "a+") as prompt_file:
         if prompt_start + "\n" not in prompt_file.readlines():
             prompt_file.write(prompt_start + "\n")
@@ -466,8 +479,9 @@ def prompt_engineer_character_reply(prompt: str, grammar: str, context: list[str
     for c in context:
         print(f"{c}")
         prompt_middle += f"\n{c}"
-    return prompt_engineer_from_template(template_file="../Prompts/character_reply.txt",
-                                         data=[grammar, prompt_middle, prompt_end])
+    return prompt_engineer_from_template(
+        template_file="../Prompts/character_reply.txt", data=[grammar, prompt_middle, prompt_end]
+    )
 
 
 def answer(prompt: str, chat_history: list[dict], namespace: str) -> tuple[str, int, int]:
@@ -502,12 +516,12 @@ def answer(prompt: str, chat_history: list[dict], namespace: str) -> tuple[str, 
 
 
 def update_history(
-        namespace: str,
-        info_file: str,
-        prompt: str,
-        response: str,
-        index: pinecone.Index,
-        character: str = "Player",
+    namespace: str,
+    info_file: str,
+    prompt: str,
+    response: str,
+    index: pinecone.Index,
+    character: str = "Player",
 ) -> None:
     """
     Update the history of the current chat with new responses

@@ -45,7 +45,7 @@ def importance_score(record: dict) -> float:
     :param record: The current record to determine an importance score for
     :return: The poignancy of the presented record
     """
-    return record['metadata']['poignancy']
+    return record["metadata"]["poignancy"]
 
 
 def relevance_score(record_embedding: list, query_embedding: list) -> float:
@@ -58,8 +58,9 @@ def relevance_score(record_embedding: list, query_embedding: list) -> float:
     return cos_sim(np.array(record_embedding), np.array(query_embedding))
 
 
-def context_retrieval(namespace: str, query_embedding: list[float], n: int, index_name: str = 'thesis-index') -> list[
-    str]:
+def context_retrieval(
+    namespace: str, query_embedding: list[float], n: int, index_name: str = "thesis-index"
+) -> list[str]:
     """
     Ranks character memories by a retrieval score.
     Retrieval score calculated by multiplying their importance, recency, and relevance scores together.
@@ -89,8 +90,10 @@ def context_retrieval(namespace: str, query_embedding: list[float], n: int, inde
     # calculate retrieval score and keep track of record IDs
     # score_id_pairs format: [SCORE, RECORD]
     score_id_pairs: list = [
-        (recency_score(cur_time, record['metadata']['last_accessed']) * importance_score(record) * record['score'],
-         record)
+        (
+            recency_score(cur_time, record["metadata"]["last_accessed"]) * importance_score(record) * record["score"],
+            record,
+        )
         for record in responses["matches"]
     ]
     # sort records by retrieval score
@@ -104,13 +107,10 @@ def context_retrieval(namespace: str, query_embedding: list[float], n: int, inde
     top_context: list[str] = []
     for score, record in sorted_score_id_pairs[:n]:
         top_records.append(record)
-        top_context.append(record['metadata']['text'])
+        top_context.append(record["metadata"]["text"])
 
     # update records with new access times
     for record in top_records:
-        index.update(id=record['id'],
-                     set_metadata={'last_accessed': str(cur_time)},
-                     namespace=namespace
-                     )
+        index.update(id=record["id"], set_metadata={"last_accessed": str(cur_time)}, namespace=namespace)
 
     return top_context
