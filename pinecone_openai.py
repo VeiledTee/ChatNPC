@@ -26,7 +26,7 @@ if __name__ == "__main__":
         # print(names)
         DATA_FILE: str = f"Text Summaries/Summaries/{names[CHARACTER]}.txt"
 
-        INDEX_NAME: str = "thesis-index"
+        INDEX_NAME: str = "chatnpc-index"
         NAMESPACE: str = extract_name(DATA_FILE).lower()
 
         QUERY: str = "Can chromafluke fish be found near Ashbourne?"

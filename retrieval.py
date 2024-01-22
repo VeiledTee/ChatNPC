@@ -58,7 +58,7 @@ def relevance_score(record_embedding: list, query_embedding: list) -> float:
     return cos_sim(np.array(record_embedding), np.array(query_embedding))
 
 
-def context_retrieval(namespace: str, query_embedding: list[float], n: int, index_name: str = 'thesis-index') -> list[
+def context_retrieval(namespace: str, query_embedding: list[float], n: int, index_name: str = 'chatnpc-index') -> list[
     str]:
     """
     Ranks character memories by a retrieval score.
