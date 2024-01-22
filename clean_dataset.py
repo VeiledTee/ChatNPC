@@ -163,11 +163,11 @@ def fact_rephrase(phrase: str, namespace: str, subject: str) -> list[str]:
         {
             "role": "system",
             "content": f"You are {name_conversion(to_snake=False, to_convert=namespace)}. "
-                       f"Split up the sentences about {subject} I provide you into facts. "
-                       "Each fact should be able to stand on it's own. "
-                       "Tell me each fact on a new line. "
-                       "Do not include anything in your response other than the facts. "
-                       "Refer to everyone in the third person, including yourself",
+            f"Split up the sentences about {subject} I provide you into facts. "
+            "Each fact should be able to stand on it's own. "
+            "Tell me each fact on a new line. "
+            "Do not include anything in your response other than the facts. "
+            "Refer to everyone in the third person, including yourself",
         }
     ]
     prompt: str = f"Split this phrase into facts: {phrase}"
@@ -199,4 +199,4 @@ if __name__ == "__main__":
     with open("Text Summaries/Summaries/john_pebble.txt") as char_file:
         for line in char_file.readlines():
             print(line.strip())
-            print(fact_rephrase(line, "john_pebble", "John Pebble"), '\n')
+            print(fact_rephrase(line, "john_pebble", "John Pebble"), "\n")

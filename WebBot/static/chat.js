@@ -3,20 +3,18 @@ document.addEventListener('DOMContentLoaded', function () {
     const chatbox = document.getElementById('chatbox');
     const userInput = document.getElementById('user-input');
     const characterSelect = document.getElementById('character-select');
-    const sendButton = document.getElementById('send-button'); // Added
+    const sendButton = document.getElementById('send-button');
 
-    let selectedCharacter = ''; // Initialize the selected character name
+    let selectedCharacter = '';
+    let selectedOptionIndex = null;
 
-    // Add an event listener to the character select dropdown
     characterSelect.addEventListener('change', function () {
         selectedCharacter = characterSelect.options[characterSelect.selectedIndex].text;
         if (characterSelect.value !== '') {
-            // Enable the form elements when a character is selected
             userInput.disabled = false;
-            sendButton.disabled = false; // Enable the send button
-            sendButton.classList.add('active'); // Add 'active' class to the send button
+            sendButton.disabled = false;
+            sendButton.classList.add('active');
 
-            // Make an HTTP request to call the Python function
             fetch('/upload_background', {
                 method: 'POST',
                 body: JSON.stringify({ character: selectedCharacter }),
@@ -26,40 +24,33 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .then(response => {
                 if (response.ok) {
-                    // Handle a successful response here
                     console.log("Background uploaded successfully");
                 } else {
-                    // Handle an error response here
                     console.error("Error uploading background");
                 }
             })
             .catch(error => {
-                // Handle any network or other errors here
                 console.error("Network or other error occurred");
             });
         } else {
-            // Disable the form elements if no character is selected
             userInput.disabled = true;
-            sendButton.disabled = true; // Disable the send button
-            sendButton.classList.remove('active'); // Remove 'active' class from the send button
+            sendButton.disabled = true;
+            sendButton.classList.remove('active');
         }
     });
 
     form.addEventListener('submit', function (e) {
-        e.preventDefault(); // Prevent the form from submitting the traditional way
+        e.preventDefault();
 
         const userMessage = userInput.value;
 
-        // Append the user's message to the chatbox with the Player label
         chatbox.innerHTML += `<p><strong>Player:</strong> ${userMessage}</p>`;
 
-        // Clear the input field
         userInput.value = '';
 
-        // Send the user's message to the server for processing
         fetch('/chat', {
             method: 'POST',
-            body: JSON.stringify({ user_input: userMessage, character_select: selectedCharacter }), // Include selected character
+            body: JSON.stringify({ user_input: userMessage, character_select: selectedCharacter, selected_option: selectedOptionIndex }),
             headers: {
                 'Content-Type': 'application/json'
             }
@@ -70,34 +61,63 @@ document.addEventListener('DOMContentLoaded', function () {
             const options = data.options;
 
             if (options && options.length > 0) {
-                chatbox.innerHTML += `<p>${responseText}</p><ul>${options.map(option => `<li>${option}</li>`).join('')}</ul>`;
+                chatbox.innerHTML += `<p>${responseText}</p>`;
+                const optionsList = options.map((option, index) =>
+                    `<div class="options-container">
+                        <button class="option-btn ${selectedOptionIndex === index ? 'selected' : ''}"
+                                data-index="${index}" ${selectedOptionIndex !== null ? 'disabled' : ''}>
+                            ${option}
+                        </button>
+                    </div>`
+                ).join('');
+                chatbox.innerHTML += optionsList;
             } else {
                 chatbox.innerHTML += `<p>${responseText}</p>`;
             }
 
             chatbox.scrollTop = chatbox.scrollHeight;
-
             getDynamicAudioURLAndPlay();
+
+            selectedOptionIndex = null;
         })
         .catch(error => {
             console.error('Error:', error);
         });
     });
 
+    // Event delegation for option button clicks
+    chatbox.addEventListener('click', function (event) {
+        const target = event.target;
+        if (target.classList.contains('option-btn') && !target.classList.contains('selected') && selectedOptionIndex === null) {
+            // Disable other buttons and style the selected one
+            const buttons = document.querySelectorAll('.option-btn');
+            buttons.forEach((button, index) => {
+                if (button === target) {
+                    button.classList.add('selected');
+                } else {
+                    button.disabled = true;
+                }
+            });
+
+            // Store the selected option index
+            selectedOptionIndex = parseInt(target.getAttribute('data-index'));
+
+            // Print text and index in the console
+            const selectedOptionText = target.innerText;
+            console.log(`Selected Option Text: ${selectedOptionText}, Index: ${selectedOptionIndex}`);
+        }
+    });
+
     function getDynamicAudioURLAndPlay() {
-    // Make an AJAX request to the server to get the URL of the most recent audio file
-    fetch(`/get_latest_audio/${selectedCharacter}`)
+        fetch(`/get_latest_audio/${selectedCharacter}`)
         .then(response => response.json())
         .then(data => {
             const latestAudioURL = data.latest_audio_url;
-            console.log(latestAudioURL)
+            console.log(latestAudioURL);
 
             if (latestAudioURL) {
-                // Reference the 'auto-play-audio' element by ID
                 const autoPlayAudio = document.getElementById('auto-play-audio');
-                // Update the source of the auto-play audio element
                 autoPlayAudio.querySelector('source').src = latestAudioURL;
-                // Load and play the audio
                 autoPlayAudio.load();
                 autoPlayAudio.play();
             } else {

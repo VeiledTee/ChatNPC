@@ -60,11 +60,11 @@ def load_file_information(load_file: str) -> list[str]:
 
 
 def chat(
-        namespace: str,
-        data: list[str],
-        receiver: str,
-        job: str,
-        status: str,
+    namespace: str,
+    data: list[str],
+    receiver: str,
+    job: str,
+    status: str,
 ) -> None:
     """
     Initiate a conversation with a character. Stops conversation when player says "bye".
@@ -94,14 +94,14 @@ def chat(
 
 
 def run_query_and_generate_answer(
-        namespace: str,
-        data: list[str],
-        background: bool,
-        receiver: str,
-        job: str,
-        status: str,
-        index_name: str = "chatnpc-index",
-        save: bool = True,
+    namespace: str,
+    data: list[str],
+    background: bool,
+    receiver: str,
+    job: str,
+    status: str,
+    index_name: str = "thesis-index",
+    save: bool = True,
 ) -> str | None:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
@@ -283,9 +283,9 @@ def embed(query: str) -> list[float]:
 
 
 def upload_background(
-        namespace: str,
-        data: list[str],
-        index: pinecone.Index,
+    namespace: str,
+    data: list[str],
+    index: pinecone.Index,
 ) -> None:
     """
     Uploads the background of the character associated with the namespace
@@ -296,7 +296,7 @@ def upload_background(
     """
     if not pinecone.list_indexes():  # check if there are any indexes
         # create index if it doesn't exist
-        pinecone.create_index("chatnpc-index", dimension=384)
+        pinecone.create_index("thesis-index", dimension=384)
     total_vectors: int = 0
     data_vectors = []
     for i, info in enumerate(data):
@@ -314,10 +314,10 @@ def upload_background(
 
 
 def upload_conversation(
-        namespace: str,
-        data: list[str],
-        index: pinecone.Index,
-        text_type: str = "background",
+    namespace: str,
+    data: list[str],
+    index: pinecone.Index,
+    text_type: str = "background",
 ) -> None:
     """
     'Upserts' text embedding vectors into pinecone DB at the specific index
@@ -346,10 +346,10 @@ def upload_conversation(
 
 
 def upload_contradiction(
-        namespace: str,
-        data: list[str],
-        index: pinecone.Index,
-        text_type: str = "query",
+    namespace: str,
+    data: list[str],
+    index: pinecone.Index,
+    text_type: str = "query",
 ) -> None:
     """
     'Upserts' text embedding vectors of two contradictory sentences into pinecone DB at indexes s1 and s2
@@ -378,9 +378,9 @@ def upload_contradiction(
 
 
 def delete_contradiction(
-        namespace: str,
-        record_ids: list[str],
-        index: pinecone.Index,
+    namespace: str,
+    record_ids: list[str],
+    index: pinecone.Index,
 ) -> None:
     delete_response = index.delete(ids=record_ids, namespace=namespace)
 
@@ -391,7 +391,7 @@ def namespace_exist(namespace: str) -> bool:
     :param namespace: the namespace in question
     :return: boolean showing if the namespace exists or not
     """
-    index = pinecone.Index("chatnpc-index")  # get index
+    index = pinecone.Index("thesis-index")  # get index
     responses = index.query(
         embed(" "),
         top_k=1,
@@ -461,12 +461,12 @@ def answer(prompt: str, chat_history: list[dict], is_chat: bool = True) -> str:
 
 
 def update_history(
-        namespace: str,
-        info_file: str,
-        prompt: str,
-        response: str,
-        index: pinecone.Index,
-        character: str = "Player",
+    namespace: str,
+    info_file: str,
+    prompt: str,
+    response: str,
+    index: pinecone.Index,
+    character: str = "Player",
 ) -> None:
     """
     Update the history of the current chat with new responses
@@ -540,7 +540,7 @@ if __name__ == "__main__":
     print(f"Conversation with: {CHARACTER} (a {PROFESSION})")
     DATA_FILE: str = f"Text Summaries/Summaries/{names[CHARACTER]}.txt"
 
-    INDEX_NAME: str = "chatnpc-index"
+    INDEX_NAME: str = "thesis-index"
     NAMESPACE: str = extract_name(DATA_FILE).lower()
 
     file_data = load_file_information(DATA_FILE)

@@ -2,12 +2,15 @@ from datetime import datetime
 
 
 class Fact:
-    def __init__(self, fact_id: int,
-                 text: str, poignancy: float = 0.99,
-                 importance: int = 5,
-                 information_type: str = 'background',
-                 expiration=None
-                 ):
+    def __init__(
+        self,
+        fact_id: int,
+        text: str,
+        poignancy: float = 0.99,
+        importance: int = 5,
+        information_type: str = "background",
+        expiration=None,
+    ):
         self.id = fact_id
         self.text = text
         self.poignancy = poignancy

@@ -1,18 +1,3 @@
 version https://git-lfs.github.com/spec/v1
-oid sha256:6bfdb078c34e8d803b24eadd32711f1ec0cb5357b54bd84856008a4314fe9210
-size 64178
-
-========================================================================================================================
-Prompt: version https://git-lfs.github.com/spec/v1 oid sha256:cc98d6a52732be63d90eedad0b9c675598a758821c9271b2f1de6c7633a0bc4f size 331 
-To: John Pebble, a thief
-version https://git-lfs.github.com/spec/v1 oid sha256:cc98d6a52732be63d90eedad0b9c675598a758821c9271b2f1de6c7633a0bc4f size 331 
-It seems like you're referencing a Git Large File Storage (LFS) pointer file. This file is used to track large files within a Git repository without actually storing the file's contents in the repository itself. Instead, the contents are stored on a remote server, and the pointer file is committed to the Git repository.
-
-The contents of the pointer file you've provided indicate the object ID (oid) of the large file, which is a SHA-256 hash, and the size of the original file in bytes. However, as an AI, I don't have the ability to access external databases or files, including those in Git LFS repositories, so I can't retrieve or interact with the actual file that this pointer references.
-
-If you need help with Git LFS or have any other questions, feel free to ask!
-========================================================================================================================
-Prompt: version https://git-lfs.github.com/spec/v1 oid sha256:cc98d6a52732be63d90eedad0b9c675598a758821c9271b2f1de6c7633a0bc4f size 331 
-To: John Pebble, a thief
-version https://git-lfs.github.com/spec/v1 oid sha256:cc98d6a52732be63d90eedad0b9c675598a758821c9271b2f1de6c7633a0bc4f size 331 
-I'm sorry, but I'm not able to access external content like GitHub repositories or files. If you have a specific question or need information on a topic, feel free to ask, and I'll do my best to provide you with an answer based on the information available to me up to my last update in 2023. If you're looking for assistance with a git repository or Large File Storage (LFS), I can provide guidance or answer questions about that as well.
+oid sha256:447d6860a87f50720b32ec3b0c9580441a58902fdbe4a153142cf13eb77a89c1
+size 72011

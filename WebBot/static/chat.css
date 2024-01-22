@@ -105,6 +105,7 @@ h1 {
     padding: 3px 10px;
     text-align: center;
     text-decoration: none;
+    text-decoration: none;
     display: inline-block;
     font-size: 24px;
     transition: box-shadow 0.3s ease;
@@ -116,4 +117,25 @@ h1 {
 
 #message-list, .player-response, .character-response {
     font-family: Consolas, monospace; /* Use Consolas for dialogue elements */
+}
+
+/* Add styles for multiple-choice options */
+.options-container {
+    display: flex;
+    flex-direction: column; /* Change to column layout */
+}
+
+.option-btn {
+    background-color: #4CAF50;
+    color: white;
+    padding: 8px;
+    margin: 4px 0;
+    border-radius: 5px;
+    font-size: 18px;
+    font-family: Consolas, monospace;
+    cursor: pointer;
+}
+
+.option-btn:hover {
+    background-color: #45a049; /* Darker green on hover */
 }
