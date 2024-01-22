@@ -72,7 +72,7 @@ def namespace_exist(namespace: str) -> bool:
     :param namespace: the namespace in question
     :return: boolean showing if the namespace exists or not
     """
-    index = pinecone.Index("thesis-index")  # get index
+    index = pinecone.Index("chatnpc-index")  # get index
     responses = index.query(
         embed(" "),
         top_k=1,
@@ -111,7 +111,7 @@ def get_network_usage():
     return net_io.bytes_sent, net_io.bytes_recv
 
 
-def delete_all_vectors(index_name: str = "thesis-index") -> None:
+def delete_all_vectors(index_name: str = "chatnpc-index") -> None:
     """
     Deletes all vectors and namespaces in the pinecone database
     :param index_name: name of the index data is stored in
@@ -130,7 +130,7 @@ def delete_all_vectors(index_name: str = "thesis-index") -> None:
         index.delete(deleteAll=True, namespace=namespace)
 
 
-def delete_specific_vectors(character_name: str, index_name: str = "thesis-index") -> None:
+def delete_specific_vectors(character_name: str, index_name: str = "chatnpc-index") -> None:
     """
     Deletes all vectors in a specific namespace
     :param character_name: character's name who's memory needs to be wiped (namespace or full name)

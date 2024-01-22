@@ -100,7 +100,7 @@ def run_query_and_generate_answer(
     receiver: str,
     job: str,
     status: str,
-    index_name: str = "thesis-index",
+    index_name: str = "chatnpc-index",
     save: bool = True,
 ) -> str | None:
     """
@@ -296,7 +296,7 @@ def upload_background(
     """
     if not pinecone.list_indexes():  # check if there are any indexes
         # create index if it doesn't exist
-        pinecone.create_index("thesis-index", dimension=384)
+        pinecone.create_index("chatnpc-index", dimension=384)
     total_vectors: int = 0
     data_vectors = []
     for i, info in enumerate(data):
@@ -391,7 +391,7 @@ def namespace_exist(namespace: str) -> bool:
     :param namespace: the namespace in question
     :return: boolean showing if the namespace exists or not
     """
-    index = pinecone.Index("thesis-index")  # get index
+    index = pinecone.Index("chatnpc-index")  # get index
     responses = index.query(
         embed(" "),
         top_k=1,
@@ -540,7 +540,7 @@ if __name__ == "__main__":
     print(f"Conversation with: {CHARACTER} (a {PROFESSION})")
     DATA_FILE: str = f"Text Summaries/Summaries/{names[CHARACTER]}.txt"
 
-    INDEX_NAME: str = "thesis-index"
+    INDEX_NAME: str = "chatnpc-index"
     NAMESPACE: str = extract_name(DATA_FILE).lower()
 
     file_data = load_file_information(DATA_FILE)
