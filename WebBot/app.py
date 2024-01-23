@@ -36,13 +36,14 @@ def chat() -> Response:
 
     time_start = time()
 
-    # Check for the specific flag
-    if user_input.lower() == "flag":
+    options = ["Option A", "Option B", "Both statements are true", "Neither statement is true"]
+
+    if user_input.lower() == 'flag':
         response_text = f"{selected_character}: Which of the following statements is true?"
-        options = ["Option A", "Option B", "Both statements are true", "Neither statement is true"]
-        selected_option: int = request.json.get("selected_option", None)  # selected option index
-        print(f"Option: {selected_option}")
-        return jsonify({"character": selected_character, "response": response_text, "options": options})
+        return jsonify({'character': selected_character, 'response': response_text, 'options': options})
+
+    selected_option: int = request.json.get("selected_option", None)
+    print(f'Selected Option: {selected_option} | {options[selected_option]}')
 
     # If the flag is not detected, proceed with the regular response generation
     reply, prompt_tokens, reply_tokens = webchat.run_query_and_generate_answer(

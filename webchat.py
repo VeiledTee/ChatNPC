@@ -2,13 +2,16 @@ import json
 import os
 from datetime import datetime
 from typing import Any, Tuple
+
+import torch
+
 from retrieval import context_retrieval
 
 import pinecone
 from openai import OpenAI
 
 from global_functions import embed, extract_name, name_conversion, namespace_exist, prompt_engineer_from_template
-from variables import DATE_FORMAT
+from variables import DATE_FORMAT, TOKENIZER, MODEL, DEVICE
 
 AUDIO: bool = False
 # TEXT_MODEL: str = "gpt-3.5-turbo-0301"
@@ -302,10 +305,10 @@ def upload_background(character: str, index_name: str = "chatnpc-index") -> None
 
 
 def upload_contradiction(
-    namespace: str,
-    data: list[str],
-    index: pinecone.Index,
-    text_type: str = "query",
+        namespace: str,
+        data: list[str],
+        index: pinecone.Index,
+        text_type: str = "query",
 ) -> None:
     """
     Sends text embedding vectors of two contradictory sentences into pinecone DB at indexes s1 and s2
@@ -334,18 +337,18 @@ def upload_contradiction(
 
 
 def delete_contradiction(
-    namespace: str,
-    record_ids: list[str],
-    index: pinecone.Index,
+        namespace: str,
+        record_ids: list[str],
+        index: pinecone.Index,
 ) -> None:
     delete_response = index.delete(ids=record_ids, namespace=namespace)
 
 
 def upload(
-    namespace: str,
-    data: list[str],
-    index: pinecone.Index,
-    text_type: str = "background",
+        namespace: str,
+        data: list[str],
+        index: pinecone.Index,
+        text_type: str = "background",
 ) -> None:
     """
     Sends records to the namespace at the specified pinecone index
@@ -516,12 +519,12 @@ def answer(prompt: str, chat_history: list[dict], namespace: str) -> tuple[str, 
 
 
 def update_history(
-    namespace: str,
-    info_file: str,
-    prompt: str,
-    response: str,
-    index: pinecone.Index,
-    character: str = "Player",
+        namespace: str,
+        info_file: str,
+        prompt: str,
+        response: str,
+        index: pinecone.Index,
+        character: str = "Player",
 ) -> None:
     """
     Update the history of the current chat with new responses
@@ -543,14 +546,24 @@ def update_history(
         )  # save chat logs
 
 
-def are_contradiction(to_check: str, reply: str) -> bool:
-    return True if model.predict(to_check, reply, DEVICE) == 2 else False
+def are_contradiction(premise_a: str, premise_b: str) -> bool:
+    input = TOKENIZER(premise_a, premise_b, truncation=True, return_tensors="pt").to(DEVICE)
+    output = MODEL(input["input_ids"].to(DEVICE))
+    prediction = torch.softmax(output["logits"][0], -1).tolist()
+    label_names = ["contradiction"]
+    prediction = {name: round(float(pred) * 100, 4) for pred, name in zip(prediction, label_names)}
+    prediction["non-contradiction"] = round(100 - prediction["contradiction"], 4)
+
+    if prediction["contradiction"] >= prediction["non-contradiction"]:
+        return True
+    else:
+        return False
 
 
-def check_context_for_contradiction(context: list[str], reply: str) -> tuple[str, str] | None:
+def check_context_for_contradiction(context: list[str], query: str) -> tuple[str, str] | None:
     for phrase in context:
-        if are_contradiction(phrase, reply):
-            return phrase, reply
+        if are_contradiction(phrase, query):
+            return phrase, query
     return None
 
 
