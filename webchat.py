@@ -55,7 +55,7 @@ def load_file_information(load_file: str) -> list[str]:
 def run_query_and_generate_answer(
     query: str,
     receiver: str,
-    index_name: str = "thesis-index",
+    index_name: str = "chatnpc-index",
     save: bool = True,
 ) -> tuple[str, int, int]:
     """
@@ -243,7 +243,7 @@ def generate_conversation(character_file: str, chat_history: list, player: bool,
     return chat_history
 
 
-def upload_background(character: str, index_name: str = "thesis-index") -> None:
+def upload_background(character: str, index_name: str = "chatnpc-index") -> None:
     """
     Uploads the background of the character associated with the namespace
     :param character: the character we're working with
@@ -251,7 +251,7 @@ def upload_background(character: str, index_name: str = "thesis-index") -> None:
     """
     if not pinecone.list_indexes():  # check if there are any indexes
         # create index if it doesn't exist
-        pinecone.create_index("thesis-index", dimension=384, pods=1, pod_type="p2.x1")
+        pinecone.create_index("chatnpc-index", dimension=384, pods=1, pod_type="p2.x1")
 
     with open("../Text Summaries/characters.json", "r") as character_info_file:
         character_names = json.load(character_info_file)

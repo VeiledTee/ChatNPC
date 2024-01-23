@@ -18,7 +18,7 @@ if __name__ == "__main__":
     WINDOW: int = 3  # how many sentences are combined
     STRIDE: int = 2  # used to create overlap, num sentences we 'stride' over
 
-    INDEX_NAME: str = "thesis-index"  # pinecone index name
+    INDEX_NAME: str = "chatnpc-index"  # pinecone index name
     NAMESPACE = "peter-satoru"
 
     with open("keys.txt", "r") as key_file:
@@ -28,7 +28,7 @@ if __name__ == "__main__":
             environment=api_keys[2],
         )
 
-    index = pinecone.Index("thesis-index")
+    index = pinecone.Index("chatnpc-index")
 
     # # upload data and generate query embedding.
     # embedded_query = embed("what fish can be found near ashbourne")
