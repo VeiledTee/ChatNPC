@@ -1,6 +1,6 @@
 import glob
 
-from flask import Flask, render_template, jsonify, request, send_from_directory, Response
+from flask import Flask, render_template, jsonify, request, send_from_directory, Response, session
 
 import webchat
 from global_functions import get_network_usage
@@ -36,14 +36,18 @@ def chat() -> Response:
 
     time_start = time()
 
-    options = ["Option A", "Option B", "Both statements are true", "Neither statement is true"]
-
     if user_input.lower() == 'flag':
-        response_text = f"{selected_character}: Which of the following statements is true?"
-        return jsonify({'character': selected_character, 'response': response_text, 'options': options})
+        # Define options when the flag is encountered
+        options = ["Option A", "Option B", "Both statements are true", "Neither statement is true"]
+        session['options'] = options  # Store options in session for future reference
+        response_text = "Which of the following statements is true?"
+        return jsonify({'response': response_text, 'options': options})
 
-    selected_option: int = request.json.get("selected_option", None)
-    print(f'Selected Option: {selected_option} | {options[selected_option]}')
+    selected_option = request.json.get("selected_option", None)
+    options = session.get('options', [])  # Retrieve options from session
+
+    if selected_option is not None:
+        print(f'Selected Option: {selected_option} | {options[selected_option]}')
 
     # If the flag is not detected, proceed with the regular response generation
     reply, prompt_tokens, reply_tokens = webchat.run_query_and_generate_answer(
@@ -52,6 +56,7 @@ def chat() -> Response:
 
     time_end = time()
 
+    # quantitative analysis
     time_difference = time_end - time_start
     time_passed_per_prompt_token = time_difference / prompt_tokens
     time_passed_per_reply_token = time_difference / reply_tokens
@@ -100,6 +105,24 @@ def get_latest_audio(character_name):
 def get_audio(character_name, filename):
     audio_dir = os.path.join(os.path.join("static", "audio"), character_name)
     return send_from_directory(audio_dir, filename)
+
+
+def contradictory_reply(query: str):
+    """
+    If there is a contradiction in the query, generate a response
+    :param query:
+    :return:
+    """
+    return "Response from Function A"
+
+
+def non_contradictory_reply(query: str):
+    """
+    If there isn't a contradiction in the query, generate a response
+    :param query:
+    :return:
+    """
+    return "Response from Function B"
 
 
 if __name__ == "__main__":
