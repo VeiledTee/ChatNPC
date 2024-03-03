@@ -17,14 +17,15 @@ AUDIO: bool = False
 # TEXT_MODEL: str = "gpt-3.5-turbo-0301"
 TEXT_MODEL: str = "gpt-4-1106-preview"
 
-# load api keys from openai and pinecone
-with open("../keys.txt", "r") as key_file:
-    api_keys = [key.strip() for key in key_file.readlines()]
-    client = OpenAI(api_key=api_keys[0])
-    pinecone.init(
-        api_key=api_keys[1],
-        environment=api_keys[2],
-    )
+
+# # load api keys from openai and pinecone
+# with open("../keys.txt", "r") as key_file:
+#     api_keys = [key.strip() for key in key_file.readlines()]
+#     client = OpenAI(api_key=api_keys[0])
+#     pinecone.init(
+#         api_key=api_keys[1],
+#         environment=api_keys[2],
+#     )
 
 
 def get_information(character_name) -> None | tuple:
@@ -56,10 +57,10 @@ def load_file_information(load_file: str) -> list[str]:
 
 
 def run_query_and_generate_answer(
-    query: str,
-    receiver: str,
-    index_name: str = "chatnpc-index",
-    save: bool = True,
+        query: str,
+        receiver: str,
+        index_name: str = "chatnpc-index",
+        save: bool = True,
 ) -> tuple[str, int, int]:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
@@ -547,11 +548,12 @@ def update_history(
 
 
 def are_contradiction(premise_a: str, premise_b: str) -> bool:
-    input = TOKENIZER(premise_a, premise_b, truncation=True, return_tensors="pt").to(DEVICE)
-    output = MODEL(input["input_ids"].to(DEVICE))
+    tokenized_input = TOKENIZER(premise_a, premise_b, truncation=True, return_tensors="pt").to(DEVICE)
+    input_dict = {key: value.to(DEVICE) for key, value in tokenized_input.items()}
+    output = MODEL(**input_dict)
     prediction = torch.softmax(output["logits"][0], -1).tolist()
-    label_names = ["contradiction"]
-    prediction = {name: round(float(pred) * 100, 4) for pred, name in zip(prediction, label_names)}
+    label_names = ["entailment", "neutral", "contradiction"]
+    prediction = {name: round(float(pred) * 100, 1) for pred, name in zip(prediction, label_names)}
     prediction["non-contradiction"] = round(100 - prediction["contradiction"], 4)
 
     if prediction["contradiction"] >= prediction["non-contradiction"]:
@@ -560,21 +562,6 @@ def are_contradiction(premise_a: str, premise_b: str) -> bool:
         return False
 
 
-def check_context_for_contradiction(context: list[str], query: str) -> tuple[str, str] | None:
-    for phrase in context:
-        if are_contradiction(phrase, query):
-            return phrase, query
-    return None
-
-
-def contradictory_phrases_reply(sentence1: str, sentence2: str) -> str:
-    prompt: str = (
-        "distill these sentences down to the fact they convey. ask me in one sentence: "
-        "Is {insert first sentence fact} or {insert second sentence fact} true? "
-        f"{sentence1}"
-        f"{sentence2}"
-        f"for example: "
-        f"Did you know blackfins live in the east river?"
-        f"The west river is home to a large school of blackfish."
-        f"Output: Do blackfins live in the east or west river?"
-    )
+if __name__ == '__main__':
+    print(are_contradiction('blackfins only live in the east river', 'blackfins only live in the west river'))
+    print(are_contradiction('blackfins live in the east river', 'blackfins live in the west river'))
