@@ -18,14 +18,14 @@ AUDIO: bool = False
 TEXT_MODEL: str = "gpt-4-1106-preview"
 
 
-# # load api keys from openai and pinecone
-# with open("../keys.txt", "r") as key_file:
-#     api_keys = [key.strip() for key in key_file.readlines()]
-#     client = OpenAI(api_key=api_keys[0])
-#     pinecone.init(
-#         api_key=api_keys[1],
-#         environment=api_keys[2],
-#     )
+# load api keys from openai and pinecone
+with open("../keys.txt", "r") as key_file:
+    api_keys = [key.strip() for key in key_file.readlines()]
+    client = OpenAI(api_key=api_keys[0])
+    pinecone.init(
+        api_key=api_keys[1],
+        environment=api_keys[2],
+    )
 
 
 def get_information(character_name) -> None | tuple:
@@ -59,6 +59,7 @@ def load_file_information(load_file: str) -> list[str]:
 def run_query_and_generate_answer(
         query: str,
         receiver: str,
+        context: list[str],
         index_name: str = "chatnpc-index",
         save: bool = True,
 ) -> tuple[str, int, int]:
@@ -66,6 +67,7 @@ def run_query_and_generate_answer(
     Runs a query on a Pinecone index and generates an answer based on the response context.
     :param query: The query to be run on the index.
     :param receiver: The character being prompted
+    :param context: The context required for the agent to answer the question correctly
     :param index_name: The name of the Pinecone index.
     :param save: A bool to save to a file is Ture and print out if False. Default: True
     :return: The generated answer based on the response context.
@@ -86,35 +88,11 @@ def run_query_and_generate_answer(
 
     namespace: str = extract_name(data_file).lower()
 
-    # connect to index
-    index = pinecone.Index(index_name)
-
     # Contradictory statement kb updates
     if query.lower() == "bye":
         return "Goodbye!"
 
     history = generate_conversation(data_file, history, True, query)
-    # embed query for processing
-    embedded_query: list[float] = embed(query=query)
-    # # retrieve memories using ONLY cosine similarity
-    # responses = index.query(
-    #     embedded_query,
-    #     top_k=3,
-    #     include_metadata=True,
-    #     namespace=namespace,
-    #     filter={
-    #         "$or": [
-    #             {"type": {"$eq": "background"}},
-    #             {"type": {"$eq": "response"}},
-    #         ]
-    #     },
-    # )
-    #
-    # # Filter out responses containing the string "Player:"
-    # context = [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
-
-    # retrieve memories using recency, poignancy, and relevance metrics
-    context: list[str] = context_retrieval(namespace=namespace, query_embedding=embedded_query, n=3)
 
     # generate clean prompt and answer.
     clean_prompt = prompt_engineer_character_reply(query, class_grammar_map[social_class], context)
@@ -141,19 +119,46 @@ def run_query_and_generate_answer(
     )
 
     update_history(
-        namespace=namespace, info_file=data_file, prompt=query, response=generated_answer.split(": ")[-1], index=index
+        namespace=namespace, info_file=data_file, prompt=query, response=generated_answer.split(": ")[-1], index=pinecone.Index(index_name)
     )
 
     return generated_answer, prompt_tokens, reply_tokens
 
 
-def handle_contradiction(query: str, index: pinecone.Index, namespace: str) -> None:
+def retrieve_context_list(namespace: str, query: str, impact_score: bool = True, n: int = 3,  index_name: str = 'chatnpc-index') -> list[str]:
+    # embed query for processing
+    embedded_query: list[float] = embed(query=query)
+    # connect to index
+    index = pinecone.Index(index_name)
+    # retrieve memories using ONLY cosine similarity
+    if impact_score:
+        # retrieve memories using recency, poignancy, and relevance metrics
+        return context_retrieval(namespace=namespace, query_embedding=embedded_query, n=n)
+    else:
+        responses = index.query(
+            embedded_query,
+            top_k=n,
+            include_metadata=True,
+            namespace=namespace,
+            filter={
+                "$or": [
+                    {"type": {"$eq": "background"}},
+                    {"type": {"$eq": "response"}},
+                ]
+            },
+        )
+
+        # Filter out responses containing the string "Player:"
+        return [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
+
+
+def handle_contradiction(contradictory_index: str, index: pinecone.Index, namespace: str) -> None:
     """
     This function deals with contradictory facts in the context and query.
     When the first fact is identified as false, remove it from the KB and replace with the second
     When the second fact is identified as false, ignore it
     When both facts are identified as true, store them as separate new facts in the KB
-    When both facts are identified as false, remove the frist from the KB and ignore the second
+    When both facts are identified as false, remove the first from the KB and ignore the second
     :param query: The query proposed to the system by the player
     :param index: The Pinecone index
     :param namespace: Namespace of the character user is speaking to
@@ -162,9 +167,9 @@ def handle_contradiction(query: str, index: pinecone.Index, namespace: str) -> N
     # retrieve the s1 and s2 records
     s1_vector = index.fetch(ids=["1"], namespace=namespace)
     s2_vector = index.fetch(ids=["s2"], namespace=namespace)
-    if query.lower() == "first":
+    if contradictory_index.lower() == "first":
         delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
-    elif query.lower() == "second":
+    elif contradictory_index.lower() == "second":
         print(s1_vector)
         # retrieve copy of s1 stored in main KB
         responses = index.query(
@@ -188,7 +193,7 @@ def handle_contradiction(query: str, index: pinecone.Index, namespace: str) -> N
             "values": s2_vector["vectors"]["1"]["values"],
         }  # build dict for upserting
         index.upsert(vectors=[info_dict], namespace=namespace)
-    elif query.lower() == "both":
+    elif contradictory_index.lower() == "both":
         delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
         total_vectors: int = index.describe_index_stats()["namespaces"][namespace][
             "vector_count"
@@ -200,7 +205,7 @@ def handle_contradiction(query: str, index: pinecone.Index, namespace: str) -> N
             "values": s2_vector["vectors"]["1"]["values"],
         }  # build dict for upserting
         index.upsert(vectors=[info_dict], namespace=namespace)
-    elif query.lower() == "neither":
+    elif contradictory_index.lower() == "neither":
         # retrieve the s1 and s2 records
         s1_vector = index.fetch(ids=["1"], namespace=namespace)
         # retrieve copy of s1 stored in main KB
