@@ -39,68 +39,15 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-form.addEventListener('submit', function (e) {
-    e.preventDefault();
+    form.addEventListener('submit', function (e) {
+        e.preventDefault();
 
-    const userMessage = userInput.value;
+        const userMessage = userInput.value;
 
-    chatbox.innerHTML += `<p><strong>Player:</strong> ${userMessage}</p>`;
+        chatbox.innerHTML += `<p><strong>Player:</strong> ${userMessage}</p>`;
 
-    userInput.value = '';
+        userInput.value = '';
 
-    fetch('/chat', {
-        method: 'POST',
-        body: JSON.stringify({ user_input: userMessage, character_select: selectedCharacter, selected_option: selectedOptionIndex }),
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        const responseText = data.response;
-        const options = data.options;
-
-        if (options && options.length > 0) {
-            const optionsList = options.map((option, index) =>
-                `<div class="options-container">
-                    <button class="option-btn ${selectedOptionIndex === index ? 'selected' : 'blurred'}"
-                            data-index="${index}" ${selectedOptionIndex !== null ? 'disabled' : ''}>
-                        ${option}
-                    </button>
-                </div>`
-            ).join('');
-            chatbox.innerHTML += optionsList;
-        } else {
-            chatbox.innerHTML += `<p>${responseText}</p>`;
-        }
-
-        chatbox.scrollTop = chatbox.scrollHeight;
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
-
-    selectedOptionIndex = null; // Reset the selected option after sending the request
-});
-
-    // Event delegation for option button clicks
-    chatbox.addEventListener('click', function (event) {
-    const target = event.target;
-    if (target.classList.contains('option-btn') && !target.classList.contains('selected') && selectedOptionIndex === null) {
-        selectedOptionIndex = parseInt(target.getAttribute('data-index'));
-        target.classList.add('selected');
-
-        // Blur the remaining unselected options
-        const optionButtons = document.querySelectorAll('.option-btn');
-        optionButtons.forEach((button, index) => {
-            if (index !== selectedOptionIndex) {
-                button.classList.add('blurred');
-                button.disabled = true; // Disable the remaining unselected options
-            }
-        });
-
-        // After selecting the option, send the request
-        const userMessage = '';  // You can modify this to include the actual user's message
         fetch('/chat', {
             method: 'POST',
             body: JSON.stringify({ user_input: userMessage, character_select: selectedCharacter, selected_option: selectedOptionIndex }),
@@ -124,7 +71,7 @@ form.addEventListener('submit', function (e) {
                 ).join('');
                 chatbox.innerHTML += optionsList;
             } else {
-                chatbox.innerHTML += `<p>${responseText}</p>`;
+                chatbox.innerHTML += `<p><strong>${selectedCharacter}:</strong> ${responseText}</p>`;
             }
 
             chatbox.scrollTop = chatbox.scrollHeight;
@@ -134,8 +81,71 @@ form.addEventListener('submit', function (e) {
         });
 
         selectedOptionIndex = null; // Reset the selected option after sending the request
-    }
-});
+    });
+
+    // Event delegation for option button clicks
+    chatbox.addEventListener('click', function (event) {
+        const target = event.target;
+        if (target.classList.contains('option-btn') && !target.classList.contains('selected') && selectedOptionIndex === null) {
+            selectedOptionIndex = parseInt(target.getAttribute('data-index'));
+
+            // Remove 'selected' class from previously selected button
+            const selectedButton = document.querySelector('.option-btn.selected');
+            if (selectedButton) {
+                selectedButton.classList.remove('selected');
+            }
+
+            target.classList.add('selected');
+
+            // Change background color of selected button
+            target.style.backgroundColor = '#1A85FF';
+
+            // Blur the remaining unselected options
+            const optionButtons = document.querySelectorAll('.option-btn');
+            optionButtons.forEach((button, index) => {
+                if (index !== selectedOptionIndex) {
+                    button.classList.add('blurred');
+                    button.disabled = true; // Disable the remaining unselected options
+                }
+            });
+
+            // After selecting the option, send the request
+            const userMessage = '';  // You can modify this to include the actual user's message
+            fetch('/chat', {
+                method: 'POST',
+                body: JSON.stringify({ user_input: userMessage, character_select: selectedCharacter, selected_option: selectedOptionIndex }),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const responseText = data.response;
+                const options = data.options;
+
+                if (options && options.length > 0) {
+                    const optionsList = options.map((option, index) =>
+                        `<div class="options-container">
+                            <button class="option-btn ${selectedOptionIndex === index ? 'selected' : 'blurred'}"
+                                    data-index="${index}" ${selectedOptionIndex !== null ? 'disabled' : ''}>
+                                ${option}
+                            </button>
+                        </div>`
+                    ).join('');
+                    chatbox.innerHTML += optionsList;
+                } else {
+                    chatbox.innerHTML += `<p><strong>${selectedCharacter}:</strong> ${responseText}</p>`;
+                }
+
+                chatbox.scrollTop = chatbox.scrollHeight;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+
+            selectedOptionIndex = null; // Reset the selected option after sending the request
+        }
+    });
 
     function getDynamicAudioURLAndPlay() {
         fetch(`/get_latest_audio/${selectedCharacter}`)

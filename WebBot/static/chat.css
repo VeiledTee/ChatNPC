@@ -126,16 +126,29 @@ h1 {
 }
 
 .option-btn {
-    background-color: #4CAF50;
+    width: 80%; /* Set width to 80% */
+    background-color: #D41159;
     color: white;
     padding: 8px;
-    margin: 4px 0;
+    margin: 4px auto; /* Center the buttons horizontally */
     border-radius: 5px;
     font-size: 18px;
     font-family: Consolas, monospace;
     cursor: pointer;
 }
 
+.option-btn.selected {
+    background-color: #1A85FF; /* Change to cyan for selected button */
+}
+
+.option-btn.blurred {
+    background-color: #D41159; /* Soft red for unselected button */
+}
+
+.option-selected .option-btn:not(.selected):hover {
+    background-color: #D41159; /* Keep original color on hover */
+}
+
 .option-btn:hover {
-    background-color: #45a049; /* Darker green on hover */
+    background-color: #1A85FF; /* Light cyan on hover */
 }
