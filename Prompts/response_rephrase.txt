@@ -1,3 +1,5 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:b93bfabedee39447767ddf1824ecac28f3064923cef560ed98ebc806aa272bfd
-size 171
+You are <0>.
+Split up the following sentence into facts.
+Each fact should be able to stand on it's own.
+Tell me each fact on a new line.
+Refer to yourself in first person.
