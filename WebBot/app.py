@@ -2,6 +2,7 @@ import glob
 
 from flask import Flask, render_template, jsonify, request, send_from_directory, Response, session
 
+import global_functions
 import webchat
 from global_functions import get_network_usage
 from time import time
@@ -10,6 +11,7 @@ import os
 start_sent, start_recv = get_network_usage()
 app = Flask(__name__)
 app.static_folder = "static"
+app.secret_key = 'chatnpc_secret_key'  # Set a secret key for session management
 
 
 @app.route("/")
@@ -35,10 +37,19 @@ def chat() -> Response:
     selected_character: str = request.json.get("character_select")  # character name
 
     time_start = time()
+    context: list[str] = webchat.retrieve_context_list(
+        namespace=global_functions.name_conversion(to_snake=False, to_convert=selected_character), query=user_input,
+        impact_score=True)
+    base_options: list[str] = ["Both statements are true", "Neither statement is true"]
+    contradictory_premises = None
+
+    for premise in context:
+        if webchat.are_contradiction(premise_a=user_input, premise_b=premise):
+            contradictory_premises = []
 
     if user_input.lower() == 'flag':
         # Define options when the flag is encountered
-        options = ["Option A", "Option B", "Both statements are true", "Neither statement is true"]
+        options = [contradictory_premises[0], contradictory_premises[1]] + base_options
         session['options'] = options  # Store options in session for future reference
         response_text = "Which of the following statements is true?"
         return jsonify({'response': response_text, 'options': options})
@@ -77,7 +88,6 @@ def upload_background() -> str:
     selected_character = data.get("character")
     print("Backgrounding")
     webchat.upload_background(selected_character)
-
     print(f"Background uploaded successfully for {selected_character}")
     return ""
 

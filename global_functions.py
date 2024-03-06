@@ -40,7 +40,7 @@ def extract_name(file_name: str) -> str:
 
 def name_conversion(to_snake: bool, to_convert: str) -> str:
     """
-    Convert a namespace to character name or character name to namespace
+    Convert a namespace to character name (not snake) or character name to namespace (snake)
     :param to_snake: Do you convert to namespace or not
     :param to_convert: String to convert
     :return: Converted string

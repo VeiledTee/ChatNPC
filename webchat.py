@@ -17,7 +17,6 @@ AUDIO: bool = False
 # TEXT_MODEL: str = "gpt-3.5-turbo-0301"
 TEXT_MODEL: str = "gpt-4-1106-preview"
 
-
 # load api keys from openai and pinecone
 with open("../keys.txt", "r") as key_file:
     api_keys = [key.strip() for key in key_file.readlines()]
@@ -88,7 +87,7 @@ def run_query_and_generate_answer(
 
     namespace: str = extract_name(data_file).lower()
 
-    # Contradictory statement kb updates
+    # Contradictory statement KB updates
     if query.lower() == "bye":
         return "Goodbye!"
 
@@ -119,13 +118,15 @@ def run_query_and_generate_answer(
     )
 
     update_history(
-        namespace=namespace, info_file=data_file, prompt=query, response=generated_answer.split(": ")[-1], index=pinecone.Index(index_name)
+        namespace=namespace, info_file=data_file, prompt=query, response=generated_answer.split(": ")[-1],
+        index=pinecone.Index(index_name)
     )
 
     return generated_answer, prompt_tokens, reply_tokens
 
 
-def retrieve_context_list(namespace: str, query: str, impact_score: bool = True, n: int = 3,  index_name: str = 'chatnpc-index') -> list[str]:
+def retrieve_context_list(namespace: str, query: str, impact_score: bool = True, n: int = 3,
+                          index_name: str = 'chatnpc-index') -> list[str]:
     # embed query for processing
     embedded_query: list[float] = embed(query=query)
     # connect to index
@@ -152,24 +153,30 @@ def retrieve_context_list(namespace: str, query: str, impact_score: bool = True,
         return [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
 
 
-def handle_contradiction(contradictory_index: str, index: pinecone.Index, namespace: str) -> None:
+def handle_contradiction(contradictory_index: int, namespace: str, index_name: str = 'chatnpc-index') -> None:
     """
     This function deals with contradictory facts in the context and query.
-    When the first fact is identified as false, remove it from the KB and replace with the second
-    When the second fact is identified as false, ignore it
-    When both facts are identified as true, store them as separate new facts in the KB
-    When both facts are identified as false, remove the first from the KB and ignore the second
-    :param query: The query proposed to the system by the player
-    :param index: The Pinecone index
+    If the first fact is identified as false, remove it from the KB and replace with the second
+    If the second fact is identified as false, ignore it
+    If both facts are identified as true, store them as separate new facts in the KB
+    If both facts are identified as false, remove the first from the KB and ignore the second
+    :param contradictory_index: The index within the context list of the user's choice
+    :param index_name: The name of the Pinecone index containing our vectors
     :param namespace: Namespace of the character user is speaking to
     :return: None, KB is updated within the function
     """
-    # retrieve the s1 and s2 records
-    s1_vector = index.fetch(ids=["1"], namespace=namespace)
+    index: pinecone.Index = pinecone.Index(index_name)
+
+    # retrieve the s1 and s2 vectors for bookkeeping
+    s1_vector = index.fetch(ids=["s1"], namespace=namespace)
     s2_vector = index.fetch(ids=["s2"], namespace=namespace)
-    if contradictory_index.lower() == "first":
+
+    # get current time in case we need to upsert
+    cur_time = datetime.now()
+
+    if contradictory_index == 0:  # premise already in KB
         delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
-    elif contradictory_index.lower() == "second":
+    elif contradictory_index == 1:  # information presented by user
         print(s1_vector)
         # retrieve copy of s1 stored in main KB
         responses = index.query(
@@ -189,23 +196,33 @@ def handle_contradiction(contradictory_index: str, index: pinecone.Index, namesp
         # upsert s2 (the true statement) into KB at the index of s1
         info_dict: dict = {
             "id": str(responses["matches"][0]["id"]),
-            "metadata": {"text": s2_vector["vectors"]["1"]["metadata"]["text"], "type": "response"},
+            "metadata": {"text": s2_vector["vectors"]["1"]["metadata"]["text"],
+                         "type": "response",
+                         "poignancy": 10,
+                         "last_accessed": cur_time.strftime(DATE_FORMAT),
+                         },
             "values": s2_vector["vectors"]["1"]["values"],
         }  # build dict for upserting
         index.upsert(vectors=[info_dict], namespace=namespace)
-    elif contradictory_index.lower() == "both":
-        delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
+    elif contradictory_index == 2:  # both are correct, need to add premise 2
+        delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)  # delete s1 and s2 for clean slate
         total_vectors: int = index.describe_index_stats()["namespaces"][namespace][
             "vector_count"
         ]  # get num of vectors existing in the namespace
         # upsert s2 (the true statement) into KB at the index of s1
         info_dict: dict = {
             "id": str(total_vectors),
-            "metadata": {"text": s2_vector["vectors"]["1"]["metadata"]["text"], "type": "response"},
+            "metadata": {
+                "text": s2_vector["vectors"]["1"]["metadata"]["text"],
+                "type": "response",
+                "poignancy": 10,
+                "last_accessed": cur_time.strftime(DATE_FORMAT),
+            },
             "values": s2_vector["vectors"]["1"]["values"],
         }  # build dict for upserting
         index.upsert(vectors=[info_dict], namespace=namespace)
-    elif contradictory_index.lower() == "neither":
+    elif contradictory_index == 3:
+        # TODO: move last vector to spot where s1 was originally
         # retrieve the s1 and s2 records
         s1_vector = index.fetch(ids=["1"], namespace=namespace)
         # retrieve copy of s1 stored in main KB
@@ -314,31 +331,35 @@ def upload_contradiction(
         namespace: str,
         data: list[str],
         index: pinecone.Index,
-        text_type: str = "query",
 ) -> None:
     """
-    Sends text embedding vectors of two contradictory sentences into pinecone DB at indexes s1 and s2
+    Sends text embedding vectors of two contradictory sentences into pinecone KB at indexes s1 and s2
     :param namespace: the pinecone namespace data is uploaded to
     :param data: The two contradictory sentences
     :param index: pinecone index to send data to
-    :param text_type: The type of text we are embedding. Choose "background", "response", or "question".
-        Default value: "background"
     """
     total_vectors: int = index.describe_index_stats()["namespaces"][namespace][
         "vector_count"
     ]  # get num of vectors existing in the namespace
-    data_vectors = []
+    # total_vectors: int = 0
+    data_vectors: list = []
+    cur_time = datetime.now()
     for i, info in enumerate(data):
         if i == 99:  # recommended batch limit of 100 vectors
             index.upsert(vectors=data_vectors, namespace=namespace)
             data_vectors = []
         info_dict: dict = {
             f"id": f"s{i + 1}",
-            "metadata": {"text": info, "type": text_type},
+            "metadata": {
+                "text": info,
+                "type": "response",
+                "poignancy": 10,
+                "last_accessed": cur_time.strftime(DATE_FORMAT),
+            },
             "values": embed(info),
         }  # build dict for upserting
         data_vectors.append(info_dict)
-        total_vectors += 1
+        # total_vectors += 1
     index.upsert(vectors=data_vectors, namespace=namespace)  # upsert all remaining data
 
 
