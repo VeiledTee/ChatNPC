@@ -38,17 +38,19 @@ def chat() -> Response:
     selected_character: str = request.json.get("character_select")  # character name
     time_start = time()
 
-    # context: list[str] = webchat.retrieve_context_list(
-    #     namespace=global_functions.name_conversion(to_snake=True, to_convert=selected_character), query=user_input,
-    #     impact_score=True)
-    context = ["test 1", "test 2", "test 3"]
+    context: list[str] = webchat.retrieve_context_list(
+        namespace=global_functions.name_conversion(to_snake=True, to_convert=selected_character),
+        query=user_input,
+        impact_score=True,
+    )
+    # context = ["test 1", "test 2", "test 3"]
     base_options: list[str] = ["Both statements are true", "Neither statement is true"]
     contradictory_premises = ["test 3", "user query"]
     contradiction: bool = False
 
     for premise in context:
         if webchat.are_contradiction(premise_a=user_input, premise_b=premise):
-            contradictory_premises = [user_input, premise]
+            contradictory_premises = [premise, user_input]
             webchat.upload_contradiction(
                 namespace=global_functions.name_conversion(to_snake=True, to_convert=selected_character),
                 s1=premise,
@@ -56,14 +58,19 @@ def chat() -> Response:
             )
             contradiction = True
             break
-    webchat.upload_contradiction(
-        namespace=global_functions.name_conversion(to_snake=True, to_convert=selected_character),
-        s1="test 3",
-        s2="user query",
-    )
-    if user_input.lower() == "flag" or contradiction:
+    # webchat.upload_contradiction(
+    #     namespace=global_functions.name_conversion(to_snake=True, to_convert=selected_character),
+    #     s1="test 3",
+    #     s2="user query",
+    # )
+
+    print(user_input, contradiction)
+    print(contradictory_premises)
+    # if user_input.lower() == "flag":
+    if contradiction:
         # Define options when the flag is encountered
         options = [contradictory_premises[0], contradictory_premises[1]] + base_options
+        print(options)
         session["options"] = options  # Store options in session for future reference
         response_text = "Which of the following statements is true?"
         return jsonify({"response": response_text, "options": options})
@@ -106,22 +113,22 @@ def chat() -> Response:
             namespace=global_functions.name_conversion(to_snake=True, to_convert=selected_character),
         )  # update DB
 
-    # # Proceed with the regular response generation after updating context
-    # reply, prompt_tokens, reply_tokens = webchat.run_query_and_generate_answer(
-    #     query=user_input, receiver=selected_character, context=context
-    # )
-    reply, _, _ = ("this is a test smile", None, None)
+    # Proceed with the regular response generation after updating context
+    reply, prompt_tokens, reply_tokens = webchat.run_query_and_generate_answer(
+        query=user_input, receiver=selected_character, context=context
+    )
+    # reply, _, _ = (f"you said: {user_input}", None, None)
 
     time_end = time()
 
     # quantitative analysis
     time_difference = time_end - time_start
-    # time_passed_per_prompt_token = time_difference / prompt_tokens
-    # time_passed_per_reply_token = time_difference / reply_tokens
+    time_passed_per_prompt_token = time_difference / prompt_tokens
+    time_passed_per_reply_token = time_difference / reply_tokens
 
     print(f"Time taken to reply: {time_difference:.2f} seconds")
-    # print(f"Time per prompt token: {time_passed_per_prompt_token:.4f} seconds/token")
-    # print(f"Time per reply token: {time_passed_per_reply_token:.4f} seconds/token")
+    print(f"Time per prompt token: {time_passed_per_prompt_token:.4f} seconds/token")
+    print(f"Time per reply token: {time_passed_per_reply_token:.4f} seconds/token")
 
     return jsonify({"character": selected_character, "response": reply, "selected_option": None})
 

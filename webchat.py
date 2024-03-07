@@ -232,10 +232,10 @@ def handle_contradiction(contradictory_index: int, namespace: str, index_name: s
     elif contradictory_index == 3:
         # TODO: move last vector to spot where s1 was originally
         # retrieve the s1 and s2 records
-        s1_vector = index.fetch(ids=["1"], namespace=namespace)
+        s1_vector = index.fetch(ids=["s1"], namespace=namespace)
         # retrieve copy of s1 stored in main KB
         responses = index.query(
-            s1_vector["vectors"]["1"]["values"],
+            s1_vector["vectors"]["s1"]["values"],
             top_k=1,
             include_metadata=True,
             namespace=namespace,
@@ -425,10 +425,13 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
     """
     Given a sentence, break it up into individual facts.
     :param phrase: A phrase containing multiple facts to be distilled into separate ones
+    :param namespace:
+    :param text_type:
     :return: The split-up factual statements
     """
+    msgs: list[dict] = []
     if text_type == "background":
-        msgs: list[dict] = [
+        msgs.append(
             {
                 "role": "system",
                 "content": prompt_engineer_from_template(
@@ -436,9 +439,9 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
                     data=[name_conversion(to_snake=False, to_convert=namespace)],
                 ),
             }
-        ]
+        )
     elif text_type == "response":
-        msgs: list[dict] = [
+        msgs.append(
             {
                 "role": "system",
                 "content": prompt_engineer_from_template(
@@ -446,7 +449,17 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
                     data=[name_conversion(to_snake=False, to_convert=namespace)],
                 ),
             }
-        ]
+        )
+    elif text_type == "query":
+        msgs.append(
+            {
+                "role": "system",
+                "content": prompt_engineer_from_template(
+                    template_file="../Prompts/query_rephrase.txt",
+                    data=[name_conversion(to_snake=False, to_convert=namespace)],
+                ),
+            }
+        )
     prompt: str = f"Split this phrase into facts: {phrase}"
     msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
 

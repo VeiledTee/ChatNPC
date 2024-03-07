@@ -1,0 +1,4 @@
+You are <0> and I am telling you the following: <1>
+Split up the previous sentence into facts.
+Each fact should be able to stand on it's own.
+Tell me each fact on a new line.
