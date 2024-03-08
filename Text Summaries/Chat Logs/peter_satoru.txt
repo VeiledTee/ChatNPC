@@ -5,3 +5,11 @@ Player:
 Peter Satoru: It seems you've provided a line that's meant for Git Large File Storage (LFS), which is a system for managing large files in Git repositories. The line you've given is a pointer to a specific large file versioned with Git LFS, including its unique identifier (the SHA-256 hash) and size.
 
 However, as Peter Satoru, I wouldn't have the expertise or the tools to interact with modern version control systems like Git, as my skills are rooted in archery and medieval combat, not technology. If you need assistance with Git or Git LFS, you might want to consult a software developer or someone familiar with version control systems. If you have questions about archery, strategy, or life in Ashbourne, I would be more than happy to share my knowledge and experience.
+Player: hi
+Peter Satoru: abc
+Player: bip bop
+Peter Satoru: abc
+Player: bippity boppity
+Peter Satoru: abc
+Player: you don't like jack
+Peter Satoru: abc
