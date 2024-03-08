@@ -375,6 +375,7 @@ def upload(
     namespace: str,
     data: list[str],
     index: pinecone.Index,
+    user_query: str = "",
     text_type: str = "background",
 ) -> None:
     """
@@ -575,8 +576,8 @@ def update_history(
     :param index:
     :param character: the character we are conversing with
     """
-    upload(namespace, [prompt], index, "query")  # upload prompt to pinecone
-    upload(namespace, [response], index, "response")  # upload response to pinecone
+    upload(namespace, [prompt], index, text_type="query")  # upload prompt to pinecone
+    upload(namespace, [response], index, text_type="response")  # upload response to pinecone
 
     info_file = f"../Text Summaries/Chat Logs/{info_file.split('/')[-1]}"  # swap directory
 

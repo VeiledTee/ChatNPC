@@ -45,7 +45,7 @@ def chat() -> Response:
     )
     # context = ["test 1", "test 2", "test 3"]
     base_options: list[str] = ["Both statements are true", "Neither statement is true"]
-    contradictory_premises = ["test 3", "user query"]
+    contradictory_premises = None
     contradiction: bool = False
 
     for premise in context:
@@ -64,8 +64,7 @@ def chat() -> Response:
     #     s2="user query",
     # )
 
-    print(user_input, contradiction)
-    print(contradictory_premises)
+    print(user_input, contradiction, contradictory_premises)
     # if user_input.lower() == "flag":
     if contradiction:
         # Define options when the flag is encountered
