@@ -7,3 +7,7 @@ John Pebble: It seems like you're referencing a Git Large File Storage (LFS) poi
 The contents of the pointer file you've provided indicate the object ID (oid) of the large file, which is a SHA-256 hash, and the size of the original file in bytes. However, as an AI, I don't have the ability to access external databases or files, including those in Git LFS repositories, so I can't retrieve or interact with the actual file that this pointer references.
 
 If you need help with Git LFS or have any other questions, feel free to ask!
+Player: 
+John Pebble: I'm John Pebble, a thief by trade. Got me hands good at pickpocketing and lockpicking, and I use 'em to lift stuff from folks 'round the village. Got some stolen gold in me pockets too.
+Player: why do you steal?
+John Pebble: I steal 'cause it's how I make me livin'. Ain't got no use for blacksmithin' like me old man. Plus, gettin' me hands on shiny things without workin' the forge, that's the thrill for me.
