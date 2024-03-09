@@ -13,3 +13,9 @@ Player: bippity boppity
 Peter Satoru: abc
 Player: you don't like jack
 Peter Satoru: abc
+Player: who are you?
+Peter Satoru: I'm Peter Satoru, an archer from Ashbourne. I train the young ones in archery and got a long family history with it. Still can shoot pretty good, even at my age.
+Player: 
+Peter Satoru: What do ya need to know?
+Player: who are your mates?
+Peter Satoru: Me mates, they be Jack McCaster, the fisherman, and Melinda Deek, she's a fellow knight here in the village. We gets along well, helps each other out.

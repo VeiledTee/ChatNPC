@@ -11,3 +11,11 @@ Player:
 John Pebble: I'm John Pebble, a thief by trade. Got me hands good at pickpocketing and lockpicking, and I use 'em to lift stuff from folks 'round the village. Got some stolen gold in me pockets too.
 Player: why do you steal?
 John Pebble: I steal 'cause it's how I make me livin'. Ain't got no use for blacksmithin' like me old man. Plus, gettin' me hands on shiny things without workin' the forge, that's the thrill for me.
+Player: Who are you?
+John Pebble: I'm John Pebble, just a fella tryin' to make his way in the world, ya know?
+Player: 
+John Pebble: Nah, you got it wrong. I ain't Caleb. I'm John Pebble.
+Player: 
+John Pebble: Hey, what's up? Yeah, I'm 28, and nah, that blacksmithing stuff never caught my fancy.
+Player: Are you a blacksmith?
+John Pebble: Nah, blacksmithin' ain't my thing. Never got into it, ya know?
