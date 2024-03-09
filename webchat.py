@@ -377,7 +377,6 @@ def upload_contradiction(namespace: str, s1: str, s2: str, index_name: str = "ch
             },
             "values": embed(info),
         }  # build dict for upserting
-        print(info_dict["values"])
         data_vectors.append(info_dict)
     index.upsert(vectors=data_vectors, namespace=namespace)  # upsert all remaining data
 
@@ -531,7 +530,7 @@ def prompt_engineer_character_reply(prompt: str, grammar: str, context: list[str
     prompt_middle: str = ""
     # append contexts until hitting limit
     for c in context:
-        print(f"{c}")
+        print(f"Context: {c}")
         prompt_middle += f"\n{c}"
     return prompt_engineer_from_template(
         template_file="../Prompts/character_reply.txt", data=[grammar, prompt_middle, prompt_end]
