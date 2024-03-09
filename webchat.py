@@ -56,11 +56,11 @@ def load_file_information(load_file: str) -> list[str]:
 
 
 def run_query_and_generate_answer(
-    query: str,
-    receiver: str,
-    context: list[str],
-    index_name: str = "chatnpc-index",
-    save: bool = True,
+        query: str,
+        receiver: str,
+        context: list[str],
+        index_name: str = "chatnpc-index",
+        save: bool = True,
 ) -> tuple[str, int, int]:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
@@ -129,7 +129,7 @@ def run_query_and_generate_answer(
 
 
 def retrieve_context_list(
-    namespace: str, query: str, impact_score: bool = True, n: int = 3, index_name: str = "chatnpc-index"
+        namespace: str, query: str, impact_score: bool = True, n: int = 3, index_name: str = "chatnpc-index"
 ) -> list[str]:
     # embed query for processing
     embedded_query: list[float] = embed(query=query)
@@ -160,8 +160,8 @@ def retrieve_context_list(
 def handle_contradiction(contradictory_index: int, namespace: str, index_name: str = "chatnpc-index") -> None:
     """
     This function deals with contradictory facts in the context and query.
-    If the first fact is identified as false, remove it from the KB and replace with the second
-    If the second fact is identified as false, ignore it
+    If the first fact (memory) is identified as false, remove it from the KB and replace with the second
+    If the second fact (user input) is identified as false, ignore it
     If both facts are identified as true, store them as separate new facts in the KB
     If both facts are identified as false, remove the first from the KB and ignore the second
     :param contradictory_index: The index within the context list of the user's choice
@@ -182,9 +182,9 @@ def handle_contradiction(contradictory_index: int, namespace: str, index_name: s
     cur_time = datetime.now()
 
     if contradictory_index == 0:  # premise already in KB
-        delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)
+        index.delete(ids=["s1", "s2"], namespace=namespace)
+
     elif contradictory_index == 1:  # information presented by user
-        # print(s1_vector["vectors"])
         # retrieve copy of s1 stored in main KB
         responses = index.query(
             s1_vector["vectors"]["s1"]["values"],
@@ -199,21 +199,22 @@ def handle_contradiction(contradictory_index: int, namespace: str, index_name: s
             },
         )
         # delete s1, s2, and s1 copy
-        delete_response = index.delete(ids=["s1", "s2", responses["matches"][0]["id"]], namespace=namespace)
+        index.delete(ids=["s1", "s2", responses["matches"][0]["id"]], namespace=namespace)
         # upsert s2 (the true statement) into KB at the index of s1
         info_dict: dict = {
             "id": str(responses["matches"][0]["id"]),
             "metadata": {
                 "text": s2_vector["vectors"]["s2"]["metadata"]["text"],
                 "type": "response",
-                "poignancy": 10,
+                "poignancy": find_importance(namespace, s2_vector["vectors"]["s2"]["metadata"]["text"]),
                 "last_accessed": cur_time.strftime(DATE_FORMAT),
             },
             "values": s2_vector["vectors"]["s2"]["values"],
         }  # build dict for upserting
         index.upsert(vectors=[info_dict], namespace=namespace)
+
     elif contradictory_index == 2:  # both are correct, need to add premise 2
-        delete_response = index.delete(ids=["s1", "s2"], namespace=namespace)  # delete s1 and s2 for clean slate
+        index.delete(ids=["s1", "s2"], namespace=namespace)  # delete s1 and s2 for clean slate
         total_vectors: int = index.describe_index_stats()["namespaces"][namespace][
             "vector_count"
         ]  # get num of vectors existing in the namespace
@@ -223,31 +224,49 @@ def handle_contradiction(contradictory_index: int, namespace: str, index_name: s
             "metadata": {
                 "text": s2_vector["vectors"]["s2"]["metadata"]["text"],
                 "type": "response",
-                "poignancy": 10,
+                "poignancy": find_importance(namespace, s2_vector["vectors"]["s2"]["metadata"]["text"]),
                 "last_accessed": cur_time.strftime(DATE_FORMAT),
             },
             "values": s2_vector["vectors"]["s2"]["values"],
         }  # build dict for upserting
         index.upsert(vectors=[info_dict], namespace=namespace)
-    elif contradictory_index == 3:
-        # TODO: move last vector to spot where s1 was originally
-        # retrieve the s1 and s2 records
+
+    elif contradictory_index == 3:  # remove original s1, s1, and s2
+        # retrieve the s1 record
         s1_vector = index.fetch(ids=["s1"], namespace=namespace)
         # retrieve copy of s1 stored in main KB
-        responses = index.query(
+        original_s1 = index.query(
             s1_vector["vectors"]["s1"]["values"],
             top_k=1,
-            include_metadata=True,
             namespace=namespace,
-            filter={
-                "$or": [
-                    {"type": {"$eq": "background"}},
-                    {"type": {"$eq": "response"}},
-                ]
-            },
         )
         # delete s1, s2, and s1 copy
-        delete_response = index.delete(ids=["s1", "s2", responses["matches"][0]["id"]], namespace=namespace)
+        index.delete(ids=["s1", "s2", original_s1["matches"][0]["id"]], namespace=namespace)
+
+        total_vectors: int = index.describe_index_stats()["namespaces"][namespace][
+            "vector_count"
+        ]  # get num of vectors existing in the namespace
+        to_move_up = index.query(
+            id=str(total_vectors),
+            top_k=1,
+            include_metadata=True,
+            inclue_vectors=True,
+            namespace=namespace,
+        )  # get record with highest index value
+
+        if to_move_up['matches']:  # if we removed vector from the middle of the ID order
+            index.delete(ids=[to_move_up["matches"][0]["id"]],
+                         namespace=namespace)  # remove duplicate
+            info_dict: dict[str: Any] = {
+                'id': original_s1["matches"][0]["id"],  # deleted vector ID
+                'metadata': to_move_up["matches"][0]["metadata"],  # replacement metadata
+                'values': to_move_up["matches"][0]["values"],  # replacement vector
+
+            }  # build replacement dict
+            index.upsert(
+                vectors=[info_dict],
+                namespace=namespace,
+            )  # upsert replacement into where s1 originally stood
 
 
 def generate_conversation(character_file: str, chat_history: list, player: bool, next_phrase: str) -> list[dict]:
@@ -363,20 +382,11 @@ def upload_contradiction(namespace: str, s1: str, s2: str, index_name: str = "ch
     index.upsert(vectors=data_vectors, namespace=namespace)  # upsert all remaining data
 
 
-def delete_contradiction(
-    namespace: str,
-    record_ids: list[str],
-    index: pinecone.Index,
-) -> None:
-    delete_response = index.delete(ids=record_ids, namespace=namespace)
-
-
 def upload(
-    namespace: str,
-    data: list[str],
-    index: pinecone.Index,
-    user_query: str = "",
-    text_type: str = "background",
+        namespace: str,
+        data: list[str],
+        index: pinecone.Index,
+        text_type: str = "background",
 ) -> None:
     """
     Sends records to the namespace at the specified pinecone index
@@ -530,7 +540,7 @@ def prompt_engineer_character_reply(prompt: str, grammar: str, context: list[str
 
 def answer(prompt: str, chat_history: list[dict], namespace: str) -> tuple[str, int, int]:
     """
-    Using openAI API, respond to the provided prompt
+    Using OpenAI API, respond to the provided prompt
     :param prompt: An engineered prompt to get the language model to respond to
     :param chat_history: the entire history of the conversation
     :param namespace: the namespace to save the records to
@@ -560,12 +570,12 @@ def answer(prompt: str, chat_history: list[dict], namespace: str) -> tuple[str, 
 
 
 def update_history(
-    namespace: str,
-    info_file: str,
-    prompt: str,
-    response: str,
-    index: pinecone.Index,
-    character: str = "Player",
+        namespace: str,
+        info_file: str,
+        prompt: str,
+        response: str,
+        index: pinecone.Index,
+        character: str = "Player",
 ) -> None:
     """
     Update the history of the current chat with new responses
