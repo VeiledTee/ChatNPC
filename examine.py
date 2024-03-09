@@ -3,7 +3,7 @@ from typing import List
 
 import openai
 
-from chat import answer, name_conversion
+from webchat import answer, name_conversion
 from grade import calculate_grade
 
 
@@ -47,7 +47,7 @@ def write_exam(character: str, chat_history: List[dict]) -> None:
     with open(f"Data/MC Tests/{character}_test.txt", "r") as exam_file:  # extract exam
         exam: str = extract_data_multi_string(exam_file.readlines())
 
-    submission: str = answer(exam, chat_history)  # generate response
+    submission, _, _ = answer(exam, chat_history, namespace=name_conversion(True, character))  # generate response
     performance: str = calculate_grade(character)
 
     with open(f"Data/MC Results/{character}_submissions.txt", "a") as answer_file:  # save responses

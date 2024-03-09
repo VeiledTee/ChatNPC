@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from chat import embed
+from webchat import embed
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 from scipy.spatial import distance_matrix

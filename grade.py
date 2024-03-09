@@ -1,4 +1,4 @@
-from chat import name_conversion
+from webchat import name_conversion
 
 
 def calculate_grade(character: str) -> str:

@@ -3,7 +3,8 @@ import json
 import pinecone
 from typing import List
 import time
-from chat import extract_name, get_information, load_file_information, upload_conversation, embed
+from webchat import extract_name, get_information, load_file_information, upload_background
+from global_functions import name_conversion
 
 
 def delete_all_vectors(names_of_characters) -> None:
@@ -15,12 +16,6 @@ def delete_all_vectors(names_of_characters) -> None:
 
 
 if __name__ == "__main__":
-    WINDOW: int = 3  # how many sentences are combined
-    STRIDE: int = 2  # used to create overlap, num sentences we 'stride' over
-
-    INDEX_NAME: str = "chatnpc-index"  # pinecone index name
-    NAMESPACE = "peter-satoru"
-
     with open("keys.txt", "r") as key_file:
         api_keys = [key.strip() for key in key_file.readlines()]
         pinecone.init(
@@ -29,28 +24,6 @@ if __name__ == "__main__":
         )
 
     index = pinecone.Index("chatnpc-index")
-
-    # # upload data and generate query embedding.
-    # embedded_query = embed("what fish can be found near ashbourne")
-    #
-    # # query Pinecone index and get context for model prompting.
-    # responses = index.query(
-    #     embedded_query,
-    #     top_k=30,
-    #     include_metadata=True,
-    #     namespace=NAMESPACE,
-    #     filter={
-    #         "$or": [
-    #             {"type": {"$eq": "background"}},
-    #             {"type": {"$eq": "response"}},
-    #         ]
-    #     },
-    # )
-    #
-    # print(len(responses['matches']))
-    # print(responses)
-    #
-    # time.sleep(100)
 
     # Open file of characters and load its contents into a dictionary
     with open("Text Summaries/characters.json", "r") as f:
@@ -68,14 +41,9 @@ if __name__ == "__main__":
 
         DATA_FILE: str = f"Text Summaries/Summaries/{names[CHARACTER].lower()}.txt"
 
-        NAMESPACE: str = extract_name(DATA_FILE).lower()
+        NAMESPACE: str = name_conversion(to_snake=True, to_convert=CHARACTER)
         char_info: List[str] = load_file_information(DATA_FILE)
 
-        upload_conversation(
-            NAMESPACE,
-            load_file_information(DATA_FILE),
-            index,
-            "background",
-        )
+        upload_background(CHARACTER)
 
-        print(f"{NAMESPACE} background uploaded")
+        print(f"{NAMESPACE} background uploaded for {CHARACTER}")
