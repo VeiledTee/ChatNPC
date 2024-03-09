@@ -1,6 +1,6 @@
 import glob
 import os
-from time import time
+from time import perf_counter
 
 from flask import Flask, render_template, jsonify, request, session, send_from_directory, Response
 
@@ -36,7 +36,7 @@ def chat() -> Response:
         return "Goodbye!"
 
     selected_character: str = request.json.get("character_select")  # character name
-    time_start = time()
+    time_start = perf_counter()
 
     context: list[str] = webchat.retrieve_context_list(
         namespace=global_functions.name_conversion(to_snake=True, to_convert=selected_character),
@@ -118,7 +118,7 @@ def chat() -> Response:
     )
     # reply, _, _ = (f"you said: {user_input}", None, None)
 
-    time_end = time()
+    time_end = perf_counter()
 
     # quantitative analysis
     time_difference = time_end - time_start
