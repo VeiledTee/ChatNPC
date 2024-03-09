@@ -1,6 +1,7 @@
 import glob
 import os
 from time import perf_counter
+import logging
 
 from flask import Flask, render_template, jsonify, request, session, send_from_directory, Response
 
@@ -13,6 +14,14 @@ start_sent, start_recv = get_network_usage()
 app = Flask(__name__)
 app.static_folder = "static"
 app.secret_key = "chatnpc_secret_key"  # Set a secret key for session management
+
+# Configure logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
 
 
 @app.route("/")
@@ -31,19 +40,23 @@ def chat() -> Response:
         bytes_sent = end_sent - start_sent
         bytes_recv = end_recv - start_recv
 
-        print(f"Sent: {bytes_sent / (1024 * 1024):.2f} MB")  # convert to MB
-        print(f"Received: {bytes_recv / (1024 * 1024):.2f} MB")  # convert to MB
+        logger.info(f"Sent: {bytes_sent / (1024 * 1024):.2f} MB")  # convert to MB
+        logger.info(f"Received: {bytes_recv / (1024 * 1024):.2f} MB")  # convert to MB
         return "Goodbye!"
 
     selected_character: str = request.json.get("character_select")  # character name
+
     time_start = perf_counter()
+    cur_namespace: str = global_functions.name_conversion(to_snake=True, to_convert=selected_character)
 
     context: list[str] = webchat.retrieve_context_list(
-        namespace=global_functions.name_conversion(to_snake=True, to_convert=selected_character),
+        namespace=cur_namespace,
         query=user_input,
         impact_score=True,
     )
-    # context = ["test 1", "test 2", "test 3"]
+
+    logger.info(f"Pre-check context: \t{context}")
+
     base_options: list[str] = ["Both statements are true", "Neither statement is true"]
     contradictory_premises = None
     contradiction: bool = False
@@ -52,24 +65,30 @@ def chat() -> Response:
         if webchat.are_contradiction(premise_a=user_input, premise_b=premise):
             contradictory_premises = [premise, user_input]
             webchat.upload_contradiction(
-                namespace=global_functions.name_conversion(to_snake=True, to_convert=selected_character),
+                namespace=cur_namespace,
                 s1=premise,
                 s2=user_input,
             )
             contradiction = True
             break
+
     # webchat.upload_contradiction(
-    #     namespace=global_functions.name_conversion(to_snake=True, to_convert=selected_character),
+    #     namespace=cur_namespace,
     #     s1="test 3",
     #     s2="user query",
     # )
 
-    print(user_input, contradiction, contradictory_premises)
-    # if user_input.lower() == "flag":
+    logger.info(
+        f"User Input: \t\t\t{user_input}")
+    logger.info(
+        f"Contradiction: \t\t\t{contradiction}")
+    logger.info(
+        f"Contradictory Premises: {contradictory_premises}")
+
     if contradiction:
         # Define options when the flag is encountered
         options = [contradictory_premises[0], contradictory_premises[1]] + base_options
-        print(options)
+        logger.info(f"Options: {options}")
         session["options"] = options  # Store options in session for future reference
         response_text = "Which of the following statements is true?"
         return jsonify({"response": response_text, "options": options})
@@ -78,56 +97,54 @@ def chat() -> Response:
     options = session.get("options", [])  # Retrieve options from session
 
     if selected_option == 0:  # DB is correct, new info is wrong
-        print(context)
-        print(f"Selected Option: {selected_option} | {options[selected_option]}")
+        logger.info(f"Context: {context}")
+        logger.info(f"Selected Option: {selected_option} | {options[selected_option]}")
         webchat.handle_contradiction(
             contradictory_index=selected_option,
-            namespace=global_functions.name_conversion(to_snake=True, to_convert=selected_character),
-        )  # update DB
+            namespace=cur_namespace,
+        )
     elif selected_option == 1:  # DB is incorrect, new info is correct
-        print(context)
+        logger.info(f"Context: {context}")
         context[context.index(options[0])] = options[selected_option]
-        print(f"Selected Option: {selected_option} | {options[selected_option]}")
+        logger.info(f"Selected Option: {selected_option} | {options[selected_option]}")
         webchat.handle_contradiction(
             contradictory_index=selected_option,
-            namespace=global_functions.name_conversion(to_snake=True, to_convert=selected_character),
-        )  # update DB
-        print(context)
+            namespace=cur_namespace,
+        )
+        logger.info(f"Updated Context: {context}")
     elif selected_option == 2:  # both correct
-        print(context)
+        logger.info(f"Context: {context}")
         context.append(options[1])
-        print(f"Selected Option: {selected_option} | {options[selected_option]}")
-        print(context)
+        logger.info(f"Selected Option: {selected_option} | {options[selected_option]}")
+        logger.info(f"Updated Context: {context}")
         webchat.handle_contradiction(
             contradictory_index=selected_option,
-            namespace=global_functions.name_conversion(to_snake=True, to_convert=selected_character),
-        )  # update DB
+            namespace=cur_namespace,
+        )
     elif selected_option == 3:  # neither correct
-        print(context)
+        logger.info(f"Context: {context}")
         context.remove(options[0])
-        print(f"Selected Option: {selected_option} | {options[selected_option]}")
-        print(context)
+        logger.info(f"Selected Option: {selected_option} | {options[selected_option]}")
+        logger.info(f"Updated Context: {context}")
         webchat.handle_contradiction(
             contradictory_index=selected_option,
-            namespace=global_functions.name_conversion(to_snake=True, to_convert=selected_character),
-        )  # update DB
+            namespace=cur_namespace,
+        )
 
-    # Proceed with the regular response generation after updating context
+    logger.info(f"Context: {context}")
+
     reply, prompt_tokens, reply_tokens = webchat.run_query_and_generate_answer(
         query=user_input, receiver=selected_character, context=context
     )
-    # reply, _, _ = (f"you said: {user_input}", None, None)
 
     time_end = perf_counter()
-
-    # quantitative analysis
     time_difference = time_end - time_start
     time_passed_per_prompt_token = time_difference / prompt_tokens
     time_passed_per_reply_token = time_difference / reply_tokens
 
-    print(f"Time taken to reply: {time_difference:.2f} seconds")
-    print(f"Time per prompt token: {time_passed_per_prompt_token:.4f} seconds/token")
-    print(f"Time per reply token: {time_passed_per_reply_token:.4f} seconds/token")
+    logger.info(f"Time taken to reply: {time_difference:.2f} seconds")
+    logger.info(f"Time per prompt token: {time_passed_per_prompt_token:.4f} seconds/token")
+    logger.info(f"Time per reply token: {time_passed_per_reply_token:.4f} seconds/token")
 
     return jsonify({"character": selected_character, "response": reply, "selected_option": None})
 
@@ -136,9 +153,9 @@ def chat() -> Response:
 def upload_background() -> str:
     data = request.get_json()
     selected_character = data.get("character")
-    print("Backgrounding")
+    logger.info("Backgrounding")
     webchat.upload_background(selected_character)
-    print(f"Background uploaded successfully for {selected_character}")
+    logger.info(f"Background uploaded successfully for {selected_character}")
     return ""
 
 
