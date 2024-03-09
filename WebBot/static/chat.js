@@ -69,9 +69,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         </button>
                     </div>`
                 ).join('');
+                chatbox.innerHTML += `<p><strong>${selectedCharacter}: </strong>${responseText}</p>`; // Prepend the response phrase
                 chatbox.innerHTML += optionsList;
             } else {
-                chatbox.innerHTML += `<p><strong>${selectedCharacter}:</strong> ${responseText}</p>`;
+                chatbox.innerHTML += `<p><strong>${selectedCharacter}: </strong>${responseText}</p>`;
             }
 
             chatbox.scrollTop = chatbox.scrollHeight;
