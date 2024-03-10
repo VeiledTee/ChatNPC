@@ -8,7 +8,7 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from ContradictDetectNN import embedding_to_tensor
 from clean_dataset import encode_sentence, label_mapping
 
-from variables import DEVICE
+from config import DEVICE
 
 # DEVICE = 'cpu'
 

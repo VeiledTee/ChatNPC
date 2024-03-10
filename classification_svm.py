@@ -8,7 +8,7 @@ from bilstm_training import load_txt_file_to_dataframe
 import torch
 
 from clean_dataset import create_subset_with_ratio, label_mapping, encode_sentence
-from variables import DEVICE
+from config import DEVICE
 from transformers import BertTokenizer, BertModel
 from sklearn.model_selection import validation_curve
 import matplotlib.pyplot as plt

@@ -1,5 +1,5 @@
 import torch
-from variables import DEVICE, MODEL, TOKENIZER
+from config import DEVICE, MODEL, TOKENIZER
 
 premise = "Frank loves muffins"
 hypothesis = "Frank's favourite food are muffins"

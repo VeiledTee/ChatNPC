@@ -11,7 +11,7 @@ import torch
 
 # from ripser import ripser
 from transformers import BertTokenizer, BertModel
-from variables import DEVICE
+from config import DEVICE
 
 import numpy as np
 from typing import List
@@ -20,6 +20,8 @@ import concurrent.futures
 
 # Disable the logging level for the transformers library
 logging.getLogger("transformers").setLevel(logging.ERROR)
+
+
 # matplotlib.use("TkAgg")
 
 

@@ -9,7 +9,7 @@ import torch
 from tqdm import tqdm
 from transformers import BertModel, BertTokenizer
 
-from variables import BATCH_SIZE, DEVICE, DATASET, SEQUENCE_LENGTH
+from config import BATCH_SIZE, DEVICE, DATASET, SEQUENCE_LENGTH
 
 # Disable the logging level for the transformers library
 logging.getLogger("transformers").setLevel(logging.ERROR)
@@ -107,7 +107,7 @@ def get_bert_embeddings(sentence1: str, sentence2: str) -> np.ndarray:
 def group_rows(dataframe):
     grouped_data = []
     for i in range(0, len(dataframe), BATCH_SIZE):
-        batch = dataframe.iloc[i : i + BATCH_SIZE]
+        batch = dataframe.iloc[i: i + BATCH_SIZE]
         sentenceA: List[str] = [x for x in batch["sentence1"]]
         sentenceB: List[str] = [x for x in batch["sentence2"]]
         labels: List[int] = [1 if x == "contradiction" else 0 for x in batch["gold_label"]]

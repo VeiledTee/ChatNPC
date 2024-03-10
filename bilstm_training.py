@@ -16,7 +16,7 @@ from transformers import BertModel, BertTokenizer
 
 from BiLSTM import BiLSTMModel
 from convert_dataset import read_npz_file
-from variables import (
+from config import (
     BATCH_SIZE,
     DEVICE,
     DATASET,
@@ -145,19 +145,19 @@ def count_files(directory: str) -> int:
 
 
 def train_model(
-    model_number: int,
-    training_dataloader,
-    x_validation,
-    y_validation,
-    input_size,
-    hidden_size,
-    num_layers,
-    output_size,
-    epochs: int,
-    learning_rate: float,
-    chkpt_interval: int,
-    device: str,
-    path_to_load_model: str = "",
+        model_number: int,
+        training_dataloader,
+        x_validation,
+        y_validation,
+        input_size,
+        hidden_size,
+        num_layers,
+        output_size,
+        epochs: int,
+        learning_rate: float,
+        chkpt_interval: int,
+        device: str,
+        path_to_load_model: str = "",
 ):
     # Initialize the BiLSTM model
     bilstm: BiLSTMModel = BiLSTMModel(input_size, hidden_size, num_layers, output_size).to(device)

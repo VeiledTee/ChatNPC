@@ -9,7 +9,7 @@ import torch
 import xgboost as xgb
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from ContradictDetectNN import embedding_to_tensor
-from variables import DEVICE
+from config import DEVICE
 from sklearn.model_selection import GridSearchCV
 import xgboost as xgb
 from sklearn.metrics.pairwise import cosine_similarity
@@ -54,13 +54,13 @@ class SiameseContrastiveModel(nn.Module):
         return output1, output2
 
     def fit(
-        self,
-        training_data: pd.DataFrame,
-        batch_size: int,
-        num_epochs: int,
-        device: str,
-        margin: float,
-        verbose: bool = False,
+            self,
+            training_data: pd.DataFrame,
+            batch_size: int,
+            num_epochs: int,
+            device: str,
+            margin: float,
+            verbose: bool = False,
     ) -> list[float]:
         training_data["sentence1_embeddings"] = training_data["sentence1_embeddings"].apply(embedding_to_tensor)
         training_data["sentence2_embeddings"] = training_data["sentence2_embeddings"].apply(embedding_to_tensor)
@@ -81,20 +81,20 @@ class SiameseContrastiveModel(nn.Module):
             for i in range(0, len(training_data), batch_size):
                 optimizer.zero_grad()  # Zero the gradients for this batch
 
-                s1_embedding = sentence1_training_embeddings[i : i + batch_size].to(device)
-                s2_embedding = sentence2_training_embeddings[i : i + batch_size].to(device)
+                s1_embedding = sentence1_training_embeddings[i: i + batch_size].to(device)
+                s2_embedding = sentence2_training_embeddings[i: i + batch_size].to(device)
 
                 output1, output2 = self(s1_embedding, s2_embedding)
 
                 # Calculate similarity scores using cosine similarity
                 similarity_scores = F.cosine_similarity(output1, output2)
                 target_labels: torch.Tensor = torch.tensor(
-                    training_data["label"].iloc[i : i + batch_size].values, dtype=torch.long
+                    training_data["label"].iloc[i: i + batch_size].values, dtype=torch.long
                 ).to(device)
 
                 # Calculate the contrastive loss
                 loss = torch.mean(
-                    (1 - target_labels) * similarity_scores**2
+                    (1 - target_labels) * similarity_scores ** 2
                     + target_labels * torch.clamp(margin - similarity_scores, min=0.0) ** 2
                 )
 
@@ -112,7 +112,7 @@ class SiameseContrastiveModel(nn.Module):
         return train_loss_values
 
     def predict(
-        self, test_data: pd.DataFrame, batch_size: int, device: str, similarity_threshold: float = 0.5
+            self, test_data: pd.DataFrame, batch_size: int, device: str, similarity_threshold: float = 0.5
     ) -> List[int]:
         # Clean data
         test_data["sentence1_embeddings"] = test_data["sentence1_embeddings"].apply(embedding_to_tensor)

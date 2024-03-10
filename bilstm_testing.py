@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from BiLSTM import BiLSTMModel
 from bilstm_training import load_txt_file_to_dataframe
 from convert_dataset import read_npz_file, get_bert_embeddings
-from variables import (
+from config import (
     BATCH_SIZE,
     DEVICE,
     TESTSET,
