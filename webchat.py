@@ -1,30 +1,34 @@
 import json
 import os
 from datetime import datetime
-from typing import Any, Tuple
-
-import torch
-
-from retrieval import context_retrieval
+from typing import Any
 
 import pinecone
+import torch
 from openai import OpenAI
 
-from global_functions import embed, extract_name, name_conversion, namespace_exist, prompt_engineer_from_template
-from variables import DATE_FORMAT, TOKENIZER, MODEL, DEVICE
+from global_functions import (embed, extract_name, name_conversion,
+                              namespace_exist, prompt_engineer_from_template)
+from keys import openAI_API, pinecone_API, pinecone_ENV
+from retrieval import context_retrieval
+from config import Config
+
+configuration = Config('../config.json')
+DATE_FORMAT = configuration.DATE_FORMAT
+DEVICE = configuration.DEVICE
+MODEL = configuration.MODEL
+TOKENIZER = configuration.TOKENIZER
 
 AUDIO: bool = False
 # TEXT_MODEL: str = "gpt-3.5-turbo-0301"
 TEXT_MODEL: str = "gpt-4-1106-preview"
 
 # load api keys from openai and pinecone
-with open("../keys.txt", "r") as key_file:
-    api_keys = [key.strip() for key in key_file.readlines()]
-    client = OpenAI(api_key=api_keys[0])
-    pinecone.init(
-        api_key=api_keys[1],
-        environment=api_keys[2],
-    )
+client = OpenAI(api_key=openAI_API)
+pinecone.init(
+    api_key=pinecone_API,
+    environment=pinecone_ENV,
+)
 
 
 def get_information(character_name) -> None | tuple:

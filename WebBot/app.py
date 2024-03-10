@@ -8,14 +8,16 @@ from flask import Flask, render_template, jsonify, request, session, send_from_d
 import global_functions
 import webchat
 from global_functions import get_network_usage
+from keys import flask_secret_key
 
-start_sent, start_recv = get_network_usage()
+start_sent, start_received = get_network_usage()
 
+# configure flask app
 app = Flask(__name__)
 app.static_folder = "static"
-app.secret_key = "chatnpc_secret_key"  # Set a secret key for session management
+app.secret_key = flask_secret_key
 
-# Configure logger
+# configure logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -38,7 +40,7 @@ def chat() -> Response:
 
         # Calculate the difference in bytes
         bytes_sent = end_sent - start_sent
-        bytes_recv = end_recv - start_recv
+        bytes_recv = end_recv - start_received
 
         logger.info(f"Sent: {bytes_sent / (1024 * 1024):.2f} MB")  # convert to MB
         logger.info(f"Received: {bytes_recv / (1024 * 1024):.2f} MB")  # convert to MB
