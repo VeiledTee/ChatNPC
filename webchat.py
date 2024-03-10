@@ -4,16 +4,20 @@ from datetime import datetime
 from typing import Any
 
 import pinecone
-import torch
 from openai import OpenAI
 
-from global_functions import (embed, extract_name, name_conversion,
-                              namespace_exist, prompt_engineer_from_template)
+from global_functions import (
+    embed,
+    extract_name,
+    name_conversion,
+    namespace_exist,
+    prompt_engineer_from_template,
+)
 from keys import openAI_API, pinecone_API, pinecone_ENV
 from retrieval import context_retrieval
 from config import Config
 
-configuration = Config('../config.json')
+configuration = Config("config.json")
 DATE_FORMAT = configuration.DATE_FORMAT
 DEVICE = configuration.DEVICE
 MODEL = configuration.MODEL
@@ -37,7 +41,7 @@ def get_information(character_name) -> None | tuple:
     :param character_name: name of character
     :return: None if character doesn't exist | profession and social status if they do exist
     """
-    with open("../Text Summaries/character_objects.json", "r") as character_file:
+    with open("Text Summaries/character_objects.json", "r") as character_file:
         data = json.load(character_file)
 
     for character in data["characters"]:
@@ -55,7 +59,12 @@ def load_file_information(load_file: str) -> list[str]:
     """
     with open(load_file, "r") as text_file:
         # list comprehension to clean and split the text file
-        clean_string = [s.strip() + "." for line in text_file for s in line.strip().split(".") if s.strip()]
+        clean_string = [
+            s.strip() + "."
+            for line in text_file
+            for s in line.strip().split(".")
+            if s.strip()
+        ]
     return clean_string
 
 
@@ -83,11 +92,13 @@ def run_query_and_generate_answer(
 
     history: list[dict] = []
 
-    with open("../Text Summaries/characters.json", "r") as f:
+    with open("Text Summaries/characters.json", "r") as f:
         character_names = json.load(f)
 
-    profession, social_class = get_information(receiver)  # get the profession and social status of the character
-    data_file: str = f"../Text Summaries/Summaries/{character_names[receiver]}.txt"
+    profession, social_class = get_information(
+        receiver
+    )  # get the profession and social status of the character
+    data_file: str = f"Text Summaries/Summaries/{character_names[receiver]}.txt"
 
     namespace: str = extract_name(data_file).lower()
 
@@ -98,14 +109,18 @@ def run_query_and_generate_answer(
     history = generate_conversation(data_file, history, True, query)
 
     # generate clean prompt and answer.
-    clean_prompt = prompt_engineer_character_reply(query, class_grammar_map[social_class], context)
+    clean_prompt = prompt_engineer_character_reply(
+        query, class_grammar_map[social_class], context
+    )
     save_prompt: str = clean_prompt.replace("\n", " ")
 
-    generated_answer, prompt_tokens, reply_tokens = answer(clean_prompt, history, namespace)
+    generated_answer, prompt_tokens, reply_tokens = answer(
+        clean_prompt, history, namespace
+    )
 
     if save:
         # save results to file and return generated answer.
-        with open("../Text Summaries/prompt_response.txt", "a") as save_file:
+        with open("Text Summaries/prompt_response.txt", "a") as save_file:
             save_file.write("\n" + "=" * 120 + "\n")
             save_file.write(f"Prompt: {save_prompt}\n")
             save_file.write(f"To: {receiver}, a {profession}\n")
@@ -115,7 +130,7 @@ def run_query_and_generate_answer(
         print(generated_answer)
 
     generate_conversation(
-        f"../Text Summaries/Summaries/{namespace.replace('-', '_')}.txt",
+        f"Text Summaries/Summaries/{namespace.replace('-', '_')}.txt",
         chat_history=history,
         player=False,
         next_phrase=generated_answer,
@@ -133,7 +148,11 @@ def run_query_and_generate_answer(
 
 
 def retrieve_context_list(
-        namespace: str, query: str, impact_score: bool = True, n: int = 3, index_name: str = "chatnpc-index"
+        namespace: str,
+        query: str,
+        impact_score: bool = True,
+        n: int = 3,
+        index_name: str = "chatnpc-index",
 ) -> list[str]:
     # embed query for processing
     embedded_query: list[float] = embed(query=query)
@@ -142,7 +161,9 @@ def retrieve_context_list(
     # retrieve memories using ONLY cosine similarity
     if impact_score:
         # retrieve memories using recency, poignancy, and relevance metrics
-        return context_retrieval(namespace=namespace, query_embedding=embedded_query, n=n)
+        return context_retrieval(
+            namespace=namespace, query_embedding=embedded_query, n=n
+        )
     else:
         responses = index.query(
             embedded_query,
@@ -158,10 +179,16 @@ def retrieve_context_list(
         )
 
         # Filter out responses containing the string "Player:"
-        return [x["metadata"]["text"] for x in responses["matches"] if query not in x["metadata"]["text"]]
+        return [
+            x["metadata"]["text"]
+            for x in responses["matches"]
+            if query not in x["metadata"]["text"]
+        ]
 
 
-def handle_contradiction(contradictory_index: int, namespace: str, index_name: str = "chatnpc-index") -> None:
+def handle_contradiction(
+        contradictory_index: int, namespace: str, index_name: str = "chatnpc-index"
+) -> None:
     """
     This function deals with contradictory facts in the context and query.
     If the first fact (memory) is identified as false, remove it from the KB and replace with the second
@@ -203,14 +230,18 @@ def handle_contradiction(contradictory_index: int, namespace: str, index_name: s
             },
         )
         # delete s1, s2, and s1 copy
-        index.delete(ids=["s1", "s2", responses["matches"][0]["id"]], namespace=namespace)
+        index.delete(
+            ids=["s1", "s2", responses["matches"][0]["id"]], namespace=namespace
+        )
         # upsert s2 (the true statement) into KB at the index of s1
         info_dict: dict = {
             "id": str(responses["matches"][0]["id"]),
             "metadata": {
                 "text": s2_vector["vectors"]["s2"]["metadata"]["text"],
                 "type": "response",
-                "poignancy": find_importance(namespace, s2_vector["vectors"]["s2"]["metadata"]["text"]),
+                "poignancy": find_importance(
+                    namespace, s2_vector["vectors"]["s2"]["metadata"]["text"]
+                ),
                 "last_accessed": cur_time.strftime(DATE_FORMAT),
             },
             "values": s2_vector["vectors"]["s2"]["values"],
@@ -218,7 +249,9 @@ def handle_contradiction(contradictory_index: int, namespace: str, index_name: s
         index.upsert(vectors=[info_dict], namespace=namespace)
 
     elif contradictory_index == 2:  # both are correct, need to add premise 2
-        index.delete(ids=["s1", "s2"], namespace=namespace)  # delete s1 and s2 for clean slate
+        index.delete(
+            ids=["s1", "s2"], namespace=namespace
+        )  # delete s1 and s2 for clean slate
         total_vectors: int = index.describe_index_stats()["namespaces"][namespace][
             "vector_count"
         ]  # get num of vectors existing in the namespace
@@ -228,7 +261,9 @@ def handle_contradiction(contradictory_index: int, namespace: str, index_name: s
             "metadata": {
                 "text": s2_vector["vectors"]["s2"]["metadata"]["text"],
                 "type": "response",
-                "poignancy": find_importance(namespace, s2_vector["vectors"]["s2"]["metadata"]["text"]),
+                "poignancy": find_importance(
+                    namespace, s2_vector["vectors"]["s2"]["metadata"]["text"]
+                ),
                 "last_accessed": cur_time.strftime(DATE_FORMAT),
             },
             "values": s2_vector["vectors"]["s2"]["values"],
@@ -245,7 +280,9 @@ def handle_contradiction(contradictory_index: int, namespace: str, index_name: s
             namespace=namespace,
         )
         # delete s1, s2, and s1 copy
-        index.delete(ids=["s1", "s2", original_s1["matches"][0]["id"]], namespace=namespace)
+        index.delete(
+            ids=["s1", "s2", original_s1["matches"][0]["id"]], namespace=namespace
+        )
 
         total_vectors: int = index.describe_index_stats()["namespaces"][namespace][
             "vector_count"
@@ -258,14 +295,18 @@ def handle_contradiction(contradictory_index: int, namespace: str, index_name: s
             namespace=namespace,
         )  # get record with highest index value
 
-        if to_move_up['matches']:  # if we removed vector from the middle of the ID order
-            index.delete(ids=[to_move_up["matches"][0]["id"]],
-                         namespace=namespace)  # remove duplicate
-            info_dict: dict[str: Any] = {
-                'id': original_s1["matches"][0]["id"],  # deleted vector ID
-                'metadata': to_move_up["matches"][0]["metadata"],  # replacement metadata
-                'values': to_move_up["matches"][0]["values"],  # replacement vector
-
+        if to_move_up[
+            "matches"
+        ]:  # if we removed vector from the middle of the ID order
+            index.delete(
+                ids=[to_move_up["matches"][0]["id"]], namespace=namespace
+            )  # remove duplicate
+            info_dict: dict[str:Any] = {
+                "id": original_s1["matches"][0]["id"],  # deleted vector ID
+                "metadata": to_move_up["matches"][0][
+                    "metadata"
+                ],  # replacement metadata
+                "values": to_move_up["matches"][0]["values"],  # replacement vector
             }  # build replacement dict
             index.upsert(
                 vectors=[info_dict],
@@ -273,7 +314,9 @@ def handle_contradiction(contradictory_index: int, namespace: str, index_name: s
             )  # upsert replacement into where s1 originally stood
 
 
-def generate_conversation(character_file: str, chat_history: list, player: bool, next_phrase: str) -> list[dict]:
+def generate_conversation(
+        character_file: str, chat_history: list, player: bool, next_phrase: str
+) -> list[dict]:
     """
     Generate a record of the conversation a user has had with the system for feeding into gpt 3.5 turbo
     :param character_file: The file associated with a character's background, not required unless
@@ -310,11 +353,11 @@ def upload_background(character: str, index_name: str = "chatnpc-index") -> None
         # create index if it doesn't exist
         pinecone.create_index("chatnpc-index", dimension=384, pods=1, pod_type="p2.x1")
 
-    with open("../Text Summaries/characters.json", "r") as character_info_file:
+    with open("Text Summaries/characters.json", "r") as character_info_file:
         character_names = json.load(character_info_file)
 
-    data_file: str = f"../Text Summaries/Summaries/{character_names[character]}.txt"
-    # setting_file: str = "../Text Summaries/Summaries/ashbourne.txt"
+    data_file: str = f"Text Summaries/Summaries/{character_names[character]}.txt"
+    # setting_file: str = "Text Summaries/Summaries/ashbourne.txt"
     namespace: str = extract_name(data_file).lower()
     # background has already been uploaded if namespace exists so can skip repeat uploads
     if namespace_exist(namespace):
@@ -358,7 +401,9 @@ def upload_background(character: str, index_name: str = "chatnpc-index") -> None
     index.upsert(vectors=data_vectors, namespace=namespace)
 
 
-def upload_contradiction(namespace: str, s1: str, s2: str, index_name: str = "chatnpc-index") -> None:
+def upload_contradiction(
+        namespace: str, s1: str, s2: str, index_name: str = "chatnpc-index"
+) -> None:
     """
     Sends text embedding vectors of two contradictory sentences into pinecone KB at indexes s1 and s2
     :param namespace: the pinecone namespace data is uploaded to
@@ -408,7 +453,9 @@ def upload(
         data_facts: list[str] = []
 
         for fact in data:
-            data_facts.extend(fact_rephrase(fact, namespace, text_type=text_type))  # make facts out of statements
+            data_facts.extend(
+                fact_rephrase(fact, namespace, text_type=text_type)
+            )  # make facts out of statements
 
         data = data_facts
 
@@ -449,7 +496,7 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
             {
                 "role": "system",
                 "content": prompt_engineer_from_template(
-                    template_file="../Prompts/background_rephrase.txt",
+                    template_file="Prompts/background_rephrase.txt",
                     data=[name_conversion(to_snake=False, to_convert=namespace)],
                 ),
             }
@@ -459,7 +506,7 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
             {
                 "role": "system",
                 "content": prompt_engineer_from_template(
-                    template_file="../Prompts/response_rephrase.txt",
+                    template_file="Prompts/response_rephrase.txt",
                     data=[name_conversion(to_snake=False, to_convert=namespace)],
                 ),
             }
@@ -469,26 +516,31 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
             {
                 "role": "system",
                 "content": prompt_engineer_from_template(
-                    template_file="../Prompts/query_rephrase.txt",
+                    template_file="Prompts/query_rephrase.txt",
                     data=[name_conversion(to_snake=False, to_convert=namespace)],
                 ),
             }
         )
     prompt: str = f"Split this phrase into facts: {phrase}"
-    msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
+    msgs.append(
+        {"role": "user", "content": prompt}
+    )  # build current history of conversation for model
 
-    res: Any = client.chat.completions.create(model=TEXT_MODEL, messages=msgs, temperature=0)  # conversation with LLM
+    res: Any = client.chat.completions.create(
+        model=TEXT_MODEL, messages=msgs, temperature=0
+    )  # conversation with LLM
     facts: str = str(res.choices[0].message.content).strip()  # get model response
     return [fact.strip() for fact in facts.split("\n")]
 
 
 def find_importance(namespace: str, fact: str) -> int:
     character_name: str = name_conversion(to_snake=False, to_convert=namespace)
-    with open(f"../Text Summaries/Summaries/{namespace}.txt", "r") as character_file:
+    with open(f"Text Summaries/Summaries/{namespace}.txt", "r") as character_file:
         character_info: str = character_file.read()
 
     prompt = prompt_engineer_from_template(
-        template_file="../Prompts/poignancy.txt", data=[character_name, character_info, character_name, fact]
+        template_file="Prompts/poignancy.txt",
+        data=[character_name, character_info, character_name, fact],
     )  # get prompt for poignancy score
 
     example_output = 5
@@ -516,7 +568,9 @@ def find_importance(namespace: str, fact: str) -> int:
         return fail_safe_output
 
 
-def prompt_engineer_character_reply(prompt: str, grammar: str, context: list[str]) -> str:
+def prompt_engineer_character_reply(
+        prompt: str, grammar: str, context: list[str]
+) -> str:
     """
     Given a base query and context, format it to be used as prompt
     :param prompt: The prompt query
@@ -525,7 +579,7 @@ def prompt_engineer_character_reply(prompt: str, grammar: str, context: list[str
     :return: The formatted prompt
     """
     prompt_start: str = prompt_engineer_from_template(
-        template_file="../Prompts/character_reply.txt", data=[grammar]
+        template_file="Prompts/character_reply.txt", data=[grammar]
     ).split("<1>")[0]
     with open("tried_prompts.txt", "a+") as prompt_file:
         if prompt_start + "\n" not in prompt_file.readlines():
@@ -537,11 +591,14 @@ def prompt_engineer_character_reply(prompt: str, grammar: str, context: list[str
         print(f"Context: {c}")
         prompt_middle += f"\n{c}"
     return prompt_engineer_from_template(
-        template_file="../Prompts/character_reply.txt", data=[grammar, prompt_middle, prompt_end]
+        template_file="Prompts/character_reply.txt",
+        data=[grammar, prompt_middle, prompt_end],
     )
 
 
-def answer(prompt: str, chat_history: list[dict], namespace: str) -> tuple[str, int, int]:
+def answer(
+        prompt: str, chat_history: list[dict], namespace: str
+) -> tuple[str, int, int]:
     """
     Using OpenAI API, respond to the provided prompt
     :param prompt: An engineered prompt to get the language model to respond to
@@ -549,26 +606,38 @@ def answer(prompt: str, chat_history: list[dict], namespace: str) -> tuple[str, 
     :param namespace: the namespace to save the records to
     :return: The completed prompt, the number of tokens used in the prompt, the number of tokens in the reply
     """
-    with open("../Text Summaries/text_to_speech_mapping.json", "r") as audio_model_info:
+    with open("Text Summaries/text_to_speech_mapping.json", "r") as audio_model_info:
         model_pairings: dict = json.load(audio_model_info)
         cur_voice: str = model_pairings[namespace.replace("-", "_")]
 
-    if not os.path.exists(f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}"):
-        os.makedirs(f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}")
+    if not os.path.exists(
+            f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}"
+    ):
+        os.makedirs(
+            f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}"
+        )
 
     msgs: list[dict] = chat_history
-    msgs.append({"role": "user", "content": prompt})  # build current history of conversation for model
+    msgs.append(
+        {"role": "user", "content": prompt}
+    )  # build current history of conversation for model
     # return "test"
-    res: Any = client.chat.completions.create(model=TEXT_MODEL, messages=msgs, temperature=0)  # conversation with LLM
+    res: Any = client.chat.completions.create(
+        model=TEXT_MODEL, messages=msgs, temperature=0
+    )  # conversation with LLM
     clean_res: str = str(res.choices[0].message.content).strip()  # get model response
     if AUDIO:
         # generate audio file and save for output
-        audio_reply = client.audio.speech.create(model="tts-1", voice=cur_voice, input=clean_res)
+        audio_reply = client.audio.speech.create(
+            model="tts-1", voice=cur_voice, input=clean_res
+        )
         # Add current time to the filename
         timestamp = datetime.now().strftime("%Y_%m_%d_%H-%M-%S")
         filename = f"{namespace}_{timestamp}.mp3"
 
-        audio_reply.stream_to_file(f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}/{filename}")
+        audio_reply.stream_to_file(
+            f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}/{filename}"
+        )
     return clean_res, int(res.usage.prompt_tokens), int(res.usage.completion_tokens)
 
 
@@ -590,25 +659,37 @@ def update_history(
     :param character: the character we are conversing with
     """
     upload(namespace, [prompt], index, text_type="query")  # upload prompt to pinecone
-    upload(namespace, [response], index, text_type="response")  # upload response to pinecone
+    upload(
+        namespace, [response], index, text_type="response"
+    )  # upload response to pinecone
 
-    info_file = f"../Text Summaries/Chat Logs/{info_file.split('/')[-1]}"  # swap directory
+    info_file = f"Text Summaries/Chat Logs/{info_file.split('/')[-1]}"  # swap directory
 
     with open(info_file, "a") as history_file:
         history_file.write(
-            f"{character}: {prompt}\n" f"{name_conversion(False, namespace).replace('-', ' ')}: {response}\n"
+            f"{character}: {prompt}\n"
+            f"{name_conversion(False, namespace).replace('-', ' ')}: {response}\n"
         )  # save chat logs
 
 
 def are_contradiction(premise_a: str, premise_b: str) -> bool:
-    tokenized_input = TOKENIZER(premise_a, premise_b, truncation=True, return_tensors="pt").to(DEVICE)
-    input_dict = {key: value.to(DEVICE) for key, value in tokenized_input.items()}
-    output = MODEL(**input_dict)
-    prediction = torch.softmax(output["logits"][0], -1).tolist()
+    # Tokenize the input
+    tokenized_input = TOKENIZER(
+        premise_a, premise_b, truncation=True, return_tensors="pt"
+    )
+    # Call the model to get the output
+    output = MODEL(**tokenized_input)
+    # Extract probabilities of each label
+    prediction = output["logits"][0].softmax(dim=-1).tolist()
+    # Define label names
     label_names = ["entailment", "neutral", "contradiction"]
-    prediction = {name: round(float(pred) * 100, 1) for pred, name in zip(prediction, label_names)}
+    # Map probabilities to label names
+    prediction = {
+        name: round(float(pred) * 100, 1) for pred, name in zip(prediction, label_names)
+    }
+    # Calculate probability of non-contradiction
     prediction["non-contradiction"] = round(100 - prediction["contradiction"], 4)
-
+    # Determine if contradiction probability is higher
     if prediction["contradiction"] >= prediction["non-contradiction"]:
         return True
     else:
