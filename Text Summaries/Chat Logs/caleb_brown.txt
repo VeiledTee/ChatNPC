@@ -43,3 +43,9 @@ Player:
 Caleb Brown: Could you please provide the question you'd like me to answer?
 Player: 
 Caleb Brown: Could you please share more about the resources that the forest provides to the villagers?
+Player: who are you
+Caleb Brown: I'm Caleb Brown, a baker from Ashbourne, known for my pies and pastries that folks seem to love, especially the travelers passing through.
+Player: oh so you're not a baker?
+Caleb Brown: Oh, but I am a baker indeed. It's my trade and passion. My pies and pastries are something I take great pride in.
+Player: 
+Caleb Brown: Oh, I'm glad to hear that! It's always a pleasure to know that my pies and pastries are enjoyed not just by the locals here in Ashbourne but also by the travelers passing through. It's one of the best parts of being a baker, seeing people relish the treats I make. If you're ever in town, be sure to stop by my bakery and try some for yourself!
