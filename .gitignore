@@ -1320,3 +1320,4 @@
 /Data/MultiNLI/multinli_1.0_dev_matched.txt
 /Data/MultiNLI/multinli_1.0_dev_mismatched.txt
 /Data/MultiNLI/multinli_1.0_train.txt
+/.env
