@@ -1,7 +1,16 @@
-import numpy as np
+import os
 from datetime import datetime
+
+import numpy as np
 import pinecone
-import math
+from flask import session
+
+
+def get_username():
+    try:
+        return session.get("username")
+    except RuntimeError:
+        return "penguins"
 
 
 def cos_sim(a: np.ndarray, b: np.ndarray) -> float:
@@ -14,7 +23,9 @@ def cos_sim(a: np.ndarray, b: np.ndarray) -> float:
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 
-def exponential_decay(earlier_time: datetime, current_time: datetime, decay_rate=0.01) -> float:
+def exponential_decay(
+    earlier_time: datetime, current_time: datetime, decay_rate=0.01
+) -> float:
     """
     Calculates an exponential decay score based on the time difference between two timestamps using log space.
     :param earlier_time: The timestamp indicating when the memory was last accessed.
@@ -59,7 +70,10 @@ def relevance_score(record_embedding: list, query_embedding: list) -> float:
 
 
 def context_retrieval(
-        namespace: str, query_embedding: list[float], n: int, index_name: str = "chatnpc-index"
+    namespace: str,
+    query_embedding: list[float],
+    n: int,
+    index_name: str = "chatnpc-index",
 ) -> list[str]:
     """
     Ranks character memories by a retrieval score.
@@ -70,7 +84,9 @@ def context_retrieval(
     # get index to query for records
     index: pinecone.Index = pinecone.Index(index_name)
     # count number of vectors in the namespace
-    total_vectors: int = index.describe_index_stats()["namespaces"][namespace]["vector_count"]
+    total_vectors: int = index.describe_index_stats()["namespaces"][namespace][
+        "vector_count"
+    ]
     # query Pinecone and get all records in namespace
     responses = index.query(
         query_embedding,
@@ -78,10 +94,11 @@ def context_retrieval(
         include_metadata=True,
         namespace=namespace,
         filter={
+            "user": get_username(),
             "$or": [
                 {"type": {"$eq": "background"}},
                 {"type": {"$eq": "response"}},
-            ]
+            ],
         },
     )  # don't need to return values cuz we get score
 
@@ -91,13 +108,17 @@ def context_retrieval(
     # score_id_pairs format: [SCORE, RECORD]
     score_id_pairs: list = [
         (
-            recency_score(cur_time, record["metadata"]["last_accessed"]) * importance_score(record) * record["score"],
+            recency_score(cur_time, record["metadata"]["last_accessed"])
+            * importance_score(record)
+            * record["score"],
             record,
         )
         for record in responses["matches"]
     ]
     # sort records by retrieval score
-    sorted_score_id_pairs = sorted(score_id_pairs, key=lambda pair: pair[0], reverse=True)
+    sorted_score_id_pairs = sorted(
+        score_id_pairs, key=lambda pair: pair[0], reverse=True
+    )
 
     # for _, record in sorted_score_id_pairs:
     #     print(record['metadata']['text'])
@@ -111,6 +132,10 @@ def context_retrieval(
 
     # update records with new access times
     for record in top_records:
-        index.update(id=record["id"], set_metadata={"last_accessed": str(cur_time)}, namespace=namespace)
+        index.update(
+            id=record["id"],
+            set_metadata={"last_accessed": str(cur_time)},
+            namespace=namespace,
+        )
 
     return top_context

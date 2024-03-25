@@ -6,6 +6,8 @@ from typing import Any
 import pinecone
 from openai import OpenAI
 
+import global_functions
+from config import Config
 from global_functions import (
     embed,
     extract_name,
@@ -15,7 +17,9 @@ from global_functions import (
 )
 from keys import openAI_API, pinecone_API, pinecone_ENV
 from retrieval import context_retrieval
-from config import Config
+from app import USERNAME
+from flask import session
+
 
 configuration = Config("config.json")
 DATE_FORMAT = configuration.DATE_FORMAT
@@ -23,7 +27,7 @@ DEVICE = configuration.DEVICE
 MODEL = configuration.MODEL
 TOKENIZER = configuration.TOKENIZER
 
-AUDIO: bool = False
+AUDIO: bool = True
 # TEXT_MODEL: str = "gpt-3.5-turbo-0301"
 TEXT_MODEL: str = "gpt-4-1106-preview"
 
@@ -33,6 +37,13 @@ pinecone.init(
     api_key=pinecone_API,
     environment=pinecone_ENV,
 )
+
+
+def get_username():
+    try:
+        return session.get("username")
+    except RuntimeError:
+        return "penguins"
 
 
 def get_information(character_name) -> None | tuple:
@@ -69,12 +80,12 @@ def load_file_information(load_file: str) -> list[str]:
 
 
 def run_query_and_generate_answer(
-        query: str,
-        receiver: str,
-        context: list[str],
-        index_name: str = "chatnpc-index",
-        save: bool = True,
-) -> tuple[str, int, int]:
+    query: str,
+    receiver: str,
+    context: list[str],
+    index_name: str = "chatnpc-index",
+    save: bool = True,
+) -> str | tuple[str, int, int]:
     """
     Runs a query on a Pinecone index and generates an answer based on the response context.
     :param query: The query to be run on the index.
@@ -148,33 +159,34 @@ def run_query_and_generate_answer(
 
 
 def retrieve_context_list(
-        namespace: str,
-        query: str,
-        impact_score: bool = True,
-        n: int = 3,
-        index_name: str = "chatnpc-index",
+    namespace: str,
+    query: str,
+    impact_score: bool = True,
+    n: int = 3,
+    index_name: str = "chatnpc-index",
 ) -> list[str]:
     # embed query for processing
     embedded_query: list[float] = embed(query=query)
     # connect to index
     index = pinecone.Index(index_name)
-    # retrieve memories using ONLY cosine similarity
     if impact_score:
         # retrieve memories using recency, poignancy, and relevance metrics
         return context_retrieval(
             namespace=namespace, query_embedding=embedded_query, n=n
         )
     else:
+        # retrieve memories using ONLY cosine similarity
         responses = index.query(
             embedded_query,
             top_k=n,
             include_metadata=True,
             namespace=namespace,
             filter={
+                "user": get_username(),
                 "$or": [
                     {"type": {"$eq": "background"}},
                     {"type": {"$eq": "response"}},
-                ]
+                ],
             },
         )
 
@@ -187,7 +199,7 @@ def retrieve_context_list(
 
 
 def handle_contradiction(
-        contradictory_index: int, namespace: str, index_name: str = "chatnpc-index"
+    contradictory_index: int, namespace: str, index_name: str = "chatnpc-index"
 ) -> None:
     """
     This function deals with contradictory facts in the context and query.
@@ -223,10 +235,11 @@ def handle_contradiction(
             include_metadata=True,
             namespace=namespace,
             filter={
+                "user": get_username(),
                 "$or": [
                     {"type": {"$eq": "background"}},
                     {"type": {"$eq": "response"}},
-                ]
+                ],
             },
         )
         # delete s1, s2, and s1 copy
@@ -243,6 +256,7 @@ def handle_contradiction(
                     namespace, s2_vector["vectors"]["s2"]["metadata"]["text"]
                 ),
                 "last_accessed": cur_time.strftime(DATE_FORMAT),
+                "user": get_username(),
             },
             "values": s2_vector["vectors"]["s2"]["values"],
         }  # build dict for upserting
@@ -265,6 +279,7 @@ def handle_contradiction(
                     namespace, s2_vector["vectors"]["s2"]["metadata"]["text"]
                 ),
                 "last_accessed": cur_time.strftime(DATE_FORMAT),
+                "user": get_username(),
             },
             "values": s2_vector["vectors"]["s2"]["values"],
         }  # build dict for upserting
@@ -278,6 +293,9 @@ def handle_contradiction(
             s1_vector["vectors"]["s1"]["values"],
             top_k=1,
             namespace=namespace,
+            filter={
+                "user": get_username(),
+            },
         )
         # delete s1, s2, and s1 copy
         index.delete(
@@ -293,6 +311,7 @@ def handle_contradiction(
             include_metadata=True,
             inclue_vectors=True,
             namespace=namespace,
+            fileter={"user": get_username()},
         )  # get record with highest index value
 
         if to_move_up[
@@ -315,7 +334,7 @@ def handle_contradiction(
 
 
 def generate_conversation(
-        character_file: str, chat_history: list, player: bool, next_phrase: str
+    character_file: str, chat_history: list, player: bool, next_phrase: str
 ) -> list[dict]:
     """
     Generate a record of the conversation a user has had with the system for feeding into gpt 3.5 turbo
@@ -356,6 +375,11 @@ def upload_background(character: str, index_name: str = "chatnpc-index") -> None
     with open("Text Summaries/characters.json", "r") as character_info_file:
         character_names = json.load(character_info_file)
 
+    if " " not in character:
+        character = global_functions.name_conversion(
+            to_snake_case=False, to_convert=character
+        )
+
     data_file: str = f"Text Summaries/Summaries/{character_names[character]}.txt"
     # setting_file: str = "Text Summaries/Summaries/ashbourne.txt"
     namespace: str = extract_name(data_file).lower()
@@ -383,6 +407,7 @@ def upload_background(character: str, index_name: str = "chatnpc-index") -> None
 
     for i, info in enumerate(data_facts):
         if i == 99:  # recommended batch limit of 100 vectors
+
             index.upsert(vectors=data_vectors, namespace=namespace)
             data_vectors = []
         info_dict: dict = {
@@ -392,6 +417,7 @@ def upload_background(character: str, index_name: str = "chatnpc-index") -> None
                 "type": "background",
                 "poignancy": 10,
                 "last_accessed": cur_time.strftime(DATE_FORMAT),
+                "user": get_username(),
             },
             "values": embed(info),
         }
@@ -402,7 +428,7 @@ def upload_background(character: str, index_name: str = "chatnpc-index") -> None
 
 
 def upload_contradiction(
-        namespace: str, s1: str, s2: str, index_name: str = "chatnpc-index"
+    namespace: str, s1: str, s2: str, index_name: str = "chatnpc-index"
 ) -> None:
     """
     Sends text embedding vectors of two contradictory sentences into pinecone KB at indexes s1 and s2
@@ -423,18 +449,20 @@ def upload_contradiction(
                 "type": "response",
                 "poignancy": 10,
                 "last_accessed": cur_time.strftime(DATE_FORMAT),
+                "user": get_username(),
             },
             "values": embed(info),
         }  # build dict for upserting
         data_vectors.append(info_dict)
+
     index.upsert(vectors=data_vectors, namespace=namespace)  # upsert all remaining data
 
 
 def upload(
-        namespace: str,
-        data: list[str],
-        index: pinecone.Index,
-        text_type: str = "background",
+    namespace: str,
+    data: list[str],
+    index: pinecone.Index,
+    text_type: str = "background",
 ) -> None:
     """
     Sends records to the namespace at the specified pinecone index
@@ -465,6 +493,7 @@ def upload(
     # add new data to database
     for i, info in enumerate(data):
         if i == 99:  # recommended batch limit of 100 vectors
+
             index.upsert(vectors=data_vectors, namespace=namespace)
             data_vectors = []
         info_dict: dict = {
@@ -474,11 +503,13 @@ def upload(
                 "type": text_type,
                 "poignancy": find_importance(namespace, info),
                 "last_accessed": cur_time.strftime(DATE_FORMAT),
+                "user": get_username(),
             },
             "values": embed(info),
         }  # build dict for upserting
         data_vectors.append(info_dict)
         total_vectors += 1
+
     index.upsert(vectors=data_vectors, namespace=namespace)  # upsert all remaining data
 
 
@@ -497,30 +528,31 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
                 "role": "system",
                 "content": prompt_engineer_from_template(
                     template_file="Prompts/background_rephrase.txt",
-                    data=[name_conversion(to_snake=False, to_convert=namespace)],
+                    data=[name_conversion(to_snake_case=False, to_convert=namespace)],
                 ),
             }
         )
-    elif text_type == "response":
-        msgs.append(
-            {
-                "role": "system",
-                "content": prompt_engineer_from_template(
-                    template_file="Prompts/response_rephrase.txt",
-                    data=[name_conversion(to_snake=False, to_convert=namespace)],
-                ),
-            }
-        )
-    elif text_type == "query":
-        msgs.append(
-            {
-                "role": "system",
-                "content": prompt_engineer_from_template(
-                    template_file="Prompts/query_rephrase.txt",
-                    data=[name_conversion(to_snake=False, to_convert=namespace)],
-                ),
-            }
-        )
+
+    # elif text_type == "response":
+    #     msgs.append(
+    #         {
+    #             "role": "system",
+    #             "content": prompt_engineer_from_template(
+    #                 template_file="Prompts/response_rephrase.txt",
+    #                 data=[name_conversion(to_snake_case=False, to_convert=namespace)],
+    #             ),
+    #         }
+    #     )
+    # elif text_type == "query":
+    #     msgs.append(
+    #         {
+    #             "role": "system",
+    #             "content": prompt_engineer_from_template(
+    #                 template_file="Prompts/query_rephrase.txt",
+    #                 data=[name_conversion(to_snake_case=False, to_convert=namespace)],
+    #             ),
+    #         }
+    #     )
     prompt: str = f"Split this phrase into facts: {phrase}"
     msgs.append(
         {"role": "user", "content": prompt}
@@ -534,7 +566,7 @@ def fact_rephrase(phrase: str, namespace: str, text_type: str) -> list[str]:
 
 
 def find_importance(namespace: str, fact: str) -> int:
-    character_name: str = name_conversion(to_snake=False, to_convert=namespace)
+    character_name: str = name_conversion(to_snake_case=False, to_convert=namespace)
     with open(f"Text Summaries/Summaries/{namespace}.txt", "r") as character_file:
         character_info: str = character_file.read()
 
@@ -569,7 +601,7 @@ def find_importance(namespace: str, fact: str) -> int:
 
 
 def prompt_engineer_character_reply(
-        prompt: str, grammar: str, context: list[str]
+    prompt: str, grammar: str, context: list[str]
 ) -> str:
     """
     Given a base query and context, format it to be used as prompt
@@ -597,7 +629,7 @@ def prompt_engineer_character_reply(
 
 
 def answer(
-        prompt: str, chat_history: list[dict], namespace: str
+    prompt: str, chat_history: list[dict], namespace: str
 ) -> tuple[str, int, int]:
     """
     Using OpenAI API, respond to the provided prompt
@@ -611,10 +643,10 @@ def answer(
         cur_voice: str = model_pairings[namespace.replace("-", "_")]
 
     if not os.path.exists(
-            f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}"
+        f"static/audio/{get_username()}/{name_conversion(to_snake_case=False, to_convert=namespace)}"
     ):
         os.makedirs(
-            f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}"
+            f"static/audio/{get_username()}/{name_conversion(to_snake_case=False, to_convert=namespace)}"
         )
 
     msgs: list[dict] = chat_history
@@ -636,18 +668,17 @@ def answer(
         filename = f"{namespace}_{timestamp}.mp3"
 
         audio_reply.stream_to_file(
-            f"static/audio/{name_conversion(to_snake=False, to_convert=namespace)}/{filename}"
+            f"static/audio/{get_username()}/{name_conversion(to_snake_case=False, to_convert=namespace)}/{filename}"
         )
     return clean_res, int(res.usage.prompt_tokens), int(res.usage.completion_tokens)
 
 
 def update_history(
-        namespace: str,
-        info_file: str,
-        prompt: str,
-        response: str,
-        index: pinecone.Index,
-        character: str = "Player",
+    namespace: str,
+    info_file: str,
+    prompt: str,
+    response: str,
+    index: pinecone.Index,
 ) -> None:
     """
     Update the history of the current chat with new responses
@@ -655,19 +686,26 @@ def update_history(
     :param info_file: file where chat history is logged
     :param prompt: prompt user input
     :param response: response given by LLM
-    :param index:
-    :param character: the character we are conversing with
+    :param index: The Pinecone index data will be saved to
     """
     upload(namespace, [prompt], index, text_type="query")  # upload prompt to pinecone
     upload(
         namespace, [response], index, text_type="response"
     )  # upload response to pinecone
 
-    info_file = f"Text Summaries/Chat Logs/{info_file.split('/')[-1]}"  # swap directory
+    log_dir = "Text Summaries/Chat Logs"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)  # Create the directory if it doesn't exist
+
+    user_dir = os.path.join(log_dir, get_username())
+    if not os.path.exists(user_dir):
+        os.makedirs(user_dir)  # Create the user directory if it doesn't exist
+
+    info_file = os.path.join(user_dir, os.path.basename(info_file))  # Construct path
 
     with open(info_file, "a") as history_file:
         history_file.write(
-            f"{character}: {prompt}\n"
+            f"{get_username()}: {prompt}\n"
             f"{name_conversion(False, namespace).replace('-', ' ')}: {response}\n"
         )  # save chat logs
 
@@ -697,13 +735,41 @@ def are_contradiction(premise_a: str, premise_b: str) -> bool:
 
 
 if __name__ == "__main__":
+    cur_time = datetime.now()
+    index: pinecone.Index = pinecone.Index("chatnpc-index")
+    s1_dict = {
+        "id": "s1",
+        "metadata": {
+            "text": "This is a test boi",
+            "type": "response",
+            "poignancy": 6,
+            "last_accessed": cur_time.strftime(DATE_FORMAT),
+            "user": get_username(),
+        },
+        "values": embed("This is a test boi"),
+    }
+    s2_dict = {
+        "id": "s2",
+        "metadata": {
+            "text": "Also a test boi",
+            "type": "response",
+            "poignancy": 5,
+            "last_accessed": cur_time.strftime(DATE_FORMAT),
+            "user": get_username(),
+        },
+        "values": embed(""),
+    }
     # print(are_contradiction("blackfins only live in the east river", "blackfins only live in the west river"))
     # print(are_contradiction("blackfins live in the east river", "blackfins live in the west river"))
-    handle_contradiction(contradictory_index=0, namespace="peter-satoru")
+    handle_contradiction(contradictory_index=0, namespace="peter_satoru")
     print("0 works")
-    handle_contradiction(contradictory_index=1, namespace="peter-satoru")
+    index.upsert(vectors=[s1_dict, s2_dict], namespace="peter_satoru")
+    handle_contradiction(contradictory_index=1, namespace="peter_satoru")
     print("1 works")
-    handle_contradiction(contradictory_index=2, namespace="peter-satoru")
+    index.upsert(vectors=[s1_dict, s2_dict], namespace="peter_satoru")
+    handle_contradiction(contradictory_index=2, namespace="peter_satoru")
     print("2 works")
-    handle_contradiction(contradictory_index=3, namespace="peter-satoru")
+    index.upsert(vectors=[s1_dict, s2_dict], namespace="peter_satoru")
+    handle_contradiction(contradictory_index=3, namespace="peter_satoru")
     print("3 works")
+    index.upsert(vectors=[s1_dict, s2_dict], namespace="peter_satoru")

@@ -9,7 +9,7 @@ class Config:
         self._load_config(config_file)
 
     def _load_config(self, config_file):
-        with open(config_file, 'r') as f:
+        with open(config_file, "r") as f:
             config_data = json.load(f)
 
         # Load configuration parameters
@@ -24,8 +24,11 @@ class Config:
         self.CHKPT_INTERVAL = config_data["CHKPT_INTERVAL"]
         self.TESTSET = config_data["TESTSET"]
         self.DATE_FORMAT = config_data["DATE_FORMAT"]
-        self.BATCH_SIZE = config_data["BATCH_SIZE_TRAIN"] if self.DATASET == "train" else config_data[
-            "BATCH_SIZE_OTHER"]
+        self.BATCH_SIZE = (
+            config_data["BATCH_SIZE_TRAIN"]
+            if self.DATASET == "train"
+            else config_data["BATCH_SIZE_OTHER"]
+        )
         self.MODEL_NAME = config_data["MODEL_NAME"]
 
         # Set pytorch device
@@ -35,4 +38,6 @@ class Config:
             self.DEVICE = torch.device("cpu")
 
         self.TOKENIZER = AutoTokenizer.from_pretrained(self.MODEL_NAME)
-        self.MODEL = AutoModelForSequenceClassification.from_pretrained(self.MODEL_NAME).to(self.DEVICE)
+        self.MODEL = AutoModelForSequenceClassification.from_pretrained(
+            self.MODEL_NAME
+        ).to(self.DEVICE)

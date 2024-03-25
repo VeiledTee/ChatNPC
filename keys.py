@@ -1,10 +1,10 @@
 import os
 
 # Load environment variables from .env file
-with open('.env', 'r') as file:
+with open(".env", "r") as file:
     for line in file:
-        if line.strip() and not line.startswith('#'):
-            key, value = line.strip().split('=')
+        if line.strip() and not line.startswith("#"):
+            key, value = line.strip().split("=")
             os.environ[key] = value
 
 # Access environment variables

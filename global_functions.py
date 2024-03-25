@@ -1,10 +1,13 @@
 import json
+import os
 import re
 
-import torch
-from sentence_transformers import SentenceTransformer
 import pinecone
 import psutil
+import torch
+from sentence_transformers import SentenceTransformer
+
+USERNAME = os.environ.get("USERNAME", None)
 
 
 def embed(query: str) -> list[float]:
@@ -38,30 +41,17 @@ def extract_name(file_name: str) -> str:
     return name[:-4]
 
 
-def name_conversion(to_snake: bool, to_convert: str) -> str:
+def name_conversion(to_snake_case: bool, to_convert: str) -> str:
     """
     Convert a namespace to character name (not snake) or character name to namespace (snake)
-    :param to_snake: Do you convert to namespace or not
+    :param to_snake_case: True to convert to snake_case, False to convert to character name
     :param to_convert: String to convert
     :return: Converted string
     """
-    if to_snake:
-        text = to_convert.lower().split(" ")
-        converted: str = text[0]
-        for i, t in enumerate(text):
-            if i == 0:
-                pass
-            else:
-                converted += f"_{t}"
-        return converted
+    if to_snake_case:
+        return "_".join(to_convert.lower().split(" "))
     else:
-        text = to_convert.split("_")
-        converted: str = text[0].capitalize()
-        for i, t in enumerate(text):
-            if i == 0:
-                pass
-            else:
-                converted += f" {t.capitalize()}"
+        converted = "_".join(word.capitalize() for word in to_convert.split("_"))
         converted = re.sub("(-)\s*([a-zA-Z])", lambda p: p.group(0).upper(), converted)
         return converted.replace("_", " ")
 
@@ -79,13 +69,16 @@ def namespace_exist(namespace: str) -> bool:
         include_metadata=True,
         namespace=namespace,
         filter={
+            "user": USERNAME,
             "$or": [
                 {"type": {"$eq": "background"}},
                 {"type": {"$eq": "response"}},
-            ]
+            ],
         },
     )  # query index
-    return responses["matches"] != []  # if matches comes back empty namespace doesn't exist
+    return (
+        responses["matches"] != []
+    )  # if matches comes back empty namespace doesn't exist
 
 
 def prompt_engineer_from_template(template_file: str, data: list[str]) -> str:
@@ -130,7 +123,9 @@ def delete_all_vectors(index_name: str = "chatnpc-index") -> None:
         index.delete(deleteAll=True, namespace=namespace)
 
 
-def delete_specific_vectors(character_name: str, index_name: str = "chatnpc-index") -> None:
+def delete_specific_vectors(
+    character_name: str, index_name: str = "chatnpc-index"
+) -> None:
     """
     Deletes all vectors in a specific namespace
     :param character_name: character's name who's memory needs to be wiped (namespace or full name)
@@ -139,7 +134,7 @@ def delete_specific_vectors(character_name: str, index_name: str = "chatnpc-inde
     """
     index: pinecone.Index = pinecone.Index(index_name)
     if "_" not in character_name:
-        namespace: str = name_conversion(to_snake=True, to_convert=character_name)
+        namespace: str = name_conversion(to_snake_case=True, to_convert=character_name)
     index.delete(deleteAll=True, namespace=namespace)
 
 
